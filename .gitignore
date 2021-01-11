@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Binary directory
+bin/
+
+# User preferences for VS code
+.vscode/
