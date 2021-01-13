@@ -33,10 +33,10 @@ if [[ $CONTAINER_DEV_ID == "" ]]; then
     if [[ $CONTAINER_DEV_ID == "" ]]; then
         # Container doesn't exist
         echo "$CONTAINER_DEV does not exist, running:"
-        RUN_CMD="docker run -it -v $(pwd):/code --env-file .env.dev --name $CONTAINER_DEV $IMAGE_DEV"
+        RUN_CMD="docker run -dit -v $(pwd):/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev --name $CONTAINER_DEV $IMAGE_DEV"
         echo "  $RUN_CMD"
         $RUN_CMD
-        exit 0
+        docker exec -it $CONTAINER_DEV bash -c 'useradd cs251; mkdir /home/cs251; chown cs251 /home/cs251;'
     else
         # Restart the container and reconnect
         echo "$CONTAINER_DEV not running, restarting:"
@@ -49,4 +49,5 @@ fi
 # Container is running, exec bash
 EXEC_CMD="docker exec -it $CONTAINER_DEV bash"
 echo $EXEC_CMD
+echo "su cs251 -c /code/riscv-sim/bin/riscv-console-sim"
 $EXEC_CMD
