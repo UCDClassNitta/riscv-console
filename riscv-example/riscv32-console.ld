@@ -40,6 +40,7 @@ SECTIONS
         *(.init*)               /* entry point needs to be a base */
         *(.text*)               /* other code */
         *(.rodata*)             /* constants go here */
+        *(.srodata*)            /* constants go here */
         _etext = .;             /* end of .text segment */
     } > FLASH
 
