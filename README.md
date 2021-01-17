@@ -21,11 +21,11 @@ The script will build the base RISC-V Docker image riscv_base that has the RISC-
 ```
 root@fedcba9876543210:/code#
 ```
-The next step is to build the simulator. Change directory into the `riscv-sim` directory and run `make`. The simulator should be built and the executable will be in `/code/riscv-sim/bin` directory. The next step is to build the RISC-V example program to test on the simulator. Change directory into `/code/riscv-example` and then run `make`. This should build an example that will put `Hello World!` on the simulator screen and have an `X` that will move based upon the controller direction buttons. You can launch the simulator with the full path using the command:
+The next step is to build the RISC-V example program to test on the simulator. Change directory into `/code/riscv-example` and then run `make`. This should build an example that will put `Hello World!` on the simulator screen and have an `X` that will move based upon the controller direction buttons. You can launch the simulator with the full path using the command:
 ```
-/code/riscv-sim/bin/riscv-console-sim
+/code/runsim.sh
 ```
-This should launch the simulator using X11 assuming everything is installed properly. You should see the simulator window that looks like: 
+This should build the simulator if it hasn't been built yet and will launch the simulator using X11 assuming everything is installed properly. The script will launch the simulator under the docker user instead of root. This may be necessary for LInux clients. The You should see the simulator window that looks like: 
 
 ![](img/console-screenshot.png)
 
