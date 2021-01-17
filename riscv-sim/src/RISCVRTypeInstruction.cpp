@@ -281,7 +281,7 @@ class CRISCVREMInstruction : public CRISCVRTypeInstruction{
             int32_t Temp1, Temp2;
             *(uint32_t *)&Temp1 = DSource1->load();
             *(uint32_t *)&Temp2 = DSource2->load();
-            DDestination->store(Temp2 ? Temp1 / Temp2 : Temp1);
+            DDestination->store(Temp2 ? Temp1 % Temp2 : Temp1);
             DProgramCounter->fetch_add(DInstructionAlignment);
             return true;   
         };
@@ -300,7 +300,7 @@ class CRISCVREMUInstruction : public CRISCVRTypeInstruction{
         bool Execute(){
             uint32_t Temp1 = DSource1->load();
             uint32_t Temp2 = DSource2->load();
-            DDestination->store(Temp2 ? Temp1 / Temp2 : Temp1);
+            DDestination->store(Temp2 ? Temp1 % Temp2 : Temp1);
             DProgramCounter->fetch_add(DInstructionAlignment);
             return true;   
         };

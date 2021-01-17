@@ -25,7 +25,7 @@ The next step is to build the RISC-V example program to test on the simulator. C
 ```
 /code/runsim.sh
 ```
-This should build the simulator if it hasn't been built yet and will launch the simulator using X11 assuming everything is installed properly. The script will launch the simulator under the docker user instead of root. This may be necessary for LInux clients. The You should see the simulator window that looks like: 
+This should build the simulator if it hasn't been built yet and will launch the simulator using X11 assuming everything is installed properly. The script will launch the simulator under the docker user instead of root. This may be necessary for Linux clients. The You should see the simulator window that looks like: 
 
 ![](img/console-screenshot.png)
 
