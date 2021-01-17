@@ -33,7 +33,14 @@ if [[ $CONTAINER_DEV_ID == "" ]]; then
     if [[ $CONTAINER_DEV_ID == "" ]]; then
         # Container doesn't exist
         echo "$CONTAINER_DEV does not exist, running:"
-        RUN_CMD="docker run -it -v $(pwd):/code --env-file .env.dev --name $CONTAINER_DEV $IMAGE_DEV"
+        # https://stackoverflow.com/questions/394230/how-to-detect-the-os-from-a-bash-script
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            RUN_CMD="docker run -it -v $(pwd):/code --env-file .env.dev.osx --name $CONTAINER_DEV $IMAGE_DEV"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            RUN_CMD="docker run -it -v $(pwd):/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV"
+        else
+            RUN_CMD="docker run -it -v $(pwd):/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV"
+        fi
         echo "  $RUN_CMD"
         $RUN_CMD
         exit 0
