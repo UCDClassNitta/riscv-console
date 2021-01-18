@@ -7,26 +7,26 @@ extern uint8_t _sdata;
 extern uint8_t _esdata;
 
 // Adapted from https://stackoverflow.com/questions/58947716/how-to-interact-with-risc-v-csrs-by-using-gcc-c-code
-__attribute__((always_inline)) uint32_t csr_mstatus_read(void){
+__attribute__((always_inline)) inline uint32_t csr_mstatus_read(void){
     uint32_t result;
-    asm("csrr %0, mstatus" : "=r"(result));
+    asm volatile ("csrr %0, mstatus" : "=r"(result));
     return result;
 }
 
-__attribute__((always_inline)) void csr_mstatus_write(uint32_t val){
-    asm("csrw mstatus, %0" : "=r"(val));
+__attribute__((always_inline)) inline void csr_mstatus_write(uint32_t val){
+    asm volatile ("csrw mstatus, %0" : "=r"(val));
 }
 
-__attribute__((always_inline)) void csr_write_mie(uint32_t val){
-    asm("csrw mie, %0" : "=r"(val));
+__attribute__((always_inline)) inline void csr_write_mie(uint32_t val){
+    asm volatile ("csrw mie, %0" : "=r"(val));
 }
 
-__attribute__((always_inline)) void csr_enable_interrupts(void){
-    asm("csrsi mstatus, 0x8");
+__attribute__((always_inline)) inline void csr_enable_interrupts(void){
+    asm volatile ("csrsi mstatus, 0x8");
 }
 
-__attribute__((always_inline)) void csr_disable_interrupts(void){
-    asm("csrci mstatus, 0x8");
+__attribute__((always_inline)) inline void csr_disable_interrupts(void){
+    asm volatile ("csrci mstatus, 0x8");
 }
 
 #define MTIME_LOW       (*((volatile uint32_t *)0x40000008))
