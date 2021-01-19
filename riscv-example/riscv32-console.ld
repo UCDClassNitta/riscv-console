@@ -65,6 +65,7 @@ SECTIONS
     {
         _bss = .;           /* beginning of .bss segment */
         *(.bss*)            /* .bss content goes here */
+        *(.sbss*)           /* .sbss content goes here */
         *(COMMON)       
         . = ALIGN(. != 0 ? 32 / 8 : 1);
         _ebss = .;          /* end of .bss segment */
