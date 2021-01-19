@@ -312,8 +312,14 @@ CRISCVSYSTypeInstruction::CRISCVSYSTypeInstruction(uint32_t addr, uint32_t raw, 
     }
     auto CSRSearch = csrregs.find(Encoded->csr);
     if(CSRSearch == csrregs.end()){
-        // Hardwire to zero 
-        DControlStatusRegister = regs[0];
+        if(Encoded->funct3 || Encoded->csr){
+            // Hardwire to zero 
+            DControlStatusRegister = regs[0];    
+        }
+        else{
+            // Set ECALL CSR to mcause
+            DControlStatusRegister = csrregs[0x342];
+        }
     }
     else{
         DControlStatusRegister = CSRSearch->second;
