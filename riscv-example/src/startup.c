@@ -14,11 +14,11 @@ __attribute__((always_inline)) inline uint32_t csr_mstatus_read(void){
 }
 
 __attribute__((always_inline)) inline void csr_mstatus_write(uint32_t val){
-    asm volatile ("csrw mstatus, %0" : "=r"(val));
+    asm volatile ("csrw mstatus, %0" : "r"(val));
 }
 
 __attribute__((always_inline)) inline void csr_write_mie(uint32_t val){
-    asm volatile ("csrw mie, %0" : "=r"(val));
+    asm volatile ("csrw mie, %0" : "r"(val));
 }
 
 __attribute__((always_inline)) inline void csr_enable_interrupts(void){
