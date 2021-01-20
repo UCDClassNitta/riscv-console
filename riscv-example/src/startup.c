@@ -46,8 +46,10 @@ void init(void){
         *Base++ = *Source++;
     }
     Base = &_bss;
-    while (Base < &_ebss)
+    End = &_ebss;
+    while(Base < End){
         *Base++ = 0;
+    }
 
     csr_write_mie(0x888);       // Enable all interrupt soruces
     csr_enable_interrupts();    // Global interrupt enable
