@@ -41,6 +41,7 @@ SECTIONS
         *(.text*)               /* other code */
         *(.rodata*)             /* constants go here */
         *(.srodata*)            /* constants go here */
+        . = ALIGN(4);
         _etext = .;             /* end of .text segment */
     } > FLASH
 
@@ -49,6 +50,7 @@ SECTIONS
     {
         _data = .;          /* beginning of .data segment */
         *(.data*)           /* data goes here */
+        . = ALIGN(4);
         _edata = .;         /* end of .data segment */
     } > RAM AT >FLASH       /* .data segment starts directly after the .text section in FLASH */
 
@@ -57,6 +59,7 @@ SECTIONS
     {
         _sdata = .;         /* beginning of .sdata segment */
         *(.sdata*)          /* data goes here */
+        . = ALIGN(4);
         _esdata = .;        /* end of .data segment */
     } > RAM AT >FLASH       /* .sdata segment starts directly after the .text section in FLASH */
 
