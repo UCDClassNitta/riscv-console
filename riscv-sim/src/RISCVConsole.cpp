@@ -2,9 +2,11 @@
 #include "MemoryControllerDevice.h"
 #include "RAMMemoryDevice.h"
 #include "RISCVBlockInstructionCache.h"
-#include "ElfLoad.h"
 #include <iostream>
 #include <functional>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 const uint32_t CRISCVConsole::DMainMemorySize = 0x1000000;          // 16MB
 const uint32_t CRISCVConsole::DMainMemoryBase = 0x70000000;         // Set at base in first 2GB region
@@ -166,6 +168,75 @@ void CRISCVConsole::ResetComponents(){
     DChipset->Reset();
 }
 
+void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations){
+    strings.clear();
+    translations.clear();
+    for(size_t Index = 0; Index < elffile.ProgramHeaderCount(); Index++){
+        auto &Header = elffile.ProgramHeader(Index);
+        if(Header.DFlags & 0x1){
+            std::vector< uint32_t > AddressKeys;
+            AddressKeys.reserve(Header.DSymbols.size());
+            for(auto &Symbol : Header.DSymbols){
+                AddressKeys.push_back(Symbol.first);
+            }
+            std::sort(AddressKeys.begin(),AddressKeys.end());
+            auto NextSymbol = AddressKeys.begin();
+            uint32_t CurrentAddress = Header.DVirtualAddress;
+            uint32_t EndAddress = Header.DVirtualAddress + Header.DMemorySize;
+            while(CurrentAddress < EndAddress){
+                if((NextSymbol != AddressKeys.end())&&(CurrentAddress == *NextSymbol)){
+                    strings.push_back(Header.DSymbols.find(CurrentAddress)->second);
+                    NextSymbol++;
+                }
+                translations[CurrentAddress] = strings.size();
+                std::stringstream Stream;
+                Stream<<" "<<std::setfill('0') << std::setw(8) << std::hex << CurrentAddress << ": ";
+                auto NewInstruction = DCPUCache->Fetch(CurrentAddress);
+                if(!NewInstruction){
+                    NewInstruction = DCPU->DecodeInstruction(CurrentAddress);
+                    if(NewInstruction){
+                        DCPUCache->Insert(NewInstruction);
+                    }
+                }
+                if(NewInstruction){
+                    Stream<<NewInstruction->ToString();
+                }
+                else{
+                    Stream<<"invalid";
+                }
+                strings.push_back(Stream.str());
+
+                CurrentAddress += sizeof(uint32_t);
+            }
+
+        }
+    }
+}
+
+void CRISCVConsole::ConstructFirmwareStrings(CElfLoad &elffile){
+    DFirmwareInstructionStrings.clear();
+    DFirmwareAddressesToIndices.clear();
+    ConstructInstructionStrings(elffile, DFirmwareInstructionStrings, DFirmwareAddressesToIndices);
+    DInstructionStrings = DFirmwareInstructionStrings;
+    DInstructionStrings.insert(DInstructionStrings.end(), DCartridgeInstructionStrings.begin(),DCartridgeInstructionStrings.end());
+    DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
+    for(auto &AddrIdx : DCartridgeAddressesToIndices){
+        DInstructionAddressesToIndices[AddrIdx.first] = AddrIdx.second + DFirmwareInstructionStrings.size();
+    }
+}
+
+void CRISCVConsole::ConstructCartridgeStrings(CElfLoad &elffile){
+    DCartridgeInstructionStrings.clear();
+    DCartridgeAddressesToIndices.clear();
+    ConstructInstructionStrings(elffile, DCartridgeInstructionStrings, DCartridgeAddressesToIndices);
+    DInstructionStrings = DFirmwareInstructionStrings;
+    DInstructionStrings.insert(DInstructionStrings.end(), DCartridgeInstructionStrings.begin(),DCartridgeInstructionStrings.end());
+    DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
+    for(auto &AddrIdx : DCartridgeAddressesToIndices){
+        DInstructionAddressesToIndices[AddrIdx.first] = AddrIdx.second + DFirmwareInstructionStrings.size();
+    }
+}
+
 void CRISCVConsole::Reset(){
     auto CurrentState = DSystemCommand.load();
     SystemStop();
@@ -182,11 +253,13 @@ void CRISCVConsole::PowerOn(){
 
 void CRISCVConsole::PowerOff(){
     SystemStop();
+    /*
     for(int Index = 0; Index < 8; Index++){
         printf("x%02d: %08x %-10u | x%02d: %08x %u\n",Index,DCPU->Register(Index),DCPU->Register(Index),Index+8,DCPU->Register(Index+8),DCPU->Register(Index+8));
     }
     DCPU->OutputCSRs();
     DMemoryController->DumpData(std::cout);
+    */
 }
 
 void CRISCVConsole::PressDirection(EDirection dir){
@@ -232,6 +305,7 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
         }
         DFirmwareFlash->WriteEnabled(false);
         ResetComponents();
+        ConstructFirmwareStrings(ElfFile);
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again
             SystemRun();
@@ -255,8 +329,7 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
             DCartridgeFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DCartridgeFlash->WriteEnabled(false);
-        DCPUCache->Reset(); // Chear in case the application changed
-
+        ConstructCartridgeStrings(ElfFile);
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
             DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Cartridge);
@@ -265,5 +338,10 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
         return true;
     }
     return false;
+}
+
+bool CRISCVConsole::RemoveCartridge(){
+
+    return true;
 }
         

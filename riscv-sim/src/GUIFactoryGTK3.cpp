@@ -122,6 +122,10 @@ const uint32_t SGUIKeyType::Keyx = GDK_KEY_x;
 const uint32_t SGUIKeyType::Keyy = GDK_KEY_y;
 const uint32_t SGUIKeyType::Keyz = GDK_KEY_z;
 
+const uint32_t SGUIJustificationType::Left = GTK_JUSTIFY_LEFT;
+const uint32_t SGUIJustificationType::Right = GTK_JUSTIFY_RIGHT;
+const uint32_t SGUIJustificationType::Center = GTK_JUSTIFY_CENTER;
+const uint32_t SGUIJustificationType::Fill = GTK_JUSTIFY_FILL;
 
 bool SGUIKeyType::IsKey(uint32_t val) const{
     return DValue == val;
@@ -177,8 +181,20 @@ std::shared_ptr<CGUIBox> CGUIFactory::NewBox(CGUIBox::EOrientation orientation, 
     return std::make_shared<CGUIBoxGTK3>(gtk_box_new(orientation == CGUIBox::EOrientation::Horizontal ? GTK_ORIENTATION_HORIZONTAL : GTK_ORIENTATION_VERTICAL, spacing));
 }
 
+std::shared_ptr<CGUIEventBox> CGUIFactory::NewEventBox(){
+    return std::make_shared<CGUIEventBoxGTK3>(gtk_event_box_new());
+}
+
+std::shared_ptr<CGUIFrame> CGUIFactory::NewFrame(){
+    return std::make_shared<CGUIFrameGTK3>(gtk_frame_new(NULL));
+}
+
 std::shared_ptr<CGUIButton> CGUIFactory::NewButton(){
     return std::make_shared<CGUIButtonGTK3>(gtk_button_new());
+}
+
+std::shared_ptr<CGUILabel> CGUIFactory::NewLabel(const std::string &text){
+    return std::make_shared<CGUILabelGTK3>(gtk_label_new(text.c_str()));
 }
 
 std::shared_ptr<CGUIToggleButton> CGUIFactory::NewToggleButton(){
@@ -199,6 +215,10 @@ std::shared_ptr<CGUIMenuBar> CGUIFactory::NewMenuBar(){
 
 std::shared_ptr<CGUIMenuItem> CGUIFactory::NewMenuItem(const std::string &label){
     return std::make_shared<CGUIMenuItemGTK3>(gtk_menu_item_new_with_label(label.c_str()));
+}
+
+std::shared_ptr<CGUIScrollBar> CGUIFactory::NewScrollBar(CGUIScrollBar::EOrientation orientation){
+    return std::make_shared<CGUIScrollBarGTK3>(gtk_scrollbar_new(orientation == CGUIScrollBar::EOrientation::Horizontal ? GTK_ORIENTATION_HORIZONTAL : GTK_ORIENTATION_VERTICAL, NULL));
 }
 
 std::shared_ptr<CGUIFileFilter> CGUIFactory::NewFileFilter(){
@@ -548,6 +568,42 @@ gboolean CGUIWidgetGTK3::ToggledEventCallback(GtkWidget *widget, gpointer data){
     return FALSE;    
 }
 
+gboolean CGUIWidgetGTK3::ValueChangedEventCallback(GtkWidget *widget, gpointer data){
+    CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
+
+    if(Widget->DValueChangedCallback){
+        return Widget->DValueChangedCallback(Widget->shared_from_this(), Widget->DValueChangedCalldata);
+    }
+    return FALSE;    
+}
+
+gboolean CGUIWidgetGTK3::ScrollEventCallback(GtkWidget *widget, GdkEventScroll *event, gpointer data){
+    CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
+
+    if(Widget->DScrollCallback){
+        SGUIScrollEvent TempEvent;
+        switch(event->direction){
+            case GDK_SCROLL_UP:     TempEvent.DDirection = EGUIScrollDirection::Up;
+                                    break;
+            case GDK_SCROLL_DOWN:   TempEvent.DDirection = EGUIScrollDirection::Down;
+                                    break;
+            case GDK_SCROLL_LEFT:   TempEvent.DDirection = EGUIScrollDirection::Left;
+                                    break;
+            case GDK_SCROLL_RIGHT:  TempEvent.DDirection = EGUIScrollDirection::Right;
+                                    break;
+            case GDK_SCROLL_SMOOTH:
+            default:                TempEvent.DDirection = EGUIScrollDirection::Smooth;
+                                    break;
+        }
+        TempEvent.DDeltaX = event->delta_x;
+        TempEvent.DDeltaY = event->delta_y;
+
+        return Widget->DScrollCallback(Widget->shared_from_this(), TempEvent, Widget->DScrollCalldata);
+    }
+    return FALSE;    
+}
+
+
 void CGUIWidgetGTK3::Show(){
     gtk_widget_show(DWidget);
 }
@@ -578,6 +634,14 @@ int CGUIWidgetGTK3::AllocatedHeight(){
 
 void CGUIWidgetGTK3::SetSizeRequest(int width, int height){
     gtk_widget_set_size_request(DWidget, width, height);
+}
+
+void CGUIWidgetGTK3::SetVerticalExpand(bool exp){
+    gtk_widget_set_vexpand(DWidget, exp ? TRUE : FALSE);
+}
+
+void CGUIWidgetGTK3::SetHorizontalExpand(bool exp){
+    gtk_widget_set_hexpand(DWidget, exp ? TRUE : FALSE);
 }
 
 void CGUIWidgetGTK3::Invalidate(){
@@ -634,6 +698,8 @@ void CGUIWidgetGTK3::EnableEvent(EGUIEvent event){
                                         break;
         case EGUIEvent::KeyRelease:     CurrentMask |= GDK_KEY_RELEASE_MASK;
                                         break;
+        case EGUIEvent::Scroll:         CurrentMask |= GDK_SCROLL_MASK;
+                                        break;
         default:                        break;
     }
     gtk_widget_set_events(DWidget, CurrentMask);
@@ -653,6 +719,8 @@ void CGUIWidgetGTK3::DisableEvent(EGUIEvent event){
         case EGUIEvent::KeyPress:       CurrentMask &= ~GDK_KEY_PRESS_MASK;
                                         break;
         case EGUIEvent::KeyRelease:     CurrentMask &= ~GDK_KEY_RELEASE_MASK;
+                                        break;
+        case EGUIEvent::Scroll:         CurrentMask &= ~GDK_SCROLL_MASK;
                                         break;
         default:                        break;
     }
@@ -755,6 +823,21 @@ void CGUIWidgetGTK3::SetToggledEventCallback(TGUICalldata calldata, TGUIToggledE
     }    
 }
 
+void CGUIWidgetGTK3::SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback){
+    DValueChangedCalldata = calldata;
+    DValueChangedCallback = callback;
+    if(callback){
+        g_signal_connect(DWidget, "value-changed", G_CALLBACK(ValueChangedEventCallback), this);
+    }    
+}
+
+void CGUIWidgetGTK3::SetScrollEventCallback(TGUICalldata calldata, TGUIScrollEventCallback callback){
+    DScrollCalldata = calldata;
+    DScrollCallback = callback;
+    if(callback){
+        g_signal_connect(DWidget, "scroll-event", G_CALLBACK(ScrollEventCallback), this);
+    }    
+}
 
 CGUIContainerGTK3::CGUIContainerGTK3(GtkWidget *widget, bool reference) : CGUIWidgetGTK3(widget, reference){
     
@@ -772,12 +855,14 @@ void CGUIContainerGTK3::Add(std::shared_ptr<CGUIWidget> widget){
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
     
     gtk_container_add(GTK_CONTAINER(DWidget), WidgetToAdd->Widget());
+    DChildren.insert(widget);
 }
 
 void CGUIContainerGTK3::Remove(std::shared_ptr<CGUIWidget> widget){
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
     
     gtk_container_remove(GTK_CONTAINER(DWidget), WidgetToAdd->Widget());    
+    DChildren.erase(widget);
 }
 
 CGUILabelGTK3::CGUILabelGTK3(GtkWidget *widget, bool reference) : CGUIWidgetGTK3(widget, reference){
@@ -800,6 +885,59 @@ void CGUILabelGTK3::SetMarkup(const std::string &str){
     gtk_label_set_markup(GTK_LABEL(DWidget), str.c_str());
 }
 
+void CGUILabelGTK3::SetJustification(const SGUIJustificationType &justify){
+    gtk_label_set_justify(GTK_LABEL(DWidget), GtkJustification(justify.DType));
+    if(justify.DType == SGUIJustificationType::Right){
+        gtk_label_set_xalign(GTK_LABEL(DWidget), 1.0);
+    }
+    else if(justify.DType == SGUIJustificationType::Center){
+        gtk_label_set_xalign(GTK_LABEL(DWidget), 0.5);
+    }
+    else{
+        gtk_label_set_xalign(GTK_LABEL(DWidget), 0.0);
+    }
+}
+
+void CGUILabelGTK3::SetFontFamily(const std::string &family){
+    auto AttrList = gtk_label_get_attributes(GTK_LABEL(DWidget));
+    auto FontAttr = pango_attr_family_new(family.c_str());
+    if(!AttrList){
+        AttrList = pango_attr_list_new();    
+        pango_attr_list_insert(AttrList,FontAttr);
+    }
+    else{
+        pango_attr_list_ref(AttrList);
+        pango_attr_list_change(AttrList,FontAttr);
+    }
+    gtk_label_set_attributes(GTK_LABEL(DWidget), AttrList);
+    pango_attr_list_unref(AttrList);
+    //pango_attribute_destroy(FontAttr); // destroying causes segfault must be handed over to list
+    
+}
+
+void CGUILabelGTK3::SetBold(bool bold){
+    auto AttrList = gtk_label_get_attributes(GTK_LABEL(DWidget));
+    auto BoldAttr = pango_attr_weight_new(bold ? PANGO_WEIGHT_BOLD : PANGO_WEIGHT_NORMAL);
+    if(!AttrList){
+        AttrList = pango_attr_list_new();    
+        pango_attr_list_insert(AttrList,BoldAttr);
+    }
+    else{
+        pango_attr_list_ref(AttrList);
+        pango_attr_list_change(AttrList,BoldAttr);
+    }
+    gtk_label_set_attributes(GTK_LABEL(DWidget), AttrList);
+    pango_attr_list_unref(AttrList);
+
+}
+
+void CGUILabelGTK3::SetWidthCharacters(int chars){
+    gtk_label_set_width_chars(GTK_LABEL(DWidget), chars);
+}
+
+void CGUILabelGTK3::SetMaxWidthCharacters(int chars){
+    gtk_label_set_max_width_chars(GTK_LABEL(DWidget), chars);
+}
 
 CGUIDrawingAreaGTK3::CGUIDrawingAreaGTK3(GtkWidget *widget, bool reference) : CGUIWidgetGTK3(widget, reference){
     
@@ -821,12 +959,34 @@ void CGUIBoxGTK3::PackStart(std::shared_ptr<CGUIWidget> widget, bool expand, boo
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
     
     gtk_box_pack_start(GTK_BOX(DWidget), WidgetToAdd->Widget(), expand, fill, padding);
+    DChildren.insert(widget);
 }
 
 void CGUIBoxGTK3::PackEnd(std::shared_ptr<CGUIWidget> widget, bool expand, bool fill, int padding){
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
     
     gtk_box_pack_end(GTK_BOX(DWidget), WidgetToAdd->Widget(), expand, fill, padding);
+    DChildren.insert(widget);
+}
+
+CGUIEventBoxGTK3::CGUIEventBoxGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
+
+}
+
+CGUIEventBoxGTK3::~CGUIEventBoxGTK3(){
+
+}
+
+CGUIFrameGTK3::CGUIFrameGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
+
+}
+
+CGUIFrameGTK3::~CGUIFrameGTK3(){
+
+}
+
+void CGUIFrameGTK3::SetLabel(const std::string &label){
+    gtk_frame_set_label(GTK_FRAME(DWidget), label.c_str());
 }
 
 CGUIButtonGTK3::CGUIButtonGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
@@ -892,6 +1052,7 @@ void CGUIGridGTK3::Attach(std::shared_ptr<CGUIWidget> widget, int left, int top,
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
 
     gtk_grid_attach(GTK_GRID(DWidget), WidgetToAdd->Widget(), left, top, width, height);
+    DChildren.insert(widget);
 }
 
 CGUIMenuShellGTK3::CGUIMenuShellGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
@@ -942,6 +1103,47 @@ void CGUIMenuItemGTK3::SetSubMenu(std::shared_ptr<CGUIWidget> widget){
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
     
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(DWidget), WidgetToAdd->Widget());
+}
+
+CGUIScrollBarGTK3::CGUIScrollBarGTK3(GtkWidget *widget, bool reference) : CGUIWidgetGTK3(widget,reference){
+
+}
+
+CGUIScrollBarGTK3::~CGUIScrollBarGTK3(){
+    
+}
+
+double CGUIScrollBarGTK3::GetValue(){
+    return gtk_range_get_value(GTK_RANGE(DWidget));
+}
+
+void CGUIScrollBarGTK3::SetValue(double val){
+    gtk_range_set_value(GTK_RANGE(DWidget),val);
+}
+
+void CGUIScrollBarGTK3::SetLower(double lower){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    gtk_adjustment_set_upper(Adjustment, lower);
+}
+
+void CGUIScrollBarGTK3::SetUpper(double upper){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    gtk_adjustment_set_upper(Adjustment, upper);
+}
+
+void CGUIScrollBarGTK3::SetStepIncrement(double inc){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    gtk_adjustment_set_step_increment(Adjustment, inc);
+}
+
+void CGUIScrollBarGTK3::SetPageIncrement(double inc){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    gtk_adjustment_set_page_increment(Adjustment, inc);
+}
+
+void CGUIScrollBarGTK3::SetPageSize(double size){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    gtk_adjustment_set_page_size(Adjustment, size);
 }
 
 CGUIWindowGTK3::CGUIWindowGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){

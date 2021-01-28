@@ -15,7 +15,7 @@ uint8_t *CFlashMemoryDevice::AccessAddress(uint32_t addr, uint32_t size){
         return DData.data() + Index;
     }
 
-    throw std::out_of_range("CFlashMemoryDevice addr out of range!");
+    throw std::out_of_range(std::string("CFlashMemoryDevice addr ") + std::to_string(addr) + " out of range!");
 }
 
 bool CFlashMemoryDevice::EraseAll() noexcept{

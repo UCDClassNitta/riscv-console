@@ -4,6 +4,7 @@
 #include "RISCVCPU.h"
 #include "RISCVConsoleChipset.h"
 #include "RegisterBlockMemoryDevice.h"
+#include "ElfLoad.h"
 #include "MemoryDevice.h"
 #include "FlashMemoryDevice.h"
 #include "VideoController.h"
@@ -43,6 +44,15 @@ class CRISCVConsole{
         std::chrono::steady_clock::time_point DSystemStartTime;
         uint64_t DCPUStartInstructionCount;
         
+        std::vector< std::string > DFirmwareInstructionStrings;
+        std::unordered_map< uint32_t, size_t > DFirmwareAddressesToIndices;
+
+        std::vector< std::string > DCartridgeInstructionStrings;
+        std::unordered_map< uint32_t, size_t > DCartridgeAddressesToIndices;
+
+        std::vector< std::string > DInstructionStrings;
+        std::unordered_map< uint32_t, size_t > DInstructionAddressesToIndices;
+
 
         static const uint32_t DMainMemorySize;
         static const uint32_t DMainMemoryBase;
@@ -61,6 +71,10 @@ class CRISCVConsole{
         void SystemTerminate();
         void ResetComponents();
 
+        void ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations);
+        void ConstructFirmwareStrings(CElfLoad &elffile);
+        void ConstructCartridgeStrings(CElfLoad &elffile);
+
     public:
         CRISCVConsole();
         ~CRISCVConsole();
@@ -71,6 +85,14 @@ class CRISCVConsole{
 
         uint32_t ScreenHeight(){
             return DVideoController->ScreenHeight();
+        };
+
+        std::shared_ptr< CRISCVCPU > CPU(){
+            return DCPU;
+        };
+
+        std::shared_ptr< CMemoryDevice > Memory(){
+            return DMemoryController;
         };
 
         void Reset();
@@ -92,7 +114,63 @@ class CRISCVConsole{
         bool ProgramFirmware(std::shared_ptr< CDataSource > elfsrc);
 
         bool InsertCartridge(std::shared_ptr< CDataSource > elfsrc);
+
+        bool RemoveCartridge();
+
+        const std::vector< std::string > &InstructionStrings() const{
+            return DInstructionStrings;
+        }
+
+        size_t InstructionAddressesToIndices(uint32_t addr) const{
+            auto Search = DInstructionAddressesToIndices.find(addr);
+            if(Search != DInstructionAddressesToIndices.end()){
+                return Search->second;
+            }
+            return -1;
+        }
         
+        uint32_t MainMemorySize(){
+            return DMainMemorySize;
+        };
+
+        uint32_t MainMemoryBase(){
+            return DMainMemoryBase;
+        };
+
+        uint32_t FirmwareMemorySize(){
+            return DFirmwareMemorySize;
+        };
+
+        uint32_t FirmwareMemoryBase(){
+            return DFirmwareMemoryBase;
+        };
+
+        uint32_t CartridgeMemorySize(){
+            return DCartridgeMemorySize;
+        };
+
+        uint32_t CartridgeMemoryBase(){
+            return DCartridgeMemoryBase;
+        };
+
+        uint32_t VideoMemorySize(){
+            return DVideoController->VideoRAM()->MemorySize();
+        };
+
+        uint32_t VideoMemoryBase(){
+            return DVideoMemoryBase;
+        };
+
+        uint32_t RegisterMemorySize(){
+            return DRegisterBlock->MemorySize();
+        };
+
+        uint32_t RegisterMemoryBase(){
+            return DRegisterMemoryBase;
+        };
+
+        
+
 };
 
 #endif

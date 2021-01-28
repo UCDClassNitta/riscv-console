@@ -16,6 +16,9 @@ class CGUIWidget{
         virtual int AllocatedHeight() = 0;
         virtual void SetSizeRequest(int width, int height) = 0;
 
+        virtual void SetVerticalExpand(bool exp) = 0;
+        virtual void SetHorizontalExpand(bool exp) = 0;
+
         virtual void Invalidate() = 0;
         
         virtual void SetCursor(std::shared_ptr< CGUICursor > cursor) = 0;
@@ -38,6 +41,8 @@ class CGUIWidget{
         virtual void SetConfigureEventCallback(TGUICalldata calldata, TGUIConfigureEventCallback callback) = 0;
         virtual void SetDrawEventCallback(TGUICalldata calldata, TGUIDrawEventCallback callback) = 0;
         virtual void SetToggledEventCallback(TGUICalldata calldata, TGUIToggledEventCallback callback) = 0;
+        virtual void SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback) = 0;
+        virtual void SetScrollEventCallback(TGUICalldata calldata, TGUIScrollEventCallback callback) = 0;
 };
 
 #endif

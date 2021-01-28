@@ -4,6 +4,7 @@
 #include "GUIFactory.h"
 #include "PeriodicTimeout.h"
 #include <gtk/gtk.h>
+#include <set>
 
 class CGUIApplicationGTK3 : public CGUIApplication{
     protected:
@@ -98,6 +99,12 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
 
         TGUICalldata DToggledCalldata;
         TGUIToggledEventCallback DToggledCallback;
+
+        TGUICalldata DValueChangedCalldata;
+        TGUIValueChangedEventCallback DValueChangedCallback;
+
+        TGUICalldata DScrollCalldata;
+        TGUIScrollEventCallback DScrollCallback;
         
         static void ActivateEventCallback(GtkWidget *widget, gpointer data);
         static gboolean ButtonPressEventCallback(GtkWidget *widget, GdkEventButton *event, gpointer data);
@@ -111,6 +118,8 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         static gboolean ConfigureEventCallback(GtkWidget *widget, GdkEventConfigure *event, gpointer data);
         static gboolean DrawEventCallback(GtkWidget *widget, cairo_t *cr, gpointer data);
         static gboolean ToggledEventCallback(GtkWidget *widget, gpointer data);
+        static gboolean ValueChangedEventCallback(GtkWidget *widget, gpointer data);
+        static gboolean ScrollEventCallback(GtkWidget *widget, GdkEventScroll *event, gpointer data);
         
     public:
         CGUIWidgetGTK3(GtkWidget *widget, bool reference = false);
@@ -129,6 +138,9 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         virtual int AllocatedHeight() override;
         
         virtual void SetSizeRequest(int width, int height) override;
+
+        virtual void SetVerticalExpand(bool exp) override;
+        virtual void SetHorizontalExpand(bool exp) override;
 
         virtual void Invalidate() override;
         
@@ -152,9 +164,13 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         virtual void SetConfigureEventCallback(TGUICalldata calldata, TGUIConfigureEventCallback callback) override;
         virtual void SetDrawEventCallback(TGUICalldata calldata, TGUIDrawEventCallback callback) override;
         virtual void SetToggledEventCallback(TGUICalldata calldata, TGUIToggledEventCallback callback) override;
+        virtual void SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback) override;
+        virtual void SetScrollEventCallback(TGUICalldata calldata, TGUIScrollEventCallback callback) override;
 };
 
 class CGUIContainerGTK3 : public virtual CGUIContainer, public CGUIWidgetGTK3{
+    protected:
+        std::set< std::shared_ptr<CGUIWidget> > DChildren;
     public:
         CGUIContainerGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUIContainerGTK3();
@@ -172,6 +188,11 @@ class CGUILabelGTK3 : public virtual CGUILabel, public CGUIWidgetGTK3{
         std::string GetText() override;
         void SetText(const std::string &str) override;
         void SetMarkup(const std::string &str) override;
+        void SetJustification(const SGUIJustificationType &justify) override;
+        void SetFontFamily(const std::string &family) override;
+        void SetBold(bool bold) override;
+        void SetWidthCharacters(int chars) override;
+        void SetMaxWidthCharacters(int chars) override;
 };
 
 class CGUIDrawingAreaGTK3 : public virtual CGUIDrawingArea, public CGUIWidgetGTK3{
@@ -187,6 +208,20 @@ class CGUIBoxGTK3 : public virtual CGUIBox, public CGUIContainerGTK3{
         
         void PackStart(std::shared_ptr<CGUIWidget> widget, bool expand, bool fill, int padding) override;
         void PackEnd(std::shared_ptr<CGUIWidget> widget, bool expand, bool fill, int padding) override;
+};
+
+class CGUIEventBoxGTK3 : public virtual CGUIEventBox, public CGUIContainerGTK3{
+    public:
+        CGUIEventBoxGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUIEventBoxGTK3();
+};
+
+class CGUIFrameGTK3 : public virtual CGUIFrame, public CGUIContainerGTK3{
+    public:
+        CGUIFrameGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUIFrameGTK3();
+        
+        void SetLabel(const std::string &label) override;
 };
 
 class CGUIButtonGTK3 : public virtual CGUIButton, public CGUIContainerGTK3{
@@ -248,6 +283,20 @@ class CGUIMenuItemGTK3 : public virtual CGUIMenuItem, public CGUIContainerGTK3{
         
         std::shared_ptr<CGUILabel> GetLabel() override;
         void SetSubMenu(std::shared_ptr<CGUIWidget> widget) override;
+};
+
+class CGUIScrollBarGTK3 : public virtual CGUIScrollBar, public CGUIWidgetGTK3{
+    public:
+        CGUIScrollBarGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUIScrollBarGTK3();
+        
+        double GetValue() override;
+        void SetValue(double val) override;
+        void SetLower(double lower) override;
+        void SetUpper(double upper)  override;
+        void SetStepIncrement(double inc) override;
+        void SetPageIncrement(double inc) override;
+        void SetPageSize(double size) override;
 };
 
 class CGUIWindowGTK3 : public virtual CGUIWindow, public CGUIContainerGTK3{

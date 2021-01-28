@@ -1,17 +1,59 @@
 #include "ElfLoad.h"
 #include <cstdio>
 #include <cstring>
+#include <cinttypes>
 
-void CElfLoad::CProgramHeader::Print(){
-    printf("TYPE  0x%08X\n",DSegmentType);
-    printf("FLAGS 0x%08X\n",DFlags);
 
-    printf("FOFF  0x%08lX\n",DFileOffset);
-    printf("VADDR 0x%08lX\n",DVirtualAddress);
-    printf("PADDR 0x%08lX\n",DPhysicalAddress);
-    printf("FSIZE 0x%08lX\n",DFileSize);
-    printf("MSIZE 0x%08lX\n",DMemorySize);
-    printf("ALIGN %ld\n",DAlignment);
+void CElfLoad::SProgramHeader::Print(){
+    printf("TYPE  0x%08" PRIX32 "\n",DSegmentType);
+    printf("FLAGS 0x%08" PRIX32 "\n",DFlags);
+
+    printf("FOFF  0x%08" PRIX64 "\n",DFileOffset);
+    printf("VADDR 0x%08" PRIX64 "\n",DVirtualAddress);
+    printf("PADDR 0x%08" PRIX64 "\n",DPhysicalAddress);
+    printf("FSIZE 0x%08" PRIX64 "\n",DFileSize);
+    printf("MSIZE 0x%08" PRIX64 "\n",DMemorySize);
+    printf("ALIGN %" PRId64 "\n",DAlignment);
+    for(auto &Symbol : DSymbols){
+        printf("%s => 0x%08" PRIX64 "\n",Symbol.second.c_str(),Symbol.first);
+    }
+    printf("\n");
+}
+
+void CElfLoad::SSectionHeader::Print(const std::unordered_map< uint32_t, std::string > &names){
+    auto Search = names.find(DNameIndex);
+    if(Search != names.end()){
+        printf("NAME  %s\n",Search->second.c_str());
+    }
+    else{
+        printf("NAME  0x%08" PRIX32 "\n",DNameIndex);
+    }
+    printf("TYPE  0x%08" PRIX32 "\n",DType);
+    printf("FLAGS 0x%08" PRIX64 "\n",DFlags);
+
+    printf("FOFF  0x%08" PRIX64 "\n",DFileOffset);
+    printf("VADDR 0x%08" PRIX64 "\n",DVirtualAddress);
+    printf("FSIZE 0x%08" PRIX64 "\n",DSize);
+    printf("LINK  0x%08" PRIX32 "\n",DLink);
+    printf("INFO  0x%08" PRIX64 "\n",DInfo);
+    printf("ESIZE %" PRId64 "\n",DEntrySize);
+    printf("ALIGN %" PRId64 "\n\n",DAddressAlign);
+
+}
+
+void CElfLoad::SSymbolEntity::Print(const std::unordered_map< uint32_t,  std::vector< char > > &stringtables){
+    auto Search = stringtables.find(DNameSectionIndex);
+    if((Search != stringtables.end())&&(DNameIndex < Search->second.size())){
+        printf("NAME  %s\n",Search->second.data() + DNameIndex);
+    }
+    else{
+        printf("NAME  0x%08" PRIX32 "\n",DNameIndex);
+    }
+    printf("ADDR  0x%08" PRIX64 "\n",DAddress);
+    printf("SIZE  0x%08" PRIX64 "\n",DSize);
+    printf("INFO  0x%02" PRIX8 "\n",DInfo);
+    printf("OTHER 0x%02" PRIX8 "\n",DOther);
+    printf("SHNDX 0x%04" PRIX16 "\n\n",DSectionIndex);
 }
 
 CElfLoad::CElfLoad(std::shared_ptr< CDataSource > src){
@@ -21,6 +63,13 @@ CElfLoad::CElfLoad(std::shared_ptr< CDataSource > src){
     if(ValidateHeader()){
         if(ReadProgramHeaders()){
             LoadProgramPayloads();
+            if(ReadSectionHeaders()){
+                ReadSectionNames();
+                ReadStringTables();
+                ReadSymbolTables();
+                MergeSymbols();
+                //PrintHeaders();
+            }
             DValidFile = true;
         }
     }
@@ -50,7 +99,7 @@ size_t CElfLoad::ProgramHeaderCount() const{
     return DProgramHeaders.size();
 }
 
-const CElfLoad::CProgramHeader &CElfLoad::ProgramHeader(size_t index) const{
+const CElfLoad::SProgramHeader &CElfLoad::ProgramHeader(size_t index) const{
     return DProgramHeaders[index];
 }
 
@@ -59,13 +108,24 @@ void CElfLoad::PrintHeaders(){
     for(auto &Header : DProgramHeaders){
         Header.Print();
     }
+    for(auto &Header : DSectionHeaders){
+        Header.Print(DSectionNames);
+    }
+    for(auto &Entity : DSymbolEntities){
+        Entity.Print(DStringTables);
+    }
+    /*
+    for(auto &StrKeyVal : DStrings){
+        printf("%d,%d => %s\n",StrKeyVal.first.first,StrKeyVal.first.second,StrKeyVal.second.c_str());
+    }
+    */
 }
 
 bool CElfLoad::ValidateHeader(){
     uint8_t Buffer[16];
 
     ReadData(Buffer, 16);
-    printf("16B header read\n");
+    //printf("16B header read\n");
     if((Buffer[0] != 0x7F)||(Buffer[1] != 'E')||(Buffer[2] != 'L')||(Buffer[3] != 'F')){
         return false;
     }
@@ -98,15 +158,21 @@ void CElfLoad::PrintHeader(){
     printf("OBJTYPE %hu\n",(uint16_t)DObjectType);
     printf("MTYPE %04hX\n",(uint16_t)DMachine);
     printf("ELF Version %u\n",DELFVersion);
-    printf("Entry 0x%08lX\n",DEntry);
-    printf("PHOFF 0x%08lX\n",DProgramHeaderOffset);
-    printf("SHOFF 0x%08lX\n",DSectionHeaderOffset);
-    printf("HDSZ  %hu\n",DHeaderSize);
-    printf("PHES  %hu\n",DProgramHeaderEntrySize);
-    printf("PHEC  %hu\n",DProgramHeaderEntryCount);
-    printf("SHES  %hu\n",DSectionHeaderEntrySize);
-    printf("SHEC  %hu\n",DSectionHeaderEntryCount);
-    printf("SNID  %hu\n",DSectionNameIndex);
+    printf("Entry 0x%08" PRIX64 "\n",DEntry);
+    printf("PHOFF 0x%08" PRIX64 "\n",DProgramHeaderOffset);
+    printf("SHOFF 0x%08" PRIX64 "\n",DSectionHeaderOffset);
+    printf("HDSZ  %" PRIu16 "\n",DHeaderSize);
+    printf("PHES  %" PRIu16 "\n",DProgramHeaderEntrySize);
+    printf("PHEC  %" PRIu16 "\n",DProgramHeaderEntryCount);
+    printf("SHES  %" PRIu16 "\n",DSectionHeaderEntrySize);
+    printf("SHEC  %" PRIu16 "\n",DSectionHeaderEntryCount);
+    printf("SNID  %" PRIu16 "\n",DSectionNameIndex);
+}
+
+uint8_t CElfLoad::ReadUINT8(){
+    uint8_t Buffer;
+    ReadData(&Buffer,sizeof(Buffer));
+    return Buffer;
 }
 
 uint16_t CElfLoad::ReadUINT16(){
@@ -142,7 +208,7 @@ uint64_t CElfLoad::ReadUINT64(){
 bool CElfLoad::ReadProgramHeaders(){
     Seek(DProgramHeaderOffset);
     for(uint16_t Index = 0; Index < DProgramHeaderEntryCount; Index++){
-        CProgramHeader TempHeader;
+        SProgramHeader TempHeader;
         TempHeader.DSegmentType = ReadUINT32();
         if(D32Bit){
             TempHeader.DFileOffset = ReadUINT32();
@@ -163,6 +229,132 @@ bool CElfLoad::ReadProgramHeaders(){
             TempHeader.DAlignment = ReadUINT64();
         }
         DProgramHeaders.push_back(TempHeader);
+    }
+    return true;
+}
+
+
+bool CElfLoad::ReadSectionHeaders(){
+    Seek(DSectionHeaderOffset);
+    for(uint16_t Index = 0; Index < DSectionHeaderEntryCount; Index++){
+        SSectionHeader TempHeader;
+        TempHeader.DNameIndex = ReadUINT32();
+        TempHeader.DType = ReadUINT32();
+        if(D32Bit){
+            TempHeader.DFlags = ReadUINT32();
+            TempHeader.DVirtualAddress = ReadUINT32();
+            TempHeader.DFileOffset = ReadUINT32();
+            TempHeader.DSize = ReadUINT32();
+            TempHeader.DLink = ReadUINT32();
+            TempHeader.DInfo = ReadUINT32();
+            TempHeader.DAddressAlign = ReadUINT32();
+            TempHeader.DEntrySize = ReadUINT32();
+        }
+        else{
+            TempHeader.DFlags = ReadUINT64();
+            TempHeader.DVirtualAddress = ReadUINT64();
+            TempHeader.DFileOffset = ReadUINT64();
+            TempHeader.DSize = ReadUINT64();
+            TempHeader.DLink = ReadUINT32();
+            TempHeader.DInfo = ReadUINT32();
+            TempHeader.DAddressAlign = ReadUINT64();
+            TempHeader.DEntrySize = ReadUINT64();
+        }
+        DSectionHeaders.push_back(TempHeader);
+    }
+    return true;
+}
+
+bool CElfLoad::ReadSectionNames(){
+    if(DSectionNameIndex < DSectionHeaders.size()){
+        Seek(DSectionHeaders[DSectionNameIndex].DFileOffset);
+        auto Size = DSectionHeaders[DSectionNameIndex].DSize;
+        std::vector<uint8_t> Buffer(Size);
+        ReadData(Buffer.data(),DSectionHeaders[DSectionNameIndex].DSize);
+        size_t Index = 0;
+        while(Index < Size){
+            std::string TempStr((char *)&Buffer[Index]);
+            DSectionNames[Index] = TempStr;
+            Index += TempStr.length() + 1;
+        }
+    }
+    return true;
+}
+
+bool CElfLoad::ReadStringTables(){
+    uint32_t SectionIndex = 0;
+    for(auto &SectionHeader : DSectionHeaders){
+        if(SectionHeader.DType == 0x03){ // SHT_STRTAB
+            Seek(SectionHeader.DFileOffset);
+
+            auto Size = SectionHeader.DSize;
+            std::vector<char> Buffer(Size);
+            ReadData((uint8_t *)Buffer.data(),SectionHeader.DSize);
+            DStringTables[SectionIndex] = Buffer;
+        }
+        SectionIndex++;
+    }
+    return true;
+}
+
+bool CElfLoad::ReadSymbolTables(){
+    
+    for(auto &SectionHeader : DSectionHeaders){
+        if(SectionHeader.DType == 0x02){ // SHT_SYMTAB
+            Seek(SectionHeader.DFileOffset);
+            for(uint64_t SectionOffset = 0; SectionOffset < SectionHeader.DSize; SectionOffset += SectionHeader.DEntrySize){
+                SSymbolEntity TempEntity;
+
+                TempEntity.DNameIndex = ReadUINT32();
+                if(D32Bit){
+                    TempEntity.DAddress = ReadUINT32();
+                    TempEntity.DSize = ReadUINT32();
+                    TempEntity.DInfo = ReadUINT8();
+                    TempEntity.DOther = ReadUINT8();
+                    TempEntity.DSectionIndex = ReadUINT16();
+                    TempEntity.DNameSectionIndex = SectionHeader.DLink;
+                }
+                else{
+                    TempEntity.DInfo = ReadUINT8();
+                    TempEntity.DOther = ReadUINT8();
+                    TempEntity.DSectionIndex = ReadUINT16();
+                    TempEntity.DAddress = ReadUINT64();
+                    TempEntity.DSize = ReadUINT64();
+                    TempEntity.DNameSectionIndex = SectionHeader.DLink;
+                }
+                DSymbolEntities.push_back(TempEntity);
+            }
+        }
+    }
+    return true;
+}
+
+bool CElfLoad::MergeSymbols(){
+    for(auto &SymbolEntity : DSymbolEntities){
+        auto Search = DStringTables.find(SymbolEntity.DNameSectionIndex);
+        std::string SymbolName;
+        if((Search != DStringTables.end())&&(SymbolEntity.DNameIndex < Search->second.size())){
+            SymbolName = Search->second.data() + SymbolEntity.DNameIndex;
+        }
+        size_t ProgramHeaderIndex = 0;
+        while(ProgramHeaderIndex < DProgramHeaders.size()){
+            auto &ProgramHeader = DProgramHeaders[ProgramHeaderIndex];
+            if((ProgramHeader.DSegmentType == 1)&&(ProgramHeader.DFlags & 1)&&(ProgramHeader.DVirtualAddress <= SymbolEntity.DAddress)&&(SymbolEntity.DAddress < ProgramHeader.DVirtualAddress + ProgramHeader.DMemorySize)){ // Loadable & Executable
+                break;
+            }
+            ProgramHeaderIndex++;
+        }
+        if(ProgramHeaderIndex < DProgramHeaders.size()){
+            auto &ProgramHeader = DProgramHeaders[ProgramHeaderIndex];
+            if(SymbolEntity.DInfo == 0x12){ // Global function
+                ProgramHeader.DSymbols[SymbolEntity.DAddress] = SymbolName;
+            }
+            else if(SymbolEntity.DInfo == 0x10){ // Global symbol
+                if(ProgramHeader.DSymbols.find(SymbolEntity.DAddress) == ProgramHeader.DSymbols.end()){
+                    ProgramHeader.DSymbols[SymbolEntity.DAddress] = SymbolName;
+                }
+            }
+        }
     }
     return true;
 }

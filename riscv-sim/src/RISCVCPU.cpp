@@ -78,30 +78,47 @@ CRISCVCPU::CRISCVCPU(std::shared_ptr< CMemoryDevice > memory, std::shared_ptr< C
     DRetiredInstructionRegister = std::make_shared< CReadWriteHardwareRegister< uint64_t > >(0);
 
     DControlStatusRegisters[0xF11] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0); // mvendorid
+    DControlStatusRegisterNames[0xF11] = "mvendorid";
     DControlStatusRegisters[0xF12] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0); // marchid
+    DControlStatusRegisterNames[0xF12] = "marchid";
     DControlStatusRegisters[0xF13] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0); // mimpid
+    DControlStatusRegisterNames[0xF13] = "mimpid";
     DControlStatusRegisters[0xF14] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0); // mhartid
+    DControlStatusRegisterNames[0xF14] = "mhartid";
 
     DControlStatusRegisters[0x300] = DMachineStatusRegister = std::make_shared< CMaskedReadWriteHardwareRegister< uint32_t > >(0x1800,0x1888); // mstatus
+    DControlStatusRegisterNames[0x300] = "mstatus";
     DControlStatusRegisters[0x301] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0x40001010); // misa
+    DControlStatusRegisterNames[0x301] = "misa";
     // medeleg and mideleg shouldn't exist since only machine mode.
     //DControlStatusRegisters[0x302] = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // medeleg
     //DControlStatusRegisters[0x303] = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mideleg
     DControlStatusRegisters[0x304] = DMachineInterruptEnableRegister = std::make_shared< CMaskedReadWriteHardwareRegister< uint32_t > >(0,0x888); // mie
+    DControlStatusRegisterNames[0x304] = "mie";
     DControlStatusRegisters[0x305] = DMachineTrapVectorRegister = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mtvec
+    DControlStatusRegisterNames[0x305] = "mtvec";
     DControlStatusRegisters[0x306] = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(0x7); // mcounteren
+    DControlStatusRegisterNames[0x306] = "mcounteren";
 
     DControlStatusRegisters[0x340] = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mscratch
+    DControlStatusRegisterNames[0x340] = "mscratch";
     DControlStatusRegisters[0x341] = DMachineExceptionProgramCounterRegister = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mepc
+    DControlStatusRegisterNames[0x341] = "mepc";
     DControlStatusRegisters[0x342] = DMachineCauseRegister = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mcause
+    DControlStatusRegisterNames[0x342] = "mcause";
     DControlStatusRegisters[0x343] = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(); // mtval
+    DControlStatusRegisterNames[0x343] = "mtval";
     DControlStatusRegisters[0x344] = DMachineInterruptPendingRegister = std::make_shared< CMaskedReadWriteHardwareRegister< uint32_t > >(0,0x888); // mip
-
+    DControlStatusRegisterNames[0x344] = "mip";
     
     DControlStatusRegisters[0xB00] = std::make_shared< CReadWriteHardwareRegisterLow< uint32_t, uint64_t > >(*DCycleRegister.get());
-    DControlStatusRegisters[0xB82] = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DCycleRegister.get());
-    DControlStatusRegisters[0xB00] = std::make_shared< CReadWriteHardwareRegisterLow< uint32_t, uint64_t > >(*DRetiredInstructionRegister.get());
+    DControlStatusRegisterNames[0xB00] = "mcycle";
+    DControlStatusRegisters[0xB80] = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DCycleRegister.get());
+    DControlStatusRegisterNames[0xB80] = "mcycleh";
+    DControlStatusRegisters[0xB02] = std::make_shared< CReadWriteHardwareRegisterLow< uint32_t, uint64_t > >(*DRetiredInstructionRegister.get());
+    DControlStatusRegisterNames[0xB02] = "minstret";
     DControlStatusRegisters[0xB82] = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DRetiredInstructionRegister.get());
+    DControlStatusRegisterNames[0xB82] = "minstreth";
 
     for(auto &Item : DControlStatusRegisters){
         DControlStatusRegisterKeys.push_back(Item.first);
@@ -227,6 +244,22 @@ void CRISCVCPU::OutputCSRs(){
     for(auto &CSRKey : DControlStatusRegisterKeys){
         printf("%03X: %08X\n",CSRKey,DControlStatusRegisters[CSRKey]->load());
     }   
+}
+
+uint32_t CRISCVCPU::ControlStatusRegister(uint32_t index) const{
+    auto Search = DControlStatusRegisters.find(index);
+    if(Search != DControlStatusRegisters.end()){
+        return Search->second->load();
+    }
+    return 0;
+}
+
+std::string CRISCVCPU::ControlStatusRegisterName(uint32_t index) const{
+    auto Search = DControlStatusRegisterNames.find(index);
+    if(Search != DControlStatusRegisterNames.end()){
+        return Search->second;
+    }
+    return std::string();
 }
 
 void CRISCVCPU::Reset(){

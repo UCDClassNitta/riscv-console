@@ -154,7 +154,15 @@ struct SGUIKeyEvent{
     SGUIModifierType DModifier;
 };
 
-enum class EGUIEvent{Expose, Motion, ButtonPress, ButtonRelease, KeyPress, KeyRelease};
+enum class EGUIScrollDirection{Up, Down, Left, Right, Smooth};
+
+struct SGUIScrollEvent{
+    EGUIScrollDirection DDirection;
+    double DDeltaX;
+    double DDeltaY;
+};
+
+enum class EGUIEvent{Expose, Motion, ButtonPress, ButtonRelease, KeyPress, KeyRelease, Scroll};
 
 using TGUIApplicationCallback = void (*)(TGUICalldata data);
 using TGUITimeoutCallback = bool (*)(TGUICalldata data);
@@ -162,11 +170,13 @@ using TGUIActivateEventCallback = void (*)(std::shared_ptr<CGUIWidget> widget, T
 using TGUIDeleteEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIDestroyEventCallback = void (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIToggledEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
+using TGUIValueChangedEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIButtonEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
 using TGUIMotionEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIMotionEvent &event, TGUICalldata data);
 using TGUIConfigureEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIConfigureEvent &event, TGUICalldata data);
 using TGUIDrawEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc, TGUICalldata data);
 using TGUIKeyEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIKeyEvent &event, TGUICalldata data);
+using TGUIScrollEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIScrollEvent &event, TGUICalldata data);
 
 
 #endif

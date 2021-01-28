@@ -55,6 +55,7 @@ class CRISCVCPU : public std::enable_shared_from_this<CRISCVCPU> {
         std::shared_ptr< CHardwareRegister< uint32_t > > DProgramCounter;
         std::vector< std::shared_ptr< CHardwareRegister< uint32_t > > > DRegisters;
         std::unordered_map< uint32_t, std::shared_ptr< CHardwareRegister< uint32_t >  > > DControlStatusRegisters;
+        std::unordered_map< uint32_t, std::string > DControlStatusRegisterNames;
         std::vector< uint32_t> DControlStatusRegisterKeys;
         std::shared_ptr< CHardwareRegister< uint64_t > > DCycleRegister;
         std::shared_ptr< CHardwareRegister< uint64_t > > DRetiredInstructionRegister;
@@ -77,6 +78,10 @@ class CRISCVCPU : public std::enable_shared_from_this<CRISCVCPU> {
         uint32_t ProgramCounter() const;
         uint32_t ProgramCounter(uint32_t newpc);
 
+        static size_t RegisterCount(){
+            return DRegisterCount;
+        };
+
         uint32_t Register(uint32_t index) const;
 
         uint64_t RetiredInstructionCount() const;
@@ -88,6 +93,14 @@ class CRISCVCPU : public std::enable_shared_from_this<CRISCVCPU> {
 
         std::shared_ptr< CInstruction > DecodeInstruction(uint32_t addr);
         void OutputCSRs();
+
+        const std::vector< uint32_t> &ControlStatusRegisterKeys() const{
+            return DControlStatusRegisterKeys;
+        };
+
+        uint32_t ControlStatusRegister(uint32_t index) const;
+
+        std::string ControlStatusRegisterName(uint32_t index) const;
 
         void Reset();
 };
