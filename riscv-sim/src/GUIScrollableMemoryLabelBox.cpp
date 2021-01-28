@@ -134,7 +134,7 @@ bool CGUIScrollableMemoryLabelBox::GetAddressAscending() const{
 }
 
 void CGUIScrollableMemoryLabelBox::SetLineCount(size_t count){
-    
+    CGUIScrollableLabelBox::SetLineCount(count);
 }
 
 size_t CGUIScrollableMemoryLabelBox::GetBufferedLineCount() const{

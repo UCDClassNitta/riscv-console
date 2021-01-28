@@ -39,10 +39,13 @@ APP_OBJS = $(OBJ_DIR)/main.o                    \
     $(OBJ_DIR)/GUIScrollableLabelBox.o          \
     $(OBJ_DIR)/GUIScrollableMemoryLabelBox.o    \
     $(OBJ_DIR)/RISCVConsoleApplication.o        \
+    $(OBJ_DIR)/RISCVConsoleApplicationConfig.o  \
     $(OBJ_DIR)/PeriodicTimeout.o                \
     $(OBJ_DIR)/FileDataContainer.o              \
     $(OBJ_DIR)/FileDataSink.o                   \
     $(OBJ_DIR)/FileDataSource.o                 \
+    $(OBJ_DIR)/LineDataSource.o                 \
+    $(OBJ_DIR)/CommentSkipLineDataSource.o      \
     $(OBJ_DIR)/Path.o                           \
     $(OBJ_DIR)/MemoryControllerDevice.o         \
     $(OBJ_DIR)/MemoryDevice.o                   \

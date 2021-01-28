@@ -6,6 +6,7 @@
 #include "GUIScrollableMemoryLabelBox.h"
 #include "GraphicFactory.h"
 #include "RISCVConsole.h"
+#include "RISCVConsoleApplicationConfig.h"
 #include <unordered_map>
 
 class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConsoleApplication>{
@@ -14,6 +15,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
     protected:
         static std::shared_ptr< CRISCVConsoleApplication > DApplicationPointer;
         std::shared_ptr<CGUIApplication> DApplication;
+        CRISCVConsoleApplicationConfiguration DConfiguration;
         bool DDeleted = false;
         bool DDebugMode = false;
         bool DFollowingInstruction = false;
@@ -91,7 +93,6 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool CommandButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool ResetButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool PowerButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
-        static bool SliderValueChangedEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         static bool DebugMemoryButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool DebugMemoryStackButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         
@@ -111,7 +112,6 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool CommandButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool ResetButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool PowerButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
-        bool SliderValueChangedEvent(std::shared_ptr<CGUIWidget> widget);
         void UpdateConsoleButtonChange(std::shared_ptr<CGUIToggleButton> button);
         bool DebugMemoryButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool DebugMemoryStackButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
@@ -126,6 +126,12 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         void CreateDebugInstructionWidgets();
         void CreateDebugCSRWidgets();
         void CreateDebugMemoryWidgets();
+
+        void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
+        uint32_t GetScreenTimeoutMS();
+        uint32_t GetWidgetSpacing();
+        uint32_t GetInstructionLineCount();
+        uint32_t GetMemoryLineCount();
 
         void RefreshDebugRegisters();
 
