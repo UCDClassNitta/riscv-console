@@ -41,6 +41,7 @@ class CRISCVConsole{
         std::shared_ptr< CVideoController > DVideoController;
         std::shared_ptr< CRISCVConsoleChipset > DChipset;
         std::shared_ptr< CHardwareRegister< uint32_t > > DControllerState;
+        std::shared_ptr< CHardwareRegister< uint32_t > > DCartridgeState;
 
         std::atomic<uint32_t> DSystemCommand;
         std::atomic<uint32_t> DCPUAcknowledge;

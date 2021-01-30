@@ -103,6 +103,11 @@ class CElfLoad{
         bool ValidFile() const{
             return DValidFile;
         };
+
+        uint64_t Entry() const{
+            return DEntry;
+        };
+
         size_t ProgramHeaderCount() const;
         const SProgramHeader &ProgramHeader(size_t index) const;
         void PrintHeaders();

@@ -43,6 +43,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DVideoController = std::make_shared< CVideoController >();
     
     DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+    DCartridgeState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
 
     DMemoryController = std::make_shared< CMemoryControllerDevice >(32);    
     DMainMemory = std::make_shared< CRAMMemoryDevice >(DMainMemorySize);
@@ -67,6 +68,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareLow());
     DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareHigh());
     DRegisterBlock->AttachRegister(DControllerState);
+    DRegisterBlock->AttachRegister(DCartridgeState);
     DMemoryController->AttachDevice(DRegisterBlock, DRegisterMemoryBase);
 
     DSystemCommand.store(to_underlying(EThreadState::Stop));
@@ -528,6 +530,7 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
             DCartridgeFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DCartridgeFlash->WriteEnabled(false);
+        DCartridgeState->store(ElfFile.Entry() | 0x1);
         ConstructCartridgeStrings(ElfFile);
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
@@ -540,6 +543,19 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
 }
 
 bool CRISCVConsole::RemoveCartridge(){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+
+    DCartridgeInstructionStrings.clear();
+    DCartridgeAddressesToIndices.clear();
+    DInstructionStrings = DFirmwareInstructionStrings;
+    DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
+    DCartridgeState->store(0x0);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        // Clear the cache for cartridge
+        DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Cartridge);
+        SystemRun();
+    }
 
     return true;
 }

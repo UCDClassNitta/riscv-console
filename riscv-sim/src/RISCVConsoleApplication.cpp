@@ -238,6 +238,10 @@ bool CRISCVConsoleApplication::CartridgeButtonClickEvent(std::shared_ptr<CGUIWid
 
 bool CRISCVConsoleApplication::EjectButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
     DRISCVConsole->RemoveCartridge();
+    if(DDebugMode){
+        DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
+        RefreshDebugRegisters();
+    }
     return true;
 }
 
