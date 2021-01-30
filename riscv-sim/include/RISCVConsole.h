@@ -20,6 +20,17 @@ class CRISCVConsole{
         enum class EButtonNumber : uint32_t {Button1 = 0x10, Button2 = 0x20, Button3 = 0x40, Button4 = 0x80};
     protected:
         enum class EThreadState : uint32_t {Stop = 0, Run = 1, Terminate = 2};
+        bool DDebugMode;
+        uint32_t DTimerDelayUS;
+        uint32_t DVideoDelayMS;
+        uint32_t DDebugCPUFreq;
+        uint32_t DVideoTicks;
+        uint32_t DTimerTicks;
+        std::vector<std::shared_ptr< CGraphicSurface > > DScreenBuffers;
+        std::vector< size_t > DFreeScreenBuffers;
+        std::atomic< size_t > DReadyScreenBuffer;
+        std::atomic< size_t > DReleasedScreenBuffer;
+        size_t DPendingReleaseBuffer;
         std::shared_ptr< CRISCVCPU > DCPU;
         std::shared_ptr< CRISCVCPU::CInstructionCache > DCPUCache;
         std::shared_ptr< CMemoryDevice > DMemoryController;
@@ -34,12 +45,14 @@ class CRISCVConsole{
         std::atomic<uint32_t> DSystemCommand;
         std::atomic<uint32_t> DCPUAcknowledge;
         std::atomic<uint32_t> DTimerAcknowledge;
+        std::atomic<uint32_t> DSystemAcknowledge;
         std::shared_ptr< std::thread > DCPUThread;
         std::shared_ptr< std::thread > DTimerThread;
-        std::mutex DCPUMutex;
-        std::mutex DTimerMutex;
-        std::condition_variable DCPUConditionVariable;
-        std::condition_variable DTimerConditionVariable;
+        std::shared_ptr< std::thread > DSystemThread;
+        //std::mutex DCPUMutex;
+        //std::mutex DTimerMutex;
+        //std::condition_variable DCPUConditionVariable;
+        //std::condition_variable DTimerConditionVariable;
 
         std::chrono::steady_clock::time_point DSystemStartTime;
         uint64_t DCPUStartInstructionCount;
@@ -66,9 +79,11 @@ class CRISCVConsole{
         bool SystemNotStop();
         void CPUThreadExecute();
         void TimerThreadExecute();
+        void SystemThreadExecute();
         void SystemRun();
         void SystemStop();
         void SystemTerminate();
+        void SystemStep();
         void ResetComponents();
 
         void ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations);
@@ -76,7 +91,7 @@ class CRISCVConsole{
         void ConstructCartridgeStrings(CElfLoad &elffile);
 
     public:
-        CRISCVConsole();
+        CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufreq);
         ~CRISCVConsole();
 
         uint32_t ScreenWidth(){
@@ -95,11 +110,19 @@ class CRISCVConsole{
             return DMemoryController;
         };
 
+        void SetDebugMode(bool debug);
+
         void Reset();
 
         void PowerOn();
 
         void PowerOff();
+
+        void Run();
+
+        void Stop();
+
+        void Step();
 
         void PressDirection(EDirection dir);
         void ReleaseDirection(EDirection dir);

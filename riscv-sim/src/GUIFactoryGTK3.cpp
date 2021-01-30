@@ -268,8 +268,13 @@ void CGUIApplicationGTK3::ActivateCallback(GtkApplication* app, gpointer data){
 gboolean CGUIApplicationGTK3::TimeoutCallback(gpointer data){
     CGUIApplicationGTK3 *App = static_cast<CGUIApplicationGTK3 *>(data);
     if(App->DTimerCallback){
-        if(App->DTimerCallback(App->DTimerCalldata)){
-            App->DTimerHandle = g_timeout_add(App->DPeriodicTimeout->MiliSecondsUntilDeadline(), TimeoutCallback, data);
+        int TimeoutMS;
+        
+        while((0 >= (TimeoutMS = App->DPeriodicTimeout->MiliSecondsUntilDeadline())) && App->DTimerCallback(App->DTimerCalldata)){
+            App->DPeriodicTimeout->AcknowledgeDeadline();
+        }
+        if(TimeoutMS > 0){
+            App->DTimerHandle = g_timeout_add(TimeoutMS, TimeoutCallback, data);
         }
     }
     return FALSE;
@@ -298,7 +303,8 @@ void CGUIApplicationGTK3::SetTimer(int timems, TGUICalldata calldata, TGUITimeou
         DTimerCalldata = calldata;
         DTimerCallback = callback;
         DPeriodicTimeout = std::make_shared< CPeriodicTimeout > (timems);
-        DTimerHandle = g_timeout_add(DPeriodicTimeout->MiliSecondsUntilDeadline(), TimeoutCallback, this);
+        int TimeoutMS = DPeriodicTimeout->MiliSecondsUntilDeadline();
+        DTimerHandle = g_timeout_add(TimeoutMS < 1 ? 1 : TimeoutMS, TimeoutCallback, this);
     }
 }
 

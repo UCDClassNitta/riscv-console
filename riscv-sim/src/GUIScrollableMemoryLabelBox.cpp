@@ -124,9 +124,13 @@ uint32_t CGUIScrollableMemoryLabelBox::GetBaseAddress(){
 }
 
 void CGUIScrollableMemoryLabelBox::SetBaseAddress(uint32_t addr, bool ascending){
+    bool PrevAscending = DAscending;
     DBaseAddress = addr & (~(DBytesPerLine-1));
     DAscending = ascending;
     UpdateBaseLine();
+    if(PrevAscending != DAscending){
+        RefreshLabels();
+    }
 }
 
 bool CGUIScrollableMemoryLabelBox::GetAddressAscending() const{

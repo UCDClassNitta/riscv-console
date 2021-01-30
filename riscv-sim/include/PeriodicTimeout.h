@@ -3,10 +3,12 @@
 #define PERIODICTIMEOUT_H
 
 #include <sys/time.h>
+#include <chrono>
 
 class CPeriodicTimeout{
     protected:
         struct timeval DNextExpectedTimeout;
+        std::chrono::high_resolution_clock::time_point DNextTimeoutPoint;
         int DTimeoutInterval;
         
     public:
@@ -21,6 +23,8 @@ class CPeriodicTimeout{
         };
         
         int MiliSecondsUntilDeadline();
+
+        void AcknowledgeDeadline();
 };
 
 #endif

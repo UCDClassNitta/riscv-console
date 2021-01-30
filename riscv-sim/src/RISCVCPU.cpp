@@ -272,5 +272,5 @@ void CRISCVCPU::Reset(){
     for(auto &CSRPair : DControlStatusRegisters){
         CSRPair.second->reset();
     }
-    DInstructionCache->Reset();
+    //DInstructionCache->Reset();
 }

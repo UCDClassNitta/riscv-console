@@ -19,7 +19,7 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, c
     DFileOpenFolder = CPath::CurrentPath().ToString();
     DApplication = CGUIFactory::ApplicationInstance(appname);
     
-    DRISCVConsole = std::make_shared<CRISCVConsole>();
+    DRISCVConsole = std::make_shared<CRISCVConsole>(1000,GetScreenTimeoutMS(),10000000);
 
     DApplication->SetActivateCallback(this, ActivateCallback);
     
@@ -118,7 +118,18 @@ bool CRISCVConsoleApplication::DebugMemoryStackButtonToggledEventCallback(std::s
     return App->DebugMemoryStackButtonToggledEvent(widget);
 }
 
+bool CRISCVConsoleApplication::RunButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->RunButtonToggledEvent(widget);
+}
+
+bool CRISCVConsoleApplication::StepButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->StepButtonClickEvent(widget,event);
+}
+
 void CRISCVConsoleApplication::Activate(){
+    DRISCVConsole->SetDebugMode(DDebugMode);
     DMainWindow = DApplication->NewWindow();
     DMainWindow->SetDeleteEventCallback(this, MainWindowDeleteEventCallback);
     DMainWindow->SetDestroyEventCallback(this, MainWindowDestroyCallback);
@@ -135,7 +146,7 @@ void CRISCVConsoleApplication::Activate(){
     DMainWindow->Add(DConsoleDebugBox ? DConsoleDebugBox : DConsoleBox);
     DMainWindow->ShowAll();
     
-    DApplication->SetTimer(GetScreenTimeoutMS(),this,TimeoutCallback);
+    DApplication->SetTimer(1,this,TimeoutCallback);
 }
 
 bool CRISCVConsoleApplication::Timeout(){
@@ -244,6 +255,9 @@ bool CRISCVConsoleApplication::CommandButtonClickEvent(std::shared_ptr<CGUIWidge
 
 bool CRISCVConsoleApplication::ResetButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
     DRISCVConsole->Reset();
+    if(DDebugMode){
+        RefreshDebugRegisters();
+    }
     return true;
 }
 
@@ -254,7 +268,8 @@ bool CRISCVConsoleApplication::PowerButtonToggledEvent(std::shared_ptr<CGUIWidge
     else{
         DRISCVConsole->PowerOff();
         if(DDebugMode){
-            RefreshDebugRegisters();
+            DDebugRunButton->SetActive(false);
+            //RefreshDebugRegisters();
         }
     }
     
@@ -310,6 +325,27 @@ bool CRISCVConsoleApplication::DebugMemoryStackButtonToggledEvent(std::shared_pt
         DDebugMemory->Refresh();
     }
     return false;
+}
+
+bool CRISCVConsoleApplication::RunButtonToggledEvent(std::shared_ptr<CGUIWidget> widget){
+    if(std::dynamic_pointer_cast<CGUIToggleButton>(widget)->GetActive()){
+        if(!DPowerButton->GetActive()){
+            DPowerButton->SetActive(true);
+        }
+        DRISCVConsole->Run();
+    }
+    else{
+        DRISCVConsole->Stop();
+        RefreshDebugRegisters();
+    }
+    
+    return true;
+}
+
+bool CRISCVConsoleApplication::StepButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
+    DRISCVConsole->Step();
+    RefreshDebugRegisters();
+    return true;
 }
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){
@@ -561,7 +597,10 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
     DDebugRunButton = CGUIFactory::NewToggleButton();
     DDebugStepButton = CGUIFactory::NewButton();
     DDebugRunButton->SetLabel("Run");
+    DDebugRunButton->SetToggledEventCallback(this, RunButtonToggledEventCallback);
+
     DDebugStepButton->SetLabel("Step");
+    DDebugStepButton->SetButtonPressEventCallback(this,StepButtonClickEventCallback);
     DDebugControlBox->PackStart(DDebugRunButton,false,false,GetWidgetSpacing());
     DDebugControlBox->PackStart(DDebugStepButton,false,false,GetWidgetSpacing());
 
