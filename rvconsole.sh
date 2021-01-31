@@ -6,9 +6,9 @@ IMAGE_BASE_ID="$(docker images -q $IMAGE_BASE)"
 
 if [[ $IMAGE_BASE_ID == "" ]]; then
     echo "$IMAGE_BASE does not exist, building:"
-    BUILD_CMD="docker build -t $IMAGE_BASE -f Dockerfile.base ."
-    echo "  $BUILD_CMD"
-    $BUILD_CMD
+    set -x
+    docker build -t $IMAGE_BASE -f Dockerfile.base .
+    set +x
 fi
 
 # Check that dev image exists
@@ -16,9 +16,9 @@ IMAGE_DEV="riscv_console_dev"
 IMAGE_DEV_ID="$(docker images -q $IMAGE_DEV)"
 if [[ $IMAGE_DEV_ID == "" ]]; then
     echo "$IMAGE_DEV does not exist, building:"
-    BUILD_CMD="docker build -t $IMAGE_DEV -f Dockerfile ."
-    echo "  $BUILD_CMD"
-    $BUILD_CMD
+    set -x
+    docker build -t $IMAGE_DEV -f Dockerfile .
+    set +x
 fi
 
 # Add xhost
@@ -34,26 +34,24 @@ if [[ $CONTAINER_DEV_ID == "" ]]; then
         # Container doesn't exist
         echo "$CONTAINER_DEV does not exist, running:"
         # https://stackoverflow.com/questions/394230/how-to-detect-the-os-from-a-bash-script
+        set -x
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            RUN_CMD="docker run -it -v "$(pwd)":/code --env-file .env.dev.osx --name $CONTAINER_DEV $IMAGE_DEV"
+            docker run -it -v "$(pwd)":/code --env-file .env.dev.osx --name $CONTAINER_DEV $IMAGE_DEV
         elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            RUN_CMD="docker run -it -v "$(pwd)":/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV"
+            docker run -it -v "$(pwd)":/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV
         else
-            RUN_CMD="docker run -it -v "$(pwd)":/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV"
+            docker run -it -v "$(pwd)":/code -v /tmp/.X11-unix:/tmp/.X11-unix --env-file .env.dev.linux --name $CONTAINER_DEV $IMAGE_DEV
         fi
-        echo "  $RUN_CMD"
-        $RUN_CMD
         exit 0
     else
         # Restart the container and reconnect
         echo "$CONTAINER_DEV not running, restarting:"
-        RESTART_CMD="docker restart $CONTAINER_DEV"
-        echo "  $RESTART_CMD"
-        $RESTART_CMD
+        set -x
+        docker restart $CONTAINER_DEV
     fi
 fi
 
 # Container is running, exec bash
-EXEC_CMD="docker exec -it $CONTAINER_DEV bash"
-echo $EXEC_CMD
-$EXEC_CMD
+set -x
+docker exec -it $CONTAINER_DEV bash
+
