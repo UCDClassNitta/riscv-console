@@ -32,14 +32,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DVideoTicks = DVideoDelayMS;
     DTimerTicks = uint64_t(DTimerDelayUS) * DDebugCPUFreq / 1000000;
 
-    for(size_t Index = 0; Index < 4; Index++){
-        DScreenBuffers.push_back(CGraphicFactory::CreateSurface(ScreenWidth(), ScreenHeight(), ESurfaceFormat::ARGB32));
-        DFreeScreenBuffers.push_back(Index);
-    }
-    DReadyScreenBuffer.store(DScreenBuffers.size());
-    DReleasedScreenBuffer.store(DScreenBuffers.size());
-    DPendingReleaseBuffer = DScreenBuffers.size();
-
+    DRefreshScreenBuffer.store(false);
     DVideoController = std::make_shared< CVideoController >();
     
     DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
@@ -75,19 +68,10 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
     DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
     DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
-    //DCPUThread = std::make_shared< std::thread >(&CRISCVConsole::CPUThreadExecute,this);
-    //DTimerThread = std::make_shared< std::thread >(&CRISCVConsole::TimerThreadExecute,this);
 }
 
 CRISCVConsole::~CRISCVConsole(){
     SystemStop();
-    //SystemTerminate();
-    //DCPUThread->join();
-    //DTimerThread->join();
-}
-
-bool CRISCVConsole::SystemNotStop(){
-    return DSystemCommand.load() != to_underlying(EThreadState::Stop);
 }
 
 void CRISCVConsole::CPUThreadExecute(){
@@ -98,30 +82,6 @@ void CRISCVConsole::CPUThreadExecute(){
     }
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
     printf("CPUThread Stopped\n");
-    /*
-    std::unique_lock<std::mutex> Lock(DCPUMutex);
-    bool WasSleeping = true;
-    bool Running = false;
-    while(DSystemCommand.load() != to_underlying(EThreadState::Terminate)){
-        if(DSystemCommand.load() == to_underlying(EThreadState::Stop)){
-            DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
-            printf("CPU Sleeping\n");
-            DCPUConditionVariable.wait(Lock, std::bind(&CRISCVConsole::SystemNotStop,this));
-            printf("CPU Awake\n");
-            WasSleeping = true;
-            Running = DSystemCommand.load() == to_underlying(EThreadState::Run);
-        }
-        if(WasSleeping && (DSystemCommand.load() == to_underlying(EThreadState::Run))){
-            DCPUAcknowledge.store(to_underlying(EThreadState::Run));
-            WasSleeping = false;
-        }
-        // Execute instruction
-        if(Running){
-            DCPU->ExecuteInstruction();
-        }
-    }
-    DCPUAcknowledge.store(to_underlying(EThreadState::Terminate));
-    */
 }
 
 void CRISCVConsole::TimerThreadExecute(){
@@ -139,71 +99,20 @@ void CRISCVConsole::TimerThreadExecute(){
     }
     DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
     printf("TimerThread Stopped\n");
-    /*
-    std::unique_lock<std::mutex> Lock(DTimerMutex);
-    bool WasSleeping = true;
-    bool Running = false;
-    auto LastTickTime = std::chrono::steady_clock::now();
-    while(DSystemCommand.load() != to_underlying(EThreadState::Terminate)){
-        if(DSystemCommand.load() == to_underlying(EThreadState::Stop)){
-            DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
-            //printf("Timer Sleeping\n");
-            DTimerConditionVariable.wait(Lock, std::bind(&CRISCVConsole::SystemNotStop,this));
-            //printf("Timer Awake\n");
-            WasSleeping = true;
-            Running = DSystemCommand.load() == to_underlying(EThreadState::Run);
-        }
-        if(WasSleeping && (DSystemCommand.load() == to_underlying(EThreadState::Run))){
-            DTimerAcknowledge.store(to_underlying(EThreadState::Run));
-            WasSleeping = false;
-        }
-        // Execute instruction
-        if(Running){
-            DChipset->IncrementTimer();
-            auto ThisTickTime = std::chrono::steady_clock::now();
-            auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(ThisTickTime - LastTickTime);
-            if(Duration.count() < 1000){
-                std::this_thread::sleep_for(std::chrono::microseconds(1000 - Duration.count()));
-            }
-            LastTickTime = ThisTickTime;
-        }
-    }
-    DTimerAcknowledge.store(to_underlying(EThreadState::Terminate));
-    */
 }
 
 void CRISCVConsole::SystemThreadExecute(){
+    bool HitBreakpoint = false;
     printf("SystemThread Started\n");
     DSystemAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
-        SystemStep();
+        if(SystemStep()){
+            HitBreakpoint = true;
+            break;
+        }
     }
-    DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
+    DSystemAcknowledge.store(to_underlying(HitBreakpoint ? EThreadState::Breakpoint : EThreadState::Stop));
     printf("SystemThread Stopped\n");
-    /*
-    std::unique_lock<std::mutex> Lock(DCPUMutex);
-    bool WasSleeping = true;
-    bool Running = false;
-    while(DSystemCommand.load() != to_underlying(EThreadState::Terminate)){
-        if(DSystemCommand.load() == to_underlying(EThreadState::Stop)){
-            DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
-            printf("CPU Sleeping\n");
-            DCPUConditionVariable.wait(Lock, std::bind(&CRISCVConsole::SystemNotStop,this));
-            printf("CPU Awake\n");
-            WasSleeping = true;
-            Running = DSystemCommand.load() == to_underlying(EThreadState::Run);
-        }
-        if(WasSleeping && (DSystemCommand.load() == to_underlying(EThreadState::Run))){
-            DCPUAcknowledge.store(to_underlying(EThreadState::Run));
-            WasSleeping = false;
-        }
-        // Execute instruction
-        if(Running){
-            DCPU->ExecuteInstruction();
-        }
-    }
-    DCPUAcknowledge.store(to_underlying(EThreadState::Terminate));
-    */
 }
 
 void CRISCVConsole::SystemRun(){
@@ -211,10 +120,11 @@ void CRISCVConsole::SystemRun(){
         if(DSystemThread){
             return;
         }
+        DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
         DSystemCommand.store(to_underlying(EThreadState::Run));
         DSystemThread = std::make_shared< std::thread >(&CRISCVConsole::SystemThreadExecute,this);
 
-        while(DSystemAcknowledge.load() != to_underlying(EThreadState::Run)){
+        while(DSystemAcknowledge.load() == to_underlying(EThreadState::Stop)){
             std::this_thread::yield();
         }
     }
@@ -231,18 +141,6 @@ void CRISCVConsole::SystemRun(){
             std::this_thread::yield();
         }
     }
-
-    /*
-    if(to_underlying(EThreadState::Stop) == DSystemCommand.exchange(to_underlying(EThreadState::Run))){
-        DSystemStartTime = std::chrono::steady_clock::now();
-        DCPUStartInstructionCount = DCPU->RetiredInstructionCount();
-        DCPUConditionVariable.notify_one();
-        DTimerConditionVariable.notify_one();
-    }
-    while((DCPUAcknowledge.load() != to_underlying(EThreadState::Run))&&(DTimerAcknowledge.load() != to_underlying(EThreadState::Run))){
-        std::this_thread::yield();
-    }
-    */
 }
 
 void CRISCVConsole::SystemStop(){
@@ -253,6 +151,7 @@ void CRISCVConsole::SystemStop(){
         DSystemCommand.store(to_underlying(EThreadState::Stop));
         DSystemThread->join();
         DSystemThread.reset();
+        DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
     }
     else{
         if(!DCPUThread){
@@ -264,22 +163,9 @@ void CRISCVConsole::SystemStop(){
         DCPUThread.reset();
         DTimerThread.reset();
     }
-
-
-    /*
-    auto PreviousState = DSystemCommand.exchange(to_underlying(EThreadState::Stop));
-    while((DCPUAcknowledge.load() != to_underlying(EThreadState::Stop))&&(DTimerAcknowledge.load() != to_underlying(EThreadState::Stop))){
-        std::this_thread::yield();
-    }
-    if(PreviousState == to_underlying(EThreadState::Run)){
-        auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - DSystemStartTime);
-        auto InstructionCount = DCPU->RetiredInstructionCount() - DCPUStartInstructionCount;
-        printf("CPU executed at %.2lfMHz\n",double(InstructionCount) / Duration.count());
-    }
-    */
 }
 
-void CRISCVConsole::SystemStep(){
+bool CRISCVConsole::SystemStep(){
     DCPU->ExecuteInstruction();
     DTimerTicks--;
     if(!DTimerTicks){
@@ -289,39 +175,11 @@ void CRISCVConsole::SystemStep(){
     DVideoTicks--;
     if(!DVideoTicks){
         if(DVideoController->Tick()){
-            auto BufferIndex = DReleasedScreenBuffer.exchange(DScreenBuffers.size());
-            if(BufferIndex == DScreenBuffers.size()){
-                BufferIndex = DFreeScreenBuffers.back();
-                DFreeScreenBuffers.pop_back();
-            }
-
-            DVideoController->Refresh(DScreenBuffers[BufferIndex]);
-            DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Video);
-            BufferIndex = DReadyScreenBuffer.exchange(BufferIndex);
-            if(BufferIndex != DScreenBuffers.size()){
-                DFreeScreenBuffers.push_back(BufferIndex);
-            }
+            DRefreshScreenBuffer.store(true);
         }
         DVideoTicks = uint64_t(DVideoDelayMS) * DDebugCPUFreq / 1000;
     }
-    {
-        auto BufferIndex = DReleasedScreenBuffer.exchange(DScreenBuffers.size());
-        if(BufferIndex != DScreenBuffers.size()){
-            DFreeScreenBuffers.push_back(BufferIndex);
-        }
-    }
-}
-
-void CRISCVConsole::SystemTerminate(){
-    /*
-    if(to_underlying(EThreadState::Stop) == DSystemCommand.exchange(to_underlying(EThreadState::Terminate))){
-        DCPUConditionVariable.notify_one();
-        DTimerConditionVariable.notify_one();
-    }
-    while((DCPUAcknowledge.load() != to_underlying(EThreadState::Terminate))&&(DTimerAcknowledge.load() != to_underlying(EThreadState::Terminate))){
-        std::this_thread::yield();
-    }
-    */
+    return DBreakpoints.end() != DBreakpoints.find(DCPU->ProgramCounter());
 }
 
 void CRISCVConsole::ResetComponents(){
@@ -384,6 +242,7 @@ void CRISCVConsole::ConstructFirmwareStrings(CElfLoad &elffile){
     for(auto &AddrIdx : DCartridgeAddressesToIndices){
         DInstructionAddressesToIndices[AddrIdx.first] = AddrIdx.second + DFirmwareInstructionStrings.size();
     }
+    MarkBreakpointStrings();
 }
 
 void CRISCVConsole::ConstructCartridgeStrings(CElfLoad &elffile){
@@ -395,6 +254,16 @@ void CRISCVConsole::ConstructCartridgeStrings(CElfLoad &elffile){
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
     for(auto &AddrIdx : DCartridgeAddressesToIndices){
         DInstructionAddressesToIndices[AddrIdx.first] = AddrIdx.second + DFirmwareInstructionStrings.size();
+    }
+    MarkBreakpointStrings();
+}
+
+void CRISCVConsole::MarkBreakpointStrings(){
+    for(auto &Addr : DBreakpoints){
+        auto Search = DInstructionAddressesToIndices.find(Addr);
+        if(DInstructionAddressesToIndices.end() != Search){
+            DInstructionStrings[Search->second][0] = '@';
+        }
     }
 }
 
@@ -425,13 +294,6 @@ void CRISCVConsole::PowerOn(){
 
 void CRISCVConsole::PowerOff(){
     SystemStop();
-    /*
-    for(int Index = 0; Index < 8; Index++){
-        printf("x%02d: %08x %-10u | x%02d: %08x %u\n",Index,DCPU->Register(Index),DCPU->Register(Index),Index+8,DCPU->Register(Index+8),DCPU->Register(Index+8));
-    }
-    DCPU->OutputCSRs();
-    DMemoryController->DumpData(std::cout);
-    */
 }
 
 void CRISCVConsole::Run(){
@@ -468,13 +330,20 @@ void CRISCVConsole::PressCommand(){
 
 bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurface){
     if(DDebugMode){
-        if(DPendingReleaseBuffer == DScreenBuffers.size()){
-            DPendingReleaseBuffer = DReleasedScreenBuffer.exchange(DPendingReleaseBuffer);
+        if(DSystemAcknowledge.load() == to_underlying(EThreadState::Breakpoint)){
+            printf("Possible Breakpoint\n");
+            if(DSystemThread){
+                printf("Hit Breakpoint\n");
+                SystemStop();
+                printf("Stopped System\n");
+                if(DBreakpointCallback){
+                    DBreakpointCallback(DBreakpointCalldata);
+                }
+            }
         }
-        auto BufferIndex = DReadyScreenBuffer.exchange(DScreenBuffers.size());
-        if(BufferIndex != DScreenBuffers.size()){
-            screensurface->Draw(DScreenBuffers[BufferIndex],0,0,ScreenWidth(), ScreenHeight(),0,0);
-            DPendingReleaseBuffer = DReleasedScreenBuffer.exchange(BufferIndex);
+        if(DRefreshScreenBuffer.exchange(false)){
+            DVideoController->Refresh(screensurface);
+            DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Video);
             return true;
         }
     }
@@ -550,6 +419,7 @@ bool CRISCVConsole::RemoveCartridge(){
     DCartridgeAddressesToIndices.clear();
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
+    MarkBreakpointStrings();
     DCartridgeState->store(0x0);
     if(CurrentState == to_underlying(EThreadState::Run)){
         // Clear the cache for cartridge
@@ -559,4 +429,26 @@ bool CRISCVConsole::RemoveCartridge(){
 
     return true;
 }
-        
+
+void CRISCVConsole::AddBreakpoint(uint32_t addr){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    DBreakpoints.insert(addr);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
+void CRISCVConsole::RemoveBreakpoint(uint32_t addr){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    DBreakpoints.erase(addr);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
+void CRISCVConsole::SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback){
+    DBreakpointCalldata = calldata;
+    DBreakpointCallback = callback;
+}

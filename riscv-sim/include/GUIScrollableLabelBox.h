@@ -9,7 +9,12 @@
 #include <string>
 #include <vector>
 
-class CGUIScrollableLabelBox{
+class CGUIScrollableLabelBox;
+
+using TGUIScrollableLabelBoxButtonEventCallback = bool (*)(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
+using TGUIScrollableLabelBoxScrollEventCallback = bool (*)(std::shared_ptr<CGUIScrollableLabelBox> widget, TGUICalldata data);
+
+class CGUIScrollableLabelBox : public std::enable_shared_from_this<CGUIScrollableLabelBox> {
     protected:
         std::shared_ptr<CGUIGrid> DContainingGrid;
         std::shared_ptr<CGUIFrame> DContainingFrame;
@@ -24,6 +29,15 @@ class CGUIScrollableLabelBox{
         std::string DFontFamily;
         int DWidthCharacters;
         int DMaxWidthCharacters;
+
+        TGUICalldata DButtonPressCalldata;
+        TGUIScrollableLabelBoxButtonEventCallback DButtonPressCallback;
+        
+        TGUICalldata DButtonReleaseCalldata;
+        TGUIScrollableLabelBoxButtonEventCallback DButtonReleaseCallback;
+
+        TGUICalldata DScrollCalldata;
+        TGUIScrollableLabelBoxScrollEventCallback DScrollCallback;
 
         static bool ScrollBarChangedEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 
@@ -55,10 +69,15 @@ class CGUIScrollableLabelBox{
         virtual void UpdateBufferedLine(size_t index, const std::string &line);
         virtual void AppendBufferedLine(const std::string &line);
         virtual void HighlightBufferedLine(size_t index);
+        virtual size_t GetHighlightedBufferedLine() const;
 
         virtual void SetFontFamily(const std::string &family);
         virtual void SetWidthCharacters(int chars);
         virtual void SetMaxWidthCharacters(int chars);
+
+        virtual void SetButtonPressEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxButtonEventCallback callback);
+        virtual void SetButtonReleaseEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxButtonEventCallback callback);
+        virtual void SetScrollEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxScrollEventCallback callback);
 
 };
 

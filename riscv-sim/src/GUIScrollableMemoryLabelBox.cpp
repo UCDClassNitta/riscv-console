@@ -70,7 +70,7 @@ void CGUIScrollableMemoryLabelBox::UpdateBaseLine(){
 
 void CGUIScrollableMemoryLabelBox::RefreshLabels(){
     size_t MemoryIndex = 0;
-    uint32_t CurrentAddress, MinAddress;
+    uint32_t CurrentAddress, MinAddress = 0;
     size_t CurrentLine = GetBaseLine();
     if(!DAscending){
         CurrentLine = DBufferedLineCount - CurrentLine - 1;

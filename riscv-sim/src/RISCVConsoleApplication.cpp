@@ -128,8 +128,26 @@ bool CRISCVConsoleApplication::StepButtonClickEventCallback(std::shared_ptr<CGUI
     return App->StepButtonClickEvent(widget,event);
 }
 
+bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->InstructionBoxButtonEvent(widget,event,line);
+}
+
+bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->InstructionBoxScrollEvent(widget);
+}
+
+void CRISCVConsoleApplication::BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    App->BreakpointEvent();
+}
+
 void CRISCVConsoleApplication::Activate(){
     DRISCVConsole->SetDebugMode(DDebugMode);
+    if(DDebugMode){
+        DRISCVConsole->SetBreakcpointCallback(this,BreakpointEventCallback);
+    }
     DMainWindow = DApplication->NewWindow();
     DMainWindow->SetDeleteEventCallback(this, MainWindowDeleteEventCallback);
     DMainWindow->SetDestroyEventCallback(this, MainWindowDestroyCallback);
@@ -273,7 +291,6 @@ bool CRISCVConsoleApplication::PowerButtonToggledEvent(std::shared_ptr<CGUIWidge
         DRISCVConsole->PowerOff();
         if(DDebugMode){
             DDebugRunButton->SetActive(false);
-            //RefreshDebugRegisters();
         }
     }
     
@@ -350,6 +367,37 @@ bool CRISCVConsoleApplication::StepButtonClickEvent(std::shared_ptr<CGUIWidget> 
     DRISCVConsole->Step();
     RefreshDebugRegisters();
     return true;
+}
+
+
+bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line){
+    if(event.DType.IsDoubleButtonPress()){
+        uint32_t Address;
+        bool Breakpoint;
+        if(ParseInstructionLine(line,Address,Breakpoint)){
+            auto Line = DDebugInstructions->GetBufferedLine(line);
+            Line[0] = Breakpoint ? ' ' : '@';
+            DDebugInstructions->UpdateBufferedLine(line, Line);
+            
+            if(Breakpoint){
+                DRISCVConsole->RemoveBreakpoint(Address);
+            }
+            else{
+                DRISCVConsole->AddBreakpoint(Address);
+            }
+        }
+    }
+    return true;
+}
+
+bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLabelBox> widget){
+    DFollowingInstruction = (widget->GetBaseLine() <= widget->GetHighlightedBufferedLine()) && (widget->GetHighlightedBufferedLine() < widget->GetBaseLine() + widget->GetLineCount());
+    return true;
+}
+
+void CRISCVConsoleApplication::BreakpointEvent(){
+    DFollowingInstruction = true;
+    DDebugRunButton->SetActive(false);
 }
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){
@@ -492,7 +540,7 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     DDebugBox->PackStart(DRegisterGrid,false,false,GetWidgetSpacing());
 
     CreateDebugControlWidgets();
-    DDebugBox->PackStart(DDebugControlBox,false,false,GetWidgetSpacing());
+    //DDebugBox->PackStart(DDebugControlBox,false,false,GetWidgetSpacing());
 
     CreateDebugInstructionWidgets();
     CreateDebugCSRWidgets();
@@ -503,8 +551,10 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     CSRLabel->SetJustification(SGUIJustificationType::Left);
     InstCSRGrid->Attach(InstLabel,0,0,1,1);
     InstCSRGrid->Attach(DDebugInstructions->ContainingWidget(),0,1,1,1);
-    InstCSRGrid->Attach(CSRLabel,1,0,1,1);
-    InstCSRGrid->Attach(DDebugCSRegisters->ContainingWidget(),1,1,1,1);
+    
+    InstCSRGrid->Attach(DDebugControlBox,1,1,1,1);
+    InstCSRGrid->Attach(CSRLabel,2,0,1,1);
+    InstCSRGrid->Attach(DDebugCSRegisters->ContainingWidget(),2,1,1,1);
     InstCSRGrid->SetColumnSpacing(GetWidgetSpacing());
     DDebugBox->PackStart(InstCSRGrid,false,false,GetWidgetSpacing());
     CreateDebugMemoryWidgets();
@@ -549,20 +599,21 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
 
     DConsoleDebugBox->PackStart(DConsoleBox,false,false,GetWidgetSpacing());
     DConsoleDebugBox->PackStart(DDebugBox,false,false,GetWidgetSpacing());
+    RefreshDebugRegisters();
 }
 
 void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
     DRegisterGrid = CGUIFactory::NewGrid(); 
     auto QuarterCount = CRISCVCPU::RegisterCount() / 4;
     size_t MaxChar = 0;
-    for(int RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
+    for(size_t RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
         MaxChar = std::max(CRISCVCPU::CInstruction::RegisterName(RegisterIndex).length(),MaxChar);
     }
     MaxChar++;
     auto Title = CGUIFactory::NewLabel("CPU Regs");
     Title->SetJustification(SGUIJustificationType::Left);
     DRegisterGrid->Attach(Title,0,0,8,1);
-    for(int RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
+    for(size_t RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
         auto RegisterName = CRISCVCPU::CInstruction::RegisterName(RegisterIndex);
         if(RegisterName == "gp"){
             DDebugMemoryGlobalPointerRegisterIndex = RegisterIndex;
@@ -596,7 +647,7 @@ void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugControlWidgets(){
-    DDebugControlBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
+    DDebugControlBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
 
     DDebugRunButton = CGUIFactory::NewToggleButton();
     DDebugStepButton = CGUIFactory::NewButton();
@@ -615,6 +666,8 @@ void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
     // Assume @01234567: abcdef zero,zero,-2147483648
     DDebugInstructions->SetWidthCharacters(38);
     DDebugInstructions->SetLineCount(GetInstructionLineCount());
+    DDebugInstructions->SetButtonPressEventCallback(this,InstructionBoxButtonEventCallback);
+    DDebugInstructions->SetScrollEventCallback(this,InstructionBoxScrollEventCallback);
 
 }
 
@@ -647,6 +700,16 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
     };
     DDebugMemory = std::make_shared<CGUIScrollableMemoryLabelBox>(DRISCVConsole->Memory(), MemoryRegions);
     DDebugMemory->SetLineCount(GetMemoryLineCount());
+}
+
+bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){
+    auto Line = DDebugInstructions->GetBufferedLine(line);
+    if(Line.length() < 10){
+        return false;
+    }
+    breakpoint = Line[0] == '@';
+    addr = std::stoull(Line.substr(1,8), nullptr, 16);
+    return true;
 }
 
 void CRISCVConsoleApplication::SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button){

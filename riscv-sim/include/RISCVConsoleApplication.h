@@ -97,6 +97,9 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool DebugMemoryStackButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         static bool RunButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         static bool StepButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
+        static bool InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
+        static bool InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, TGUICalldata data);
+        static void BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data);
 
         void Activate();
         bool Timeout();
@@ -118,6 +121,9 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool DebugMemoryStackButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
         bool RunButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
         bool StepButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
+        bool InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line);
+        bool InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLabelBox> widget);
+        void BreakpointEvent();
 
         void CreateConsoleWidgets();
         void CreateControllerWidgets();
@@ -129,6 +135,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         void CreateDebugInstructionWidgets();
         void CreateDebugCSRWidgets();
         void CreateDebugMemoryWidgets();
+
+        bool ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint);
 
         void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
         uint32_t GetScreenTimeoutMS();
