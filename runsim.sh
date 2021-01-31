@@ -10,6 +10,6 @@ if [ ! -f $EXEC_FILE ]; then
         exit
     fi
 fi
-SIM_RUN_CMD="runuser -u docker $EXEC_FILE"
+SIM_RUN_CMD="runuser -u docker $EXEC_FILE -- $@"
 echo $SIM_RUN_CMD
 $SIM_RUN_CMD
