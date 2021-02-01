@@ -19,7 +19,7 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, c
     DFileOpenFolder = CPath::CurrentPath().ToString();
     DApplication = CGUIFactory::ApplicationInstance(appname);
     
-    DRISCVConsole = std::make_shared<CRISCVConsole>(1000,GetScreenTimeoutMS(),10000000);
+    DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
 
     DApplication->SetActivateCallback(this, ActivateCallback);
     
@@ -126,6 +126,11 @@ bool CRISCVConsoleApplication::RunButtonToggledEventCallback(std::shared_ptr<CGU
 bool CRISCVConsoleApplication::StepButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->StepButtonClickEvent(widget,event);
+}
+
+bool CRISCVConsoleApplication::ClearButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->ClearButtonClickEvent(widget,event);
 }
 
 bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
@@ -364,11 +369,25 @@ bool CRISCVConsoleApplication::RunButtonToggledEvent(std::shared_ptr<CGUIWidget>
 }
 
 bool CRISCVConsoleApplication::StepButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
+    if(!DPowerButton->GetActive()){
+        DPowerButton->SetActive(true);
+    }
     DRISCVConsole->Step();
     RefreshDebugRegisters();
     return true;
 }
 
+bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
+    // Clear break points
+    for(auto &Addr : DRISCVConsole->Breakpoints()){
+        auto LineIndex = DRISCVConsole->InstructionAddressesToIndices(Addr);
+        auto Line = DDebugInstructions->GetBufferedLine(LineIndex);
+        Line[0] = ' ';
+        DDebugInstructions->UpdateBufferedLine(LineIndex, Line);
+    }
+    DRISCVConsole->ClearBreakpoints();
+    return true;
+}
 
 bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line){
     if(event.DType.IsDoubleButtonPress()){
@@ -537,7 +556,9 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     DConsoleDebugBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
     DDebugBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
     CreateDebugRegisterWidgets();
-    DDebugBox->PackStart(DRegisterGrid,false,false,GetWidgetSpacing());
+    auto RegisterBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,0);
+    RegisterBox->PackStart(DRegisterGrid,false,false,GetWidgetSpacing());
+    DDebugBox->PackStart(RegisterBox,false,false,GetWidgetSpacing());
 
     CreateDebugControlWidgets();
     //DDebugBox->PackStart(DDebugControlBox,false,false,GetWidgetSpacing());
@@ -651,13 +672,18 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
 
     DDebugRunButton = CGUIFactory::NewToggleButton();
     DDebugStepButton = CGUIFactory::NewButton();
+    DDebugClearButton = CGUIFactory::NewButton();
     DDebugRunButton->SetLabel("Run");
     DDebugRunButton->SetToggledEventCallback(this, RunButtonToggledEventCallback);
 
     DDebugStepButton->SetLabel("Step");
     DDebugStepButton->SetButtonPressEventCallback(this,StepButtonClickEventCallback);
+
+    DDebugClearButton->SetLabel("Clear");
+    DDebugClearButton->SetButtonPressEventCallback(this,ClearButtonClickEventCallback);
     DDebugControlBox->PackStart(DDebugRunButton,false,false,GetWidgetSpacing());
     DDebugControlBox->PackStart(DDebugStepButton,false,false,GetWidgetSpacing());
+    DDebugControlBox->PackStart(DDebugClearButton,false,false,GetWidgetSpacing());
 
 }
 
@@ -774,6 +800,25 @@ uint32_t CRISCVConsoleApplication::GetMemoryLineCount(){
         LineCount = 128;
     }
     return LineCount;
+}
+
+uint32_t CRISCVConsoleApplication::GetTimerUS(){
+    auto TimerUS = DConfiguration.GetIntegerParameter(CRISCVConsoleApplicationConfiguration::EParameter::TimerUS);
+    if(100 > TimerUS){
+        TimerUS = 100;
+    }
+    if(500000 < TimerUS){
+        TimerUS = 500000;
+    }
+    return TimerUS;
+}
+
+uint32_t CRISCVConsoleApplication::GetCPUFrequency(){
+    auto CPUFreq = DConfiguration.GetIntegerParameter(CRISCVConsoleApplicationConfiguration::EParameter::TimerUS);
+    if(1000000 > CPUFreq){
+        CPUFreq = 1000000;
+    }
+    return CPUFreq;
 }
 
 void CRISCVConsoleApplication::RefreshDebugRegisters(){

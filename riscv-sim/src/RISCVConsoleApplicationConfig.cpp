@@ -17,7 +17,9 @@ CRISCVConsoleApplicationConfiguration::CRISCVConsoleApplicationConfiguration(){
     DParameterNames["INSTRUCTION_LINES"] = EParameter::InstructionLines;
     DParameterNames["MEMORY_LINES"] = EParameter::MemoryLines;
 
-    DParameterNames["SCREEN_TIMERMS"] = EParameter::ScreenTimer;    
+    DParameterNames["SCREEN_TIMERMS"] = EParameter::ScreenTimer;
+    DParameterNames["TIMERUS"] = EParameter::TimerUS;   
+    DParameterNames["CPU_FREQ"] = EParameter::CPUFrequency;   
 
     DParameters[EParameter::UpKey] = "w";
     DParameters[EParameter::DownKey] = "x";
@@ -34,6 +36,8 @@ CRISCVConsoleApplicationConfiguration::CRISCVConsoleApplicationConfiguration(){
     DParameters[EParameter::MemoryLines] = "8";
 
     DParameters[EParameter::ScreenTimer] = "10";
+    DParameters[EParameter::TimerUS] = "1000";
+    DParameters[EParameter::CPUFrequency] = "10000000";
     
 }
 

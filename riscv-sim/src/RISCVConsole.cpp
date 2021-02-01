@@ -75,17 +75,14 @@ CRISCVConsole::~CRISCVConsole(){
 }
 
 void CRISCVConsole::CPUThreadExecute(){
-    printf("CPUThread Started\n");
     DCPUAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
         DCPU->ExecuteInstruction();
     }
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
-    printf("CPUThread Stopped\n");
 }
 
 void CRISCVConsole::TimerThreadExecute(){
-    printf("TimerThread Started\n");
     DTimerAcknowledge.store(to_underlying(EThreadState::Run));
     auto LastTickTime = std::chrono::steady_clock::now();
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
@@ -98,12 +95,10 @@ void CRISCVConsole::TimerThreadExecute(){
         DChipset->IncrementTimer();
     }
     DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
-    printf("TimerThread Stopped\n");
 }
 
 void CRISCVConsole::SystemThreadExecute(){
     bool HitBreakpoint = false;
-    printf("SystemThread Started\n");
     DSystemAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
         if(SystemStep()){
@@ -112,7 +107,6 @@ void CRISCVConsole::SystemThreadExecute(){
         }
     }
     DSystemAcknowledge.store(to_underlying(HitBreakpoint ? EThreadState::Breakpoint : EThreadState::Stop));
-    printf("SystemThread Stopped\n");
 }
 
 void CRISCVConsole::SystemRun(){
@@ -331,11 +325,8 @@ void CRISCVConsole::PressCommand(){
 bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurface){
     if(DDebugMode){
         if(DSystemAcknowledge.load() == to_underlying(EThreadState::Breakpoint)){
-            printf("Possible Breakpoint\n");
             if(DSystemThread){
-                printf("Hit Breakpoint\n");
                 SystemStop();
-                printf("Stopped System\n");
                 if(DBreakpointCallback){
                     DBreakpointCallback(DBreakpointCalldata);
                 }
@@ -451,4 +442,19 @@ void CRISCVConsole::RemoveBreakpoint(uint32_t addr){
 void CRISCVConsole::SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback){
     DBreakpointCalldata = calldata;
     DBreakpointCallback = callback;
+}
+
+void CRISCVConsole::ClearBreakpoints(){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    for(auto &Addr : DBreakpoints){
+        auto Search = DInstructionAddressesToIndices.find(Addr);
+        if(DInstructionAddressesToIndices.end() != Search){
+            DInstructionStrings[Search->second][0] = ' ';
+        }
+    }
+    DBreakpoints.clear();
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
 }

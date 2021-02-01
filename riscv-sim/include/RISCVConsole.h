@@ -147,6 +147,12 @@ class CRISCVConsole{
 
         void SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback);
 
+        const std::set< uint32_t > &Breakpoints() const{
+            return DBreakpoints;
+        };
+
+        void ClearBreakpoints();
+
         const std::vector< std::string > &InstructionStrings() const{
             return DInstructionStrings;
         }
