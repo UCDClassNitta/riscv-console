@@ -34,9 +34,6 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
 
     DRefreshScreenBuffer.store(false);
     DVideoController = std::make_shared< CVideoController >();
-    
-    DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
-    DCartridgeState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
 
     DMemoryController = std::make_shared< CMemoryControllerDevice >(32);    
     DMainMemory = std::make_shared< CRAMMemoryDevice >(DMainMemorySize);
@@ -60,8 +57,8 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DRegisterBlock->AttachRegister(DChipset->MachineTimeHigh());
     DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareLow());
     DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareHigh());
-    DRegisterBlock->AttachRegister(DControllerState);
-    DRegisterBlock->AttachRegister(DCartridgeState);
+    DRegisterBlock->AttachRegister(DChipset->ControllerState());
+    DRegisterBlock->AttachRegister(DChipset->CartridgeState());
     DMemoryController->AttachDevice(DRegisterBlock, DRegisterMemoryBase);
 
     DSystemCommand.store(to_underlying(EThreadState::Stop));
@@ -303,23 +300,23 @@ void CRISCVConsole::Step(){
 }
 
 void CRISCVConsole::PressDirection(EDirection dir){
-    DControllerState->fetch_or(to_underlying(dir));
+    DChipset->ControllerPress(to_underlying(dir));
 }
 
 void CRISCVConsole::ReleaseDirection(EDirection dir){
-    DControllerState->fetch_and(~to_underlying(dir));
+    DChipset->ControllerRelease(to_underlying(dir));
 }
 
 void CRISCVConsole::PressButton(EButtonNumber button){
-    DControllerState->fetch_or(to_underlying(button));
+    DChipset->ControllerPress(to_underlying(button));
 }
 
 void CRISCVConsole::ReleaseButton(EButtonNumber button){
-    DControllerState->fetch_and(~to_underlying(button));
+    DChipset->ControllerRelease(to_underlying(button));
 }
 
 void CRISCVConsole::PressCommand(){
-    DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Command);
+    DChipset->ControllerCommandPress();
 }
 
 bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurface){
@@ -390,11 +387,10 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
             DCartridgeFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DCartridgeFlash->WriteEnabled(false);
-        DCartridgeState->store(ElfFile.Entry() | 0x1);
+        DChipset->InsertCartridge(ElfFile.Entry());
         ConstructCartridgeStrings(ElfFile);
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
-            DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Cartridge);
             SystemRun();
         }
         return true;
@@ -411,10 +407,9 @@ bool CRISCVConsole::RemoveCartridge(){
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
     MarkBreakpointStrings();
-    DCartridgeState->store(0x0);
+    DChipset->RemoveCartridge();
     if(CurrentState == to_underlying(EThreadState::Run)){
         // Clear the cache for cartridge
-        DChipset->SetInterruptPending(CRISCVConsoleChipset::EInterruptSource::Cartridge);
         SystemRun();
     }
 

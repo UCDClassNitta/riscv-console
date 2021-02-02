@@ -156,6 +156,8 @@ CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu){
     DMachineTimeHigh = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DMachineTime.get());
     DMachineTimeCompareLow = std::make_shared< CReadWriteHardwareRegisterLow< uint32_t, uint64_t > >(*DMachineTimeCompare.get());
     DMachineTimeCompareHigh = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DMachineTimeCompare.get());
+    DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+    DCartridgeState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
 }
 
 void CRISCVConsoleChipset::CheckInterrupt(bool istimer){
@@ -187,6 +189,28 @@ void CRISCVConsoleChipset::ClearInterruptPending(EInterruptSource source){
 
 void CRISCVConsoleChipset::IncrementTimer(){
     DMachineTime->operator++();
+}
+
+void CRISCVConsoleChipset::ControllerPress(uint32_t bitfield){
+    DControllerState->fetch_or(bitfield);
+}
+    
+void CRISCVConsoleChipset::ControllerRelease(uint32_t bitfield){
+    DControllerState->fetch_and(~bitfield);
+}
+
+void CRISCVConsoleChipset::ControllerCommandPress(){
+    SetInterruptPending(EInterruptSource::Command);
+}
+
+void CRISCVConsoleChipset::InsertCartridge(uint32_t entry){
+    DCartridgeState->store(entry | 0x1);
+    SetInterruptPending(EInterruptSource::Cartridge);
+}
+
+void CRISCVConsoleChipset::RemoveCartridge(){
+    DCartridgeState->store(0x0);
+    SetInterruptPending(EInterruptSource::Cartridge);
 }
 
 void CRISCVConsoleChipset::Reset(){

@@ -19,6 +19,8 @@ class CRISCVConsoleChipset{
         std::shared_ptr< CHardwareRegister< uint32_t > > DMachineTimeHigh;
         std::shared_ptr< CHardwareRegister< uint32_t > > DMachineTimeCompareLow;
         std::shared_ptr< CHardwareRegister< uint32_t > > DMachineTimeCompareHigh;
+        std::shared_ptr< CHardwareRegister< uint32_t > > DControllerState;
+        std::shared_ptr< CHardwareRegister< uint32_t > > DCartridgeState;
 
         void CheckInterrupt(bool istimer);
 
@@ -53,6 +55,24 @@ class CRISCVConsoleChipset{
         std::shared_ptr< CHardwareRegister< uint32_t > > MachineTimeCompareHigh(){
             return DMachineTimeCompareHigh;
         };
+
+        std::shared_ptr< CHardwareRegister< uint32_t > > ControllerState(){
+            return DControllerState;
+        };
+
+        std::shared_ptr< CHardwareRegister< uint32_t > > CartridgeState(){
+            return DCartridgeState;
+        };
+
+        void ControllerPress(uint32_t bitfield);
+
+        void ControllerRelease(uint32_t bitfield);
+
+        void ControllerCommandPress();
+
+        void InsertCartridge(uint32_t entry);
+
+        void RemoveCartridge();
 
         void Reset();
 };
