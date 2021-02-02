@@ -41,9 +41,9 @@ if [[ $CONTAINER_DEV_ID == "" ]]; then
         if [[ "$OSTYPE" == "darwin"* ]]; then
             RUN_ARGS=("--env-file" ".env.dev.osx" "--name" "$CONTAINER_DEV" "$IMAGE_DEV")
         elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            RUN_ARGS=("-v" "/tmp/.X11-unix:/tmp/.X11-unix" "--env-file" ".env.dev.osx" "--name" "$CONTAINER_DEV" "$IMAGE_DEV")
+            RUN_ARGS=("-v" "/tmp/.X11-unix:/tmp/.X11-unix" "--env-file" ".env.dev.linux" "--name" "$CONTAINER_DEV" "$IMAGE_DEV")
         else
-            RUN_ARGS=("-v" "/tmp/.X11-unix:/tmp/.X11-unix" "--env-file" ".env.dev.osx" "--name" "$CONTAINER_DEV" "$IMAGE_DEV")
+            RUN_ARGS=("-v" "/tmp/.X11-unix:/tmp/.X11-unix" "--env-file" ".env.dev.linux" "--name" "$CONTAINER_DEV" "$IMAGE_DEV")
         fi
         echo "  docker run -it -v $(pwd):/code ${RUN_ARGS[@]}"
         docker run -it -v "$(pwd)":/code "${RUN_ARGS[@]}"
