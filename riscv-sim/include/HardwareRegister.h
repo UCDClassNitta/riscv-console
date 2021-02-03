@@ -153,8 +153,9 @@ class CReadWriteHardwareRegister : public CHardwareRegister<T>{
 
 template<class T>
 class CReadOnlyHardwareRegister : public CReadWriteHardwareRegister<T>{
-    using CReadWriteHardwareRegister<T>::DRegister;
-    using CReadWriteHardwareRegister<T>::DDefault;
+    protected:
+        using CReadWriteHardwareRegister<T>::DRegister;
+        using CReadWriteHardwareRegister<T>::DDefault;
     public:
         CReadOnlyHardwareRegister() noexcept = default;
         CReadOnlyHardwareRegister(T val) noexcept : CReadWriteHardwareRegister<T>(val){
