@@ -300,7 +300,6 @@ CRISCVSYSTypeInstruction::CRISCVSYSTypeInstruction(uint32_t addr, uint32_t raw, 
     DProgramCounter = pc;
     // If not x0 or if RS[I]/RC[I] type instructions
     DDestination = Encoded->rd || (Encoded->funct3 & 0x2) ? regs[Encoded->rd] : nullptr;
-    
     if(Encoded->funct3 & 0x4){
         DImmediate = Encoded->rs1_uimm;
     }

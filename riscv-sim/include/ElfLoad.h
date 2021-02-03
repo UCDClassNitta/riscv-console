@@ -34,6 +34,7 @@ class CElfLoad{
             uint64_t DInfo;
             uint64_t DAddressAlign;
             uint64_t DEntrySize;
+            std::unordered_map<uint64_t,std::string> DSymbols;
             void Print(const std::unordered_map< uint32_t, std::string > &names);
         };
 
@@ -110,6 +111,8 @@ class CElfLoad{
 
         size_t ProgramHeaderCount() const;
         const SProgramHeader &ProgramHeader(size_t index) const;
+        size_t SectionHeaderCount() const;
+        const SSectionHeader &SectionHeader(size_t index) const;
         void PrintHeaders();
 
 

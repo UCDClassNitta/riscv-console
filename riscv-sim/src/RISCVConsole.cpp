@@ -44,21 +44,14 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DMemoryController->AttachDevice(DCartridgeFlash,DCartridgeMemoryBase);
     DMemoryController->AttachDevice(DVideoController->VideoRAM(),DVideoMemoryBase);
     
-    DRegisterBlock = std::make_shared< CRegisterBlockMemoryDevice >();
     
 
     DCPUCache = std::make_shared<CRISCVBlockInstructionCache>();
     DCPU = std::make_shared< CRISCVCPU >(DMemoryController, DCPUCache);
-    DChipset = std::make_shared< CRISCVConsoleChipset >(DCPU);
-    // TODO add registers to memory controller
-    DRegisterBlock->AttachRegister(DChipset->InterruptEnable());
-    DRegisterBlock->AttachRegister(DChipset->InterruptPending());
-    DRegisterBlock->AttachRegister(DChipset->MachineTimeLow());
-    DRegisterBlock->AttachRegister(DChipset->MachineTimeHigh());
-    DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareLow());
-    DRegisterBlock->AttachRegister(DChipset->MachineTimeCompareHigh());
-    DRegisterBlock->AttachRegister(DChipset->ControllerState());
-    DRegisterBlock->AttachRegister(DChipset->CartridgeState());
+    DChipset = std::make_shared< CRISCVConsoleChipset >(DCPU, DMemoryController);
+
+    DRegisterBlock = DChipset->RegisterBlock();
+
     DMemoryController->AttachDevice(DRegisterBlock, DRegisterMemoryBase);
 
     DSystemCommand.store(to_underlying(EThreadState::Stop));
@@ -75,6 +68,7 @@ void CRISCVConsole::CPUThreadExecute(){
     DCPUAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
         DCPU->ExecuteInstruction();
+        DChipset->IncrementDMA();
     }
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
 }
@@ -158,6 +152,7 @@ void CRISCVConsole::SystemStop(){
 
 bool CRISCVConsole::SystemStep(){
     DCPU->ExecuteInstruction();
+    DChipset->IncrementDMA();
     DTimerTicks--;
     if(!DTimerTicks){
         DChipset->IncrementTimer();
@@ -182,9 +177,9 @@ void CRISCVConsole::ResetComponents(){
 void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations){
     strings.clear();
     translations.clear();
-    for(size_t Index = 0; Index < elffile.ProgramHeaderCount(); Index++){
-        auto &Header = elffile.ProgramHeader(Index);
-        if(Header.DFlags & 0x1){
+    for(size_t Index = 0; Index < elffile.SectionHeaderCount(); Index++){
+        auto &Header = elffile.SectionHeader(Index);
+        if(Header.DFlags & 0x4){
             std::vector< uint32_t > AddressKeys;
             AddressKeys.reserve(Header.DSymbols.size());
             for(auto &Symbol : Header.DSymbols){
@@ -193,7 +188,7 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::vector< 
             std::sort(AddressKeys.begin(),AddressKeys.end());
             auto NextSymbol = AddressKeys.begin();
             uint32_t CurrentAddress = Header.DVirtualAddress;
-            uint32_t EndAddress = Header.DVirtualAddress + Header.DMemorySize;
+            uint32_t EndAddress = Header.DVirtualAddress + Header.DSize;
             while(CurrentAddress < EndAddress){
                 if((NextSymbol != AddressKeys.end())&&(CurrentAddress == *NextSymbol)){
                     strings.push_back(Header.DSymbols.find(CurrentAddress)->second);
@@ -215,6 +210,7 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::vector< 
                 else{
                     Stream<<"invalid";
                 }
+                
                 strings.push_back(Stream.str());
 
                 CurrentAddress += sizeof(uint32_t);

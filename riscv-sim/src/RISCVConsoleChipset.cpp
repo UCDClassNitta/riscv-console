@@ -1,6 +1,11 @@
 #include "RISCVConsoleChipset.h"
 #include <cstdio>
 
+const uint32_t CRISCVConsoleChipset::DDMAChannelCount = 2;
+const uint32_t CRISCVConsoleChipset::DDMAChannelActive = 0x80000000;
+const uint32_t CRISCVConsoleChipset::DDMAChannelSourceError = 0x40000000;
+const uint32_t CRISCVConsoleChipset::DDMAChannelDestinationError = 0x20000000;
+const uint32_t CRISCVConsoleChipset::DDMAChannelSizeMask = 0x00FFFFFF;
 template<class T>
 class CRISCVConsoleChipset::CInterruptCheckRegister : public CReadWriteHardwareRegister<T> {
     protected:
@@ -140,14 +145,97 @@ class CRISCVConsoleChipset::CInterruptPendingRegister : public CInterruptCheckRe
         };
 };
 
+class CRISCVConsoleChipset::CDMACommandRegister : public CReadWriteHardwareRegister<uint32_t>{
+    protected:
+        using CReadWriteHardwareRegister<uint32_t>::DRegister;
+        using CReadWriteHardwareRegister<uint32_t>::DDefault;
+        CRISCVConsoleChipset &DChipset;
+        uint32_t DIndex;
+    public:
+        CDMACommandRegister() noexcept = delete;
+        CDMACommandRegister(CRISCVConsoleChipset &chipset, uint32_t index, uint32_t val) noexcept : CReadWriteHardwareRegister<uint32_t>(val), DChipset(chipset){
+            DIndex = index;
+        };
+
+        virtual uint32_t operator= (uint32_t val) noexcept{
+            if(DChipset.DMACommandStore(DIndex,val)){
+                return CReadWriteHardwareRegister<uint32_t>::operator=(val & CRISCVConsoleChipset::DDMAChannelSizeMask);
+            }
+            return load();
+        };
+
+        virtual void store (uint32_t val) noexcept{
+            if(DChipset.DMACommandStore(DIndex,val)){
+                CReadWriteHardwareRegister<uint32_t>::store(val & CRISCVConsoleChipset::DDMAChannelSizeMask);
+            }
+        };
+
+        virtual uint32_t fetch_add(uint32_t val) noexcept{
+            return load();
+        };
+
+        virtual uint32_t fetch_sub(uint32_t val) noexcept{
+            return load();
+        };
+
+        virtual uint32_t fetch_and(uint32_t val) noexcept{
+            return load();
+        };
+
+        virtual uint32_t fetch_or(uint32_t val) noexcept{
+            return load();
+        };
+
+        virtual uint32_t fetch_xor(uint32_t val) noexcept{
+            return load();
+        };
+
+        virtual uint32_t operator++() noexcept{
+            return load();
+        };
+
+        virtual uint32_t operator++(int) noexcept{
+            return load();
+        };
+
+        virtual uint32_t operator--() noexcept{
+            return load();
+        };
+
+        virtual uint32_t operator--(int) noexcept{
+            return load();
+        };
+
+        virtual void reset() noexcept{
+            CReadWriteHardwareRegister<uint32_t>::store(DDefault);
+
+        };
+};
+
+class CRISCVConsoleChipset::CDMAStatusRegister : public CReadOnlyHardwareRegister<uint32_t> {
+    protected:
+        using CReadWriteHardwareRegister<uint32_t>::DRegister;
+
+    public:
+        CDMAStatusRegister() noexcept = delete;
+        CDMAStatusRegister(uint32_t val) noexcept : CReadOnlyHardwareRegister<uint32_t>(val){
+        };
+
+        virtual void update(uint32_t val){
+            DRegister.store(val);
+        };
+};
+
+
 // Code form Effective Modern C++ by Scott Meyers (see Item 10)
 template<typename E>
 constexpr typename std::underlying_type<E>::type to_underlying(E enumerator) noexcept{
     return static_cast<typename std::underlying_type<E>::type>(enumerator);
 }
 
-CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu){
+CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std::shared_ptr< CMemoryDevice > memory){
     DCPU = cpu;
+    DMemory = memory;
     DInterruptEnable = std::make_shared< CInterruptCheckRegister<uint32_t> >(*this,false,0);
     DInterruptPending = std::make_shared< CInterruptPendingRegister >(*this,0);
     DMachineTime = std::make_shared< CInterruptCheckRegister<uint64_t> >(*this, true, 0);
@@ -158,6 +246,35 @@ CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu){
     DMachineTimeCompareHigh = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DMachineTimeCompare.get());
     DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
     DCartridgeState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+
+    DRegisterBlock = std::make_shared< CRegisterBlockMemoryDevice >();
+    DRegisterBlock->AttachRegister(DInterruptEnable);
+    DRegisterBlock->AttachRegister(DInterruptPending);
+    DRegisterBlock->AttachRegister(DMachineTimeLow);
+    DRegisterBlock->AttachRegister(DMachineTimeHigh);
+    DRegisterBlock->AttachRegister(DMachineTimeCompareLow);
+    DRegisterBlock->AttachRegister(DMachineTimeCompareHigh);
+    DRegisterBlock->AttachRegister(DControllerState);
+    DRegisterBlock->AttachRegister(DCartridgeState);
+
+    DDMAChannels.resize(DDMAChannelCount);
+    {
+        uint32_t Index = 0;
+        for(auto &DMAChannel : DDMAChannels){
+            DMAChannel.DDMASource = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+            DRegisterBlock->AttachRegister(DMAChannel.DDMASource);
+            DMAChannel.DDMADestination = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+            DRegisterBlock->AttachRegister(DMAChannel.DDMADestination);
+            DMAChannel.DDMACommand =  std::make_shared< CDMACommandRegister >(*this, Index, 0);
+            DRegisterBlock->AttachRegister(DMAChannel.DDMACommand);
+            DMAChannel.DDMAStatus = std::make_shared< CDMAStatusRegister >(0);
+            DRegisterBlock->AttachRegister(DMAChannel.DDMAStatus);
+            Index++;
+        }
+    }
+    
+
+
 }
 
 void CRISCVConsoleChipset::CheckInterrupt(bool istimer){
@@ -179,6 +296,21 @@ void CRISCVConsoleChipset::CheckInterrupt(bool istimer){
     }
 }
 
+bool CRISCVConsoleChipset::DMACommandStore(uint32_t index, uint32_t val){
+    if(index < DDMAChannelCount){
+        if((val & DDMAChannelActive) && (val & DDMAChannelSizeMask)){
+            if(0 == (DDMAChannels[index].DDMAStatus->load() & DDMAChannelActive)){
+                DDMAChannels[index].DNextSource = DDMAChannels[index].DDMASource->load();
+                DDMAChannels[index].DNextDestination = DDMAChannels[index].DDMADestination->load();
+                DDMAChannels[index].DDMAStatus->update(val & (DDMAChannelActive | DDMAChannelSizeMask));
+                DDMAChannels[index].DUINT32Transfer = 0 == ((DDMAChannels[index].DNextSource | DDMAChannels[index].DNextDestination | val) & (sizeof(uint32_t)-1));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void CRISCVConsoleChipset::SetInterruptPending(EInterruptSource source){
     DInterruptPending->fetch_or(to_underlying(source));
 }
@@ -189,6 +321,71 @@ void CRISCVConsoleChipset::ClearInterruptPending(EInterruptSource source){
 
 void CRISCVConsoleChipset::IncrementTimer(){
     DMachineTime->operator++();
+}
+
+void CRISCVConsoleChipset::IncrementDMA(){
+    for(uint32_t Index = 0; Index < DDMAChannelCount; Index++){
+        if(DDMAChannels[Index].DDMAStatus->load() & DDMAChannelActive){
+            bool ReadData = false;
+            try{
+                if(DDMAChannels[Index].DUINT32Transfer){
+                    uint32_t Data = DMemory->LoadUINT32(DDMAChannels[Index].DNextSource);
+                    ReadData = true;
+                    DMemory->StoreUINT32(DDMAChannels[Index].DNextDestination, Data);
+                    DDMAChannels[Index].DNextSource += sizeof(uint32_t);
+                    DDMAChannels[Index].DNextDestination += sizeof(uint32_t);
+                    uint32_t NewStatus = DDMAChannels[Index].DDMAStatus->load();
+                    NewStatus -= sizeof(uint32_t);
+                    if(0 == (NewStatus & DDMAChannelSizeMask)){
+                        NewStatus &= ~DDMAChannelActive;
+                        DDMAChannels[Index].DDMAStatus->update(NewStatus);
+                        SetInterruptPending(static_cast<EInterruptSource>(to_underlying(EInterruptSource::DMA1)<<Index));
+                    }
+                    else{
+                        DDMAChannels[Index].DDMAStatus->update(NewStatus);
+                    }
+                }
+                else{
+                    uint32_t NewStatus = DDMAChannels[Index].DDMAStatus->load();
+                    if((NewStatus & DDMAChannelSizeMask) <= sizeof(uint32_t)){
+                        // Do final transfer
+                        const uint8_t *Data = DMemory->LoadData(DDMAChannels[Index].DNextSource, NewStatus & DDMAChannelSizeMask);
+                        ReadData = true;
+                        DMemory->StoreData(DDMAChannels[Index].DNextDestination, Data, NewStatus & DDMAChannelSizeMask);
+                        DDMAChannels[Index].DDMAStatus->update(0);
+                        SetInterruptPending(static_cast<EInterruptSource>(to_underlying(EInterruptSource::DMA1)<<Index));
+                    }
+                    else if(DDMAChannels[Index].DNextDestination & (sizeof(uint32_t)-1)){
+                        // Align future transfers to destination uint32_t
+                        uint32_t TransferSize = sizeof(uint32_t) - (DDMAChannels[Index].DNextDestination & (sizeof(uint32_t)-1));
+                        const uint8_t *Data = DMemory->LoadData(DDMAChannels[Index].DNextSource, TransferSize);
+                        ReadData = true;
+                        DMemory->StoreData(DDMAChannels[Index].DNextDestination, Data, TransferSize);
+                        DDMAChannels[Index].DNextSource += TransferSize;
+                        DDMAChannels[Index].DNextDestination += TransferSize;
+                        NewStatus -= TransferSize;
+                        DDMAChannels[Index].DDMAStatus->update(NewStatus);
+                        DDMAChannels[Index].DUINT32Transfer = 0 == ((DDMAChannels[Index].DNextSource | DDMAChannels[Index].DNextDestination | NewStatus) & (sizeof(uint32_t)-1));
+                    }
+                    else{
+                        uint32_t Data = DMemory->LoadUINT32(DDMAChannels[Index].DNextSource);
+                        ReadData = true;
+                        DMemory->StoreUINT32(DDMAChannels[Index].DNextDestination, Data);
+                        DDMAChannels[Index].DNextSource += sizeof(uint32_t);
+                        DDMAChannels[Index].DNextDestination += sizeof(uint32_t);
+                        NewStatus -= sizeof(uint32_t);
+                        DDMAChannels[Index].DDMAStatus->update(NewStatus);
+                    }
+                }
+            }
+            catch(std::out_of_range &e){
+                uint32_t NewStatus = DDMAChannels[Index].DDMAStatus->load();
+                NewStatus |= ReadData ? DDMAChannelDestinationError : DDMAChannelSourceError;
+                DDMAChannels[Index].DDMAStatus->update(NewStatus);
+                SetInterruptPending(static_cast<EInterruptSource>(to_underlying(EInterruptSource::DMA1)<<Index));
+            }
+        }
+    }
 }
 
 void CRISCVConsoleChipset::ControllerPress(uint32_t bitfield){

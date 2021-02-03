@@ -103,14 +103,25 @@ const CElfLoad::SProgramHeader &CElfLoad::ProgramHeader(size_t index) const{
     return DProgramHeaders[index];
 }
 
+size_t CElfLoad::SectionHeaderCount() const{
+    return DSectionHeaders.size();
+}
+
+const CElfLoad::SSectionHeader &CElfLoad::SectionHeader(size_t index) const{
+    return DSectionHeaders[index];
+}
+
 void CElfLoad::PrintHeaders(){
     PrintHeader();
+    printf("---- PROGRAM HEADERS -----\n");
     for(auto &Header : DProgramHeaders){
         Header.Print();
     }
+    printf("---- SECTION HEADERS -----\n");
     for(auto &Header : DSectionHeaders){
         Header.Print(DSectionNames);
     }
+    printf("---- SYMBOL ENTITIES -----\n");
     for(auto &Entity : DSymbolEntities){
         Entity.Print(DStringTables);
     }
@@ -355,6 +366,28 @@ bool CElfLoad::MergeSymbols(){
                 }
             }
         }
+
+        size_t SectionHeaderIndex = 0;
+        while(SectionHeaderIndex < DSectionHeaders.size()){
+            auto &SectionHeader = DSectionHeaders[SectionHeaderIndex];
+            if((SectionHeader.DType == 1)&&(SectionHeader.DFlags & 0x4)&&(SectionHeader.DVirtualAddress <= SymbolEntity.DAddress)&&(SymbolEntity.DAddress < SectionHeader.DVirtualAddress + SectionHeader.DSize)){ // Loadable & Executable
+                break;
+            }
+            SectionHeaderIndex++;
+        }
+        if(SectionHeaderIndex < DSectionHeaders.size()){
+            auto &SectionHeader = DSectionHeaders[SectionHeaderIndex];
+            if(SymbolEntity.DInfo == 0x12){ // Global function
+                SectionHeader.DSymbols[SymbolEntity.DAddress] = SymbolName;
+            }
+            else if(SymbolEntity.DInfo == 0x10){ // Global symbol
+                if(SectionHeader.DSymbols.find(SymbolEntity.DAddress) == SectionHeader.DSymbols.end()){
+                    SectionHeader.DSymbols[SymbolEntity.DAddress] = SymbolName;
+                }
+            }
+        }
+
+
     }
     return true;
 }

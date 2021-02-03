@@ -196,7 +196,6 @@ bool CRISCVCPU::ExecuteInstruction(){
                 InvokeTrap(2,false);
                 return false;
             }
-            printf("Decoded at %08X: %s\n",DProgramCounter->load(),NextInstruction->ToString().c_str());
             DInstructionCache->Insert(NextInstruction);
         }
         if(NextInstruction->Execute()){

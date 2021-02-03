@@ -39,10 +39,16 @@ SECTIONS
         /*KEEP(*(.vector_table))  /* vector table defined in startup.c to be included */
         *(.init*)               /* entry point needs to be a base */
         *(.text*)               /* other code */
+        _etext = .;             /* end of .text segment */
+    } > FLASH
+
+    .rodata :
+    {
+        _rodata = .;
         *(.rodata*)             /* constants go here */
         *(.srodata*)            /* constants go here */
         . = ALIGN(4);
-        _etext = .;             /* end of .text segment */
+        _erodata = .;
     } > FLASH
 
     /* data, initialized variables, to be copied to RAM after reset */

@@ -3,7 +3,6 @@
 
 #include "RISCVCPU.h"
 #include "RISCVConsoleChipset.h"
-#include "RegisterBlockMemoryDevice.h"
 #include "ElfLoad.h"
 #include "MemoryDevice.h"
 #include "FlashMemoryDevice.h"
