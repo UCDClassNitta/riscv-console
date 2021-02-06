@@ -404,6 +404,9 @@ bool CRISCVConsole::RemoveCartridge(){
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
     MarkBreakpointStrings();
+    DCartridgeFlash->WriteEnabled(true);
+    DCartridgeFlash->EraseAll();
+    DCartridgeFlash->WriteEnabled(false);
     DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
     DChipset->RemoveCartridge();
     if(CurrentState == to_underlying(EThreadState::Run)){
