@@ -32,6 +32,7 @@ class CRISCVBlockInstructionCache : public CRISCVCPU::CInstructionCache{
         virtual std::shared_ptr< CRISCVCPU::CInstruction > Fetch(uint32_t addr);
         virtual void Insert(std::shared_ptr< CRISCVCPU::CInstruction > inst);
         virtual void Reset();
+        virtual void FlushRange(uint32_t addr, uint32_t size);
 };
 
 #endif

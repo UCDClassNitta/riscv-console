@@ -64,6 +64,7 @@ class CNullInstructionCache : public CRISCVCPU::CInstructionCache{
         };
         void Insert(std::shared_ptr< CRISCVCPU::CInstruction > inst){};
         void Reset(){};
+        void FlushRange(uint32_t addr, uint32_t size){};
 };
 
 CRISCVCPU::CRISCVCPU(std::shared_ptr< CMemoryDevice > memory, std::shared_ptr< CInstructionCache > icache){

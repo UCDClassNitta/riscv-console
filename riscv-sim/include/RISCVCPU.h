@@ -49,6 +49,7 @@ class CRISCVCPU : public std::enable_shared_from_this<CRISCVCPU> {
                 virtual std::shared_ptr< CInstruction > Fetch(uint32_t addr) = 0;
                 virtual void Insert(std::shared_ptr< CInstruction > inst) = 0;
                 virtual void Reset() = 0;
+                virtual void FlushRange(uint32_t addr, uint32_t size) = 0;
         };
 
     protected:

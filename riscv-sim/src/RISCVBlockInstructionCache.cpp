@@ -69,3 +69,15 @@ void CRISCVBlockInstructionCache::Reset(){
     DCurrentBlock = GetBlock(0);
     DCurrentSubBlock = DCurrentBlock->DSubBlocks[0];
 }
+
+void CRISCVBlockInstructionCache::FlushRange(uint32_t addr, uint32_t size){
+    for(auto &SubBlock : DHashedSubBlocks){
+        if((SubBlock.first + DSubBlockSize < addr)||(addr + size < SubBlock.first)){
+            continue;
+        }
+        for(auto &CachedInstruction : SubBlock.second->DInstructions){
+            CachedInstruction.reset();
+        }
+
+    }
+}

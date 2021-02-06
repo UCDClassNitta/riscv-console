@@ -383,6 +383,7 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
             DCartridgeFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DCartridgeFlash->WriteEnabled(false);
+        DCPUCache->FlushRange(DFirmwareMemoryBase, DFirmwareMemorySize);
         DChipset->InsertCartridge(ElfFile.Entry());
         ConstructCartridgeStrings(ElfFile);
         if(CurrentState == to_underlying(EThreadState::Run)){
@@ -403,6 +404,7 @@ bool CRISCVConsole::RemoveCartridge(){
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
     MarkBreakpointStrings();
+    DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
     DChipset->RemoveCartridge();
     if(CurrentState == to_underlying(EThreadState::Run)){
         // Clear the cache for cartridge
