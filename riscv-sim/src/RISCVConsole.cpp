@@ -226,6 +226,8 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::vector< 
 void CRISCVConsole::ConstructFirmwareStrings(CElfLoad &elffile){
     DFirmwareInstructionStrings.clear();
     DFirmwareAddressesToIndices.clear();
+    DFirmwareInstructionLabels.clear();
+    DFirmwareInstructionLabelIndices.clear();
     ConstructInstructionStrings(elffile, DFirmwareInstructionStrings, DFirmwareAddressesToIndices, DFirmwareInstructionLabels, DFirmwareInstructionLabelIndices);
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionStrings.insert(DInstructionStrings.end(), DCartridgeInstructionStrings.begin(),DCartridgeInstructionStrings.end());
@@ -245,12 +247,20 @@ void CRISCVConsole::ConstructFirmwareStrings(CElfLoad &elffile){
 void CRISCVConsole::ConstructCartridgeStrings(CElfLoad &elffile){
     DCartridgeInstructionStrings.clear();
     DCartridgeAddressesToIndices.clear();
+    DCartridgeInstructionLabels.clear();
+    DCartridgeInstructionLabelIndices.clear();
     ConstructInstructionStrings(elffile, DCartridgeInstructionStrings, DCartridgeAddressesToIndices, DCartridgeInstructionLabels, DCartridgeInstructionLabelIndices);
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionStrings.insert(DInstructionStrings.end(), DCartridgeInstructionStrings.begin(),DCartridgeInstructionStrings.end());
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
     for(auto &AddrIdx : DCartridgeAddressesToIndices){
         DInstructionAddressesToIndices[AddrIdx.first] = AddrIdx.second + DFirmwareInstructionStrings.size();
+    }
+    DInstructionLabels = DFirmwareInstructionLabels;
+    DInstructionLabels.insert(DInstructionLabels.end(), DCartridgeInstructionLabels.begin(),DCartridgeInstructionLabels.end());
+    DInstructionLabelIndices = DFirmwareInstructionLabelIndices;
+    for(auto &Index : DCartridgeInstructionLabelIndices){
+        DInstructionLabelIndices.push_back(DFirmwareInstructionStrings.size() + Index);
     }
     MarkBreakpointStrings();
 }
@@ -423,8 +433,12 @@ bool CRISCVConsole::RemoveCartridge(){
 
     DCartridgeInstructionStrings.clear();
     DCartridgeAddressesToIndices.clear();
+    DCartridgeInstructionLabels.clear();
+    DCartridgeInstructionLabelIndices.clear();
     DInstructionStrings = DFirmwareInstructionStrings;
     DInstructionAddressesToIndices = DFirmwareAddressesToIndices;
+    DInstructionLabels = DFirmwareInstructionLabels;
+    DInstructionLabelIndices = DFirmwareInstructionLabelIndices;
     MarkBreakpointStrings();
     DCartridgeFlash->WriteEnabled(true);
     DCartridgeFlash->EraseAll();
