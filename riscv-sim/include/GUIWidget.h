@@ -41,6 +41,7 @@ class CGUIWidget{
         virtual void SetConfigureEventCallback(TGUICalldata calldata, TGUIConfigureEventCallback callback) = 0;
         virtual void SetDrawEventCallback(TGUICalldata calldata, TGUIDrawEventCallback callback) = 0;
         virtual void SetToggledEventCallback(TGUICalldata calldata, TGUIToggledEventCallback callback) = 0;
+        virtual void SetChangedEventCallback(TGUICalldata calldata, TGUIChangedEventCallback callback) = 0;
         virtual void SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback) = 0;
         virtual void SetScrollEventCallback(TGUICalldata calldata, TGUIScrollEventCallback callback) = 0;
 };

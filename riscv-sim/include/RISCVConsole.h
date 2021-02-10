@@ -54,12 +54,18 @@ class CRISCVConsole{
         
         std::vector< std::string > DFirmwareInstructionStrings;
         std::unordered_map< uint32_t, size_t > DFirmwareAddressesToIndices;
+        std::vector< std::string > DFirmwareInstructionLabels;
+        std::vector< size_t > DFirmwareInstructionLabelIndices;
 
         std::vector< std::string > DCartridgeInstructionStrings;
         std::unordered_map< uint32_t, size_t > DCartridgeAddressesToIndices;
+        std::vector< std::string > DCartridgeInstructionLabels;
+        std::vector< size_t > DCartridgeInstructionLabelIndices;
 
         std::vector< std::string > DInstructionStrings;
         std::unordered_map< uint32_t, size_t > DInstructionAddressesToIndices;
+        std::vector< std::string > DInstructionLabels;
+        std::vector< size_t > DInstructionLabelIndices;
 
         std::set< uint32_t > DBreakpoints;
         CRISCVConsoleBreakpointCalldata DBreakpointCalldata;
@@ -83,7 +89,7 @@ class CRISCVConsole{
         bool SystemStep();
         void ResetComponents();
 
-        void ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations);
+        void ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations, std::vector< std::string > &labels, std::vector< size_t > &labelindices);
         void ConstructFirmwareStrings(CElfLoad &elffile);
         void ConstructCartridgeStrings(CElfLoad &elffile);
         void MarkBreakpointStrings();
@@ -160,6 +166,14 @@ class CRISCVConsole{
                 return Search->second;
             }
             return -1;
+        }
+
+        const std::vector< std::string > &InstructionLabels() const{
+            return DInstructionLabels;
+        }
+
+        const std::vector< size_t > &InstructionLabelIndices() const{
+            return DInstructionLabelIndices;
         }
         
         uint32_t MainMemorySize(){

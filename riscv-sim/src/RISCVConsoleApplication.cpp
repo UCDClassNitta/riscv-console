@@ -78,14 +78,9 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEventCallback(std::shared_ptr<
     return App->FirmwareButtonClickEvent(widget,event);
 }
 
-bool CRISCVConsoleApplication::CartridgeButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
+bool CRISCVConsoleApplication::CartridgeButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
-    return App->CartridgeButtonClickEvent(widget,event);
-}
-
-bool CRISCVConsoleApplication::EjectButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
-    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
-    return App->EjectButtonClickEvent(widget,event);
+    return App->CartridgeButtonToggledEvent(widget);
 }
 
 bool CRISCVConsoleApplication::ControllerButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
@@ -131,6 +126,11 @@ bool CRISCVConsoleApplication::StepButtonClickEventCallback(std::shared_ptr<CGUI
 bool CRISCVConsoleApplication::ClearButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->ClearButtonClickEvent(widget,event);
+}
+
+bool CRISCVConsoleApplication::InstructionComboBoxChangedEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->InstructionComboBoxChangedEvent(widget);
 }
 
 bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
@@ -228,6 +228,10 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidg
             if(DRISCVConsole->ProgramFirmware(InFile)){
                 if(DDebugMode){
                     DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
+                    DDebugInstructionComboBox->ClearItems();
+                    for(auto &Label : DRISCVConsole->InstructionLabels()){
+                        DDebugInstructionComboBox->AppendItem(Label);
+                    }
                     DFollowingInstruction = true;
                     RefreshDebugRegisters();
                 }
@@ -239,9 +243,10 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidg
     return true;
 }
 
-bool CRISCVConsoleApplication::CartridgeButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
-    std::string Filename;
-    {
+bool CRISCVConsoleApplication::CartridgeButtonToggledEvent(std::shared_ptr<CGUIWidget> widget){
+    if(DCartridgeButton->GetActive()){
+        DCartridgeInLoading = true;
+        std::string Filename;
         auto FileChooser = CGUIFactory::NewFileChooserDialog("Select Cartridge",true,DMainWindow);
         FileChooser->SetCurrentFolder(DFileOpenFolder);
         if(FileChooser->Run()){
@@ -251,20 +256,28 @@ bool CRISCVConsoleApplication::CartridgeButtonClickEvent(std::shared_ptr<CGUIWid
             if(DRISCVConsole->InsertCartridge(InFile)){
                 if(DDebugMode){
                     DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
+                    DDebugInstructionComboBox->ClearItems();
+                    for(auto &Label : DRISCVConsole->InstructionLabels()){
+                        DDebugInstructionComboBox->AppendItem(Label);
+                    }
                     RefreshDebugRegisters();
                 }
             }
+            else{
+                DCartridgeButton->SetActive(false);
+
+            }
+        }
+        DCartridgeInLoading = false;
+    }
+    else if(!DCartridgeInLoading){
+        DRISCVConsole->RemoveCartridge();
+        if(DDebugMode){
+            DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
+            RefreshDebugRegisters();
         }
     }
-    return true;
-}
-
-bool CRISCVConsoleApplication::EjectButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
-    DRISCVConsole->RemoveCartridge();
-    if(DDebugMode){
-        DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
-        RefreshDebugRegisters();
-    }
+    
     return true;
 }
 
@@ -386,6 +399,15 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
         DDebugInstructions->UpdateBufferedLine(LineIndex, Line);
     }
     DRISCVConsole->ClearBreakpoints();
+    return true;
+}
+
+bool CRISCVConsoleApplication::InstructionComboBoxChangedEvent(std::shared_ptr<CGUIWidget> widget){
+    auto ItemNumber = DDebugInstructionComboBox->GetActiveItem();
+    if(ItemNumber < DRISCVConsole->InstructionLabelIndices().size()){
+        DDebugInstructions->SetBaseLine(DRISCVConsole->InstructionLabelIndices()[ItemNumber]);
+    }
+    
     return true;
 }
 
@@ -525,11 +547,9 @@ void CRISCVConsoleApplication::CreateSystemControlWidgets(){
     DPowerButton = CGUIFactory::NewToggleButton();
     DResetButton = CGUIFactory::NewButton();
     DFirmwareButton = CGUIFactory::NewButton();
-    DCartridgeButton = CGUIFactory::NewButton();
-    DEjectButton = CGUIFactory::NewButton();
+    DCartridgeButton = CGUIFactory::NewToggleButton();
     DSystemControlGrid = CGUIFactory::NewGrid();
-    DSystemControlGrid->Attach(DCartridgeButton,0,0,1,1);
-    DSystemControlGrid->Attach(DEjectButton,1,0,1,1);
+    DSystemControlGrid->Attach(DCartridgeButton,0,0,2,1);
     DSystemControlGrid->Attach(DResetButton,0,1,1,1);
     DSystemControlGrid->Attach(DPowerButton,1,1,1,1);
     DSystemControlGrid->Attach(DFirmwareButton,0,2,2,1);
@@ -545,11 +565,8 @@ void CRISCVConsoleApplication::CreateSystemControlWidgets(){
     DFirmwareButton->SetLabel("Firmware");
     DFirmwareButton->SetButtonPressEventCallback(this,FirmwareButtonClickEventCallback);
 
-    DCartridgeButton->SetLabel("INS");
-    DCartridgeButton->SetButtonPressEventCallback(this,CartridgeButtonClickEventCallback);
-
-    DEjectButton->SetLabel("REM");
-    DEjectButton->SetButtonPressEventCallback(this,EjectButtonClickEventCallback);
+    DCartridgeButton->SetLabel("Cartridge");
+    DCartridgeButton->SetToggledEventCallback(this, CartridgeButtonToggledEventCallback);
 }
 
 void CRISCVConsoleApplication::CreateDebugWidgets(){
@@ -571,12 +588,14 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     InstLabel->SetJustification(SGUIJustificationType::Left);
     CSRLabel->SetJustification(SGUIJustificationType::Left);
     InstCSRGrid->Attach(InstLabel,0,0,1,1);
-    InstCSRGrid->Attach(DDebugInstructions->ContainingWidget(),0,1,1,1);
+    InstCSRGrid->Attach(DDebugInstructionComboBox,1,0,1,1);
+    InstCSRGrid->Attach(DDebugInstructions->ContainingWidget(),0,1,2,1);
     
-    InstCSRGrid->Attach(DDebugControlBox,1,1,1,1);
-    InstCSRGrid->Attach(CSRLabel,2,0,1,1);
-    InstCSRGrid->Attach(DDebugCSRegisters->ContainingWidget(),2,1,1,1);
+    InstCSRGrid->Attach(DDebugControlBox,2,1,1,1);
+    InstCSRGrid->Attach(CSRLabel,3,0,1,1);
+    InstCSRGrid->Attach(DDebugCSRegisters->ContainingWidget(),3,1,1,1);
     InstCSRGrid->SetColumnSpacing(GetWidgetSpacing());
+    InstCSRGrid->SetRowSpacing(GetWidgetSpacing());
     DDebugBox->PackStart(InstCSRGrid,false,false,GetWidgetSpacing());
     CreateDebugMemoryWidgets();
     auto MemoryGrid = CGUIFactory::NewGrid();
@@ -694,6 +713,10 @@ void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
     DDebugInstructions->SetLineCount(GetInstructionLineCount());
     DDebugInstructions->SetButtonPressEventCallback(this,InstructionBoxButtonEventCallback);
     DDebugInstructions->SetScrollEventCallback(this,InstructionBoxScrollEventCallback);
+
+    DDebugInstructionComboBox = CGUIFactory::NewComboBox();
+    DDebugInstructionComboBox->SetFontFamily("monospace");
+    DDebugInstructionComboBox->SetChangedEventCallback(this,InstructionComboBoxChangedEventCallback);
 
 }
 

@@ -100,6 +100,9 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         TGUICalldata DToggledCalldata;
         TGUIToggledEventCallback DToggledCallback;
 
+        TGUICalldata DChangedCalldata;
+        TGUIChangedEventCallback DChangedCallback;
+
         TGUICalldata DValueChangedCalldata;
         TGUIValueChangedEventCallback DValueChangedCallback;
 
@@ -118,6 +121,7 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         static gboolean ConfigureEventCallback(GtkWidget *widget, GdkEventConfigure *event, gpointer data);
         static gboolean DrawEventCallback(GtkWidget *widget, cairo_t *cr, gpointer data);
         static gboolean ToggledEventCallback(GtkWidget *widget, gpointer data);
+        static gboolean ChangedEventCallback(GtkWidget *widget, gpointer data);
         static gboolean ValueChangedEventCallback(GtkWidget *widget, gpointer data);
         static gboolean ScrollEventCallback(GtkWidget *widget, GdkEventScroll *event, gpointer data);
         
@@ -164,6 +168,7 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         virtual void SetConfigureEventCallback(TGUICalldata calldata, TGUIConfigureEventCallback callback) override;
         virtual void SetDrawEventCallback(TGUICalldata calldata, TGUIDrawEventCallback callback) override;
         virtual void SetToggledEventCallback(TGUICalldata calldata, TGUIToggledEventCallback callback) override;
+        virtual void SetChangedEventCallback(TGUICalldata calldata, TGUIChangedEventCallback callback) override;
         virtual void SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback) override;
         virtual void SetScrollEventCallback(TGUICalldata calldata, TGUIScrollEventCallback callback) override;
 };
@@ -231,6 +236,26 @@ class CGUIButtonGTK3 : public virtual CGUIButton, public CGUIContainerGTK3{
         
         virtual std::string GetLabel() const;
         virtual void SetLabel(const std::string &label);
+};
+
+class CGUIComboBoxGTK3 : public virtual CGUIComboBox, public CGUIContainerGTK3{
+    protected:
+        int DItemCount;
+        GtkCellRenderer *DCellRenderer;
+    public:
+        CGUIComboBoxGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUIComboBoxGTK3();
+
+        virtual void SetFontFamily(const std::string &family);
+        
+        virtual int ItemCount() const;
+        virtual std::string GetItem(int item) const;
+        virtual void SetItem(int item, const std::string &str);
+        virtual void AppendItem(const std::string &str);
+        virtual void ClearItems();
+
+        virtual int GetActiveItem() const;
+        virtual void SetActiveItem(int item);
 };
 
 class CGUIToggleButtonGTK3 : public virtual CGUIToggleButton, public CGUIButtonGTK3{

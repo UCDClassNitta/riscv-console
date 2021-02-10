@@ -10,6 +10,7 @@
 #include "GUIEventBox.h"
 #include "GUIFrame.h"
 #include "GUIButton.h"
+#include "GUIComboBox.h"
 #include "GUILabel.h"
 #include "GUIToggleButton.h"
 #include "GUIGrid.h"
@@ -33,6 +34,7 @@ class CGUIFactory{
         static std::shared_ptr<CGUIGrid> NewGrid();
         static std::shared_ptr<CGUIFrame> NewFrame();
         static std::shared_ptr<CGUIButton> NewButton();
+        static std::shared_ptr<CGUIComboBox> NewComboBox();
         static std::shared_ptr<CGUILabel> NewLabel(const std::string &text);
         static std::shared_ptr<CGUIToggleButton> NewToggleButton();
         static std::shared_ptr<CGUIMenu> NewMenu();

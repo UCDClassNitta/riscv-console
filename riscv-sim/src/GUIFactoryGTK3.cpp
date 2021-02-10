@@ -193,6 +193,13 @@ std::shared_ptr<CGUIButton> CGUIFactory::NewButton(){
     return std::make_shared<CGUIButtonGTK3>(gtk_button_new());
 }
 
+std::shared_ptr<CGUIComboBox> CGUIFactory::NewComboBox(){
+    auto Model = gtk_list_store_new(1,G_TYPE_STRING);
+    auto ComboBox = gtk_combo_box_new_with_model(GTK_TREE_MODEL(Model));
+    
+    return std::make_shared<CGUIComboBoxGTK3>(ComboBox);
+}
+
 std::shared_ptr<CGUILabel> CGUIFactory::NewLabel(const std::string &text){
     return std::make_shared<CGUILabelGTK3>(gtk_label_new(text.c_str()));
 }
@@ -574,6 +581,15 @@ gboolean CGUIWidgetGTK3::ToggledEventCallback(GtkWidget *widget, gpointer data){
     return FALSE;    
 }
 
+gboolean CGUIWidgetGTK3::ChangedEventCallback(GtkWidget *widget, gpointer data){
+    CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
+
+    if(Widget->DChangedCallback){
+        return Widget->DChangedCallback(Widget->shared_from_this(), Widget->DChangedCalldata);
+    }
+    return FALSE;    
+}
+
 gboolean CGUIWidgetGTK3::ValueChangedEventCallback(GtkWidget *widget, gpointer data){
     CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
 
@@ -829,6 +845,14 @@ void CGUIWidgetGTK3::SetToggledEventCallback(TGUICalldata calldata, TGUIToggledE
     }    
 }
 
+void CGUIWidgetGTK3::SetChangedEventCallback(TGUICalldata calldata, TGUIChangedEventCallback callback){
+    DChangedCalldata = calldata;
+    DChangedCallback = callback;
+    if(callback){
+        g_signal_connect(DWidget, "changed", G_CALLBACK(ChangedEventCallback), this);
+    }    
+}
+
 void CGUIWidgetGTK3::SetValueChangedEventCallback(TGUICalldata calldata, TGUIValueChangedEventCallback callback){
     DValueChangedCalldata = calldata;
     DValueChangedCallback = callback;
@@ -1012,6 +1036,76 @@ std::string CGUIButtonGTK3::GetLabel() const{
 
 void CGUIButtonGTK3::SetLabel(const std::string &label){
     gtk_button_set_label(GTK_BUTTON(DWidget),(const gchar *)label.c_str());
+}
+
+CGUIComboBoxGTK3::CGUIComboBoxGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
+    DItemCount = 0;
+    gtk_combo_box_set_id_column(GTK_COMBO_BOX(DWidget),0);
+    DCellRenderer = gtk_cell_renderer_text_new();
+    gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(DWidget), DCellRenderer, TRUE);
+    gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(DWidget), DCellRenderer,
+                                   "text", 0,
+                                   NULL);
+
+}
+
+CGUIComboBoxGTK3::~CGUIComboBoxGTK3(){
+
+}
+
+void CGUIComboBoxGTK3::SetFontFamily(const std::string &family){
+    g_object_set(DCellRenderer, "family", family.c_str(), NULL);
+}
+
+int CGUIComboBoxGTK3::ItemCount() const{
+    return DItemCount;
+}
+
+std::string CGUIComboBoxGTK3::GetItem(int item) const{
+    if((0 <= item)&&(item < DItemCount)){
+        auto Model = gtk_combo_box_get_model(GTK_COMBO_BOX(DWidget));
+        GtkTreeIter Iterator;
+        if(gtk_tree_model_get_iter_from_string(Model,&Iterator,std::to_string(item).c_str())){
+            gchar *StringData;
+            gtk_tree_model_get(Model, &Iterator,0,&StringData,-1);
+            return std::string((char *)StringData);
+        }
+    }
+    return std::string();
+}
+
+void CGUIComboBoxGTK3::SetItem(int item, const std::string &str){
+    if((0 <= item)&&(item < DItemCount)){
+        auto Model = gtk_combo_box_get_model(GTK_COMBO_BOX(DWidget));
+        GtkTreeIter Iterator;
+        if(gtk_tree_model_get_iter_from_string(Model,&Iterator,std::to_string(item).c_str())){
+            gtk_list_store_set(GTK_LIST_STORE(Model),&Iterator,0,str.c_str(),-1);
+        }
+    }
+}
+
+void CGUIComboBoxGTK3::AppendItem(const std::string &str){
+    auto Model = gtk_combo_box_get_model(GTK_COMBO_BOX(DWidget));
+    GtkTreeIter Iterator;
+    gtk_list_store_append(GTK_LIST_STORE(Model),&Iterator);
+    gtk_list_store_set(GTK_LIST_STORE(Model),&Iterator,0,str.c_str(),-1);
+    DItemCount++;
+}
+
+void CGUIComboBoxGTK3::ClearItems(){
+    auto Model = gtk_combo_box_get_model(GTK_COMBO_BOX(DWidget));
+    gtk_list_store_clear(GTK_LIST_STORE(Model));
+    DItemCount = 0;
+}
+
+int CGUIComboBoxGTK3::GetActiveItem() const{
+    return gtk_combo_box_get_active(GTK_COMBO_BOX(DWidget));
+}
+
+void CGUIComboBoxGTK3::SetActiveItem(int item){
+    if((0 <= item)&&(item < DItemCount)){
+        gtk_combo_box_set_active(GTK_COMBO_BOX(DWidget),item);
+    }
 }
 
 CGUIToggleButtonGTK3::CGUIToggleButtonGTK3(GtkWidget *widget, bool reference) : CGUIButtonGTK3(widget, reference){

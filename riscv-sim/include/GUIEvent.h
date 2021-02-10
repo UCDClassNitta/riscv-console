@@ -170,6 +170,7 @@ using TGUIActivateEventCallback = void (*)(std::shared_ptr<CGUIWidget> widget, T
 using TGUIDeleteEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIDestroyEventCallback = void (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIToggledEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
+using TGUIChangedEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIValueChangedEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
 using TGUIButtonEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
 using TGUIMotionEventCallback = bool (*)(std::shared_ptr<CGUIWidget> widget, SGUIMotionEvent &event, TGUICalldata data);
