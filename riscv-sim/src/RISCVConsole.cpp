@@ -48,7 +48,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
 
     DCPUCache = std::make_shared<CRISCVBlockInstructionCache>();
     DCPU = std::make_shared< CRISCVCPU >(DMemoryController, DCPUCache);
-    DChipset = std::make_shared< CRISCVConsoleChipset >(DCPU, DMemoryController);
+    DChipset = std::make_shared< CRISCVConsoleChipset >(DCPU, DMemoryController, timerus, videoms);
 
     DRegisterBlock = DChipset->RegisterBlock();
 

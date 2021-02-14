@@ -5,6 +5,7 @@ const uint32_t CRISCVConsoleChipset::DDMAChannelCount = 2;
 const uint32_t CRISCVConsoleChipset::DDMAChannelActive = 0x80000000;
 const uint32_t CRISCVConsoleChipset::DDMAChannelSourceError = 0x40000000;
 const uint32_t CRISCVConsoleChipset::DDMAChannelDestinationError = 0x20000000;
+const uint32_t CRISCVConsoleChipset::DDMAChannelTransferCancelled = 0x10000000;
 const uint32_t CRISCVConsoleChipset::DDMAChannelSizeMask = 0x00FFFFFF;
 template<class T>
 class CRISCVConsoleChipset::CInterruptCheckRegister : public CReadWriteHardwareRegister<T> {
@@ -233,7 +234,7 @@ constexpr typename std::underlying_type<E>::type to_underlying(E enumerator) noe
     return static_cast<typename std::underlying_type<E>::type>(enumerator);
 }
 
-CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std::shared_ptr< CMemoryDevice > memory){
+CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std::shared_ptr< CMemoryDevice > memory, uint32_t timerus, uint32_t videoms){
     DCPU = cpu;
     DMemory = memory;
     DInterruptEnable = std::make_shared< CInterruptCheckRegister<uint32_t> >(*this,false,0);
@@ -246,6 +247,8 @@ CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std
     DMachineTimeCompareHigh = std::make_shared< CReadWriteHardwareRegisterHigh< uint32_t, uint64_t > >(*DMachineTimeCompare.get());
     DControllerState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
     DCartridgeState = std::make_shared< CReadWriteHardwareRegister< uint32_t > >(0);
+    DMachineClockPeriod = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(timerus);
+    DVideoClockPeriod = std::make_shared< CReadOnlyHardwareRegister< uint32_t > >(videoms);
 
     DRegisterBlock = std::make_shared< CRegisterBlockMemoryDevice >();
     DRegisterBlock->AttachRegister(DInterruptEnable);
@@ -272,9 +275,8 @@ CRISCVConsoleChipset::CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std
             Index++;
         }
     }
-    
-
-
+    DRegisterBlock->AttachRegister(DMachineClockPeriod);
+    DRegisterBlock->AttachRegister(DVideoClockPeriod);
 }
 
 void CRISCVConsoleChipset::CheckInterrupt(bool istimer){
@@ -298,13 +300,25 @@ void CRISCVConsoleChipset::CheckInterrupt(bool istimer){
 
 bool CRISCVConsoleChipset::DMACommandStore(uint32_t index, uint32_t val){
     if(index < DDMAChannelCount){
-        if((val & DDMAChannelActive) && (val & DDMAChannelSizeMask)){
-            if(0 == (DDMAChannels[index].DDMAStatus->load() & DDMAChannelActive)){
-                DDMAChannels[index].DNextSource = DDMAChannels[index].DDMASource->load();
-                DDMAChannels[index].DNextDestination = DDMAChannels[index].DDMADestination->load();
-                DDMAChannels[index].DDMAStatus->update(val & (DDMAChannelActive | DDMAChannelSizeMask));
-                DDMAChannels[index].DUINT32Transfer = 0 == ((DDMAChannels[index].DNextSource | DDMAChannels[index].DNextDestination | val) & (sizeof(uint32_t)-1));
-                return true;
+        if(val & DDMAChannelActive){
+            if(val & DDMAChannelSizeMask){
+                if(0 == (DDMAChannels[index].DDMAStatus->load() & DDMAChannelActive)){
+                    DDMAChannels[index].DNextSource = DDMAChannels[index].DDMASource->load();
+                    DDMAChannels[index].DNextDestination = DDMAChannels[index].DDMADestination->load();
+                    DDMAChannels[index].DDMAStatus->update(val & (DDMAChannelActive | DDMAChannelSizeMask));
+                    DDMAChannels[index].DUINT32Transfer = 0 == ((DDMAChannels[index].DNextSource | DDMAChannels[index].DNextDestination | val) & (sizeof(uint32_t)-1));
+                    return true;
+                }
+            }
+            else{
+                uint32_t NewStatus = DDMAChannels[index].DDMAStatus->load();
+                if(NewStatus & DDMAChannelActive){
+                    NewStatus |= DDMAChannelTransferCancelled;
+                    NewStatus &= ~DDMAChannelActive;
+                    DDMAChannels[index].DDMAStatus->update(NewStatus);
+                    SetInterruptPending(static_cast<EInterruptSource>(to_underlying(EInterruptSource::DMA1)<<index));
+                    return true;
+                }
             }
         }
     }

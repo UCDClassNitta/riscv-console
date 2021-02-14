@@ -35,6 +35,8 @@ class CRISCVConsoleChipset{
         std::shared_ptr< CHardwareRegister< uint32_t > > DMachineTimeCompareHigh;
         std::shared_ptr< CHardwareRegister< uint32_t > > DControllerState;
         std::shared_ptr< CHardwareRegister< uint32_t > > DCartridgeState;
+        std::shared_ptr< CHardwareRegister< uint32_t > > DMachineClockPeriod;
+        std::shared_ptr< CHardwareRegister< uint32_t > > DVideoClockPeriod;
         std::vector< SDMAChannel > DDMAChannels;
 
         std::shared_ptr< CRegisterBlockMemoryDevice > DRegisterBlock;
@@ -43,13 +45,14 @@ class CRISCVConsoleChipset{
         static const uint32_t DDMAChannelActive;
         static const uint32_t DDMAChannelSourceError;
         static const uint32_t DDMAChannelDestinationError;
+        static const uint32_t DDMAChannelTransferCancelled;
         static const uint32_t DDMAChannelSizeMask;
 
         void CheckInterrupt(bool istimer);
         bool DMACommandStore(uint32_t index, uint32_t val);
 
     public:
-        CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std::shared_ptr< CMemoryDevice > memory);
+        CRISCVConsoleChipset(std::shared_ptr< CRISCVCPU > cpu, std::shared_ptr< CMemoryDevice > memory, uint32_t timerus, uint32_t videoms);
 
         void SetInterruptPending(EInterruptSource source);
         void ClearInterruptPending(EInterruptSource source);
