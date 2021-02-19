@@ -65,7 +65,7 @@ Below is the structure of the background controls.
 Notice that the X and Y offsets are the interpreted as X+512 and Y+288. This means that the background image width and height are subtracted from the X and Y values respectively. A value of 0 in the X and/or Y of the control structure will keep the background image off screen.
 
 ### Large Sprites
-The large sprites are images up to 64 x 64 pixels with a minimum size of 32 x 32 pixels (though smaller sprites could effectively be rendered by using transparency). Each sprite is composed of 4,096B (64 x 64 1B values) pixel values and a 32-bit control structure. The control structure controls the X and Y position of the sprite, the width and height, as well as a selector for the palette to use. The 10-bit X and 9-bit Y offsets control the upper left corner position of the spite. Images are rendered in order of their sprite number and are always rendered on Z plane 4.
+The large sprites are images up to 64 x 64 pixels with a minimum size of 33 x 33 pixels (though smaller sprites could effectively be rendered by using transparency). Each sprite is composed of 4,096B (64 x 64 1B values) pixel values and a 32-bit control structure. The control structure controls the X and Y position of the sprite, the width and height, as well as a selector for the palette to use. The 10-bit X and 9-bit Y offsets control the upper left corner position of the spite. Images are rendered in order of their sprite number and are always rendered on Z plane 4.
 
 
 #### Large Sprite Data Memory Map

@@ -1,0 +1,16 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eof=lf
+*.sh text eof=lf
+*.ps1 text eof=crlf
+Makefile text eof=lf
+*.ld text eof=lf
+.env.dev.win text eof=crlf
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
