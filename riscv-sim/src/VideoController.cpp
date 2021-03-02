@@ -170,7 +170,7 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
             }
             else if(Index < DBackgroundCount + DLargeSpriteCount){
                 Index -= DBackgroundCount;
-                if(DLargeSpriteControls[Index].DXOffset && (DLargeSpriteControls[Index].DXOffset < DScreenWidth + DLargeSpriteWidth) && DLargeSpriteControls[Index].DYOffset && (DBackgroundControls[Index].DYOffset < DScreenHeight + DLargeSpriteWidth)){
+                if(DLargeSpriteControls[Index].DXOffset && (DLargeSpriteControls[Index].DXOffset < DScreenWidth + DLargeSpriteWidth) && DLargeSpriteControls[Index].DYOffset && (DLargeSpriteControls[Index].DYOffset < DScreenHeight + DLargeSpriteWidth)){
                     // Some part is on screen
                     int DestX = DLargeSpriteControls[Index].DXOffset;
                     int DestY = DLargeSpriteControls[Index].DYOffset;
@@ -181,7 +181,7 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
             }
             else{
                 Index -= DBackgroundCount + DLargeSpriteCount;
-                if(DSmallSpriteControls[Index].DXOffset && (DSmallSpriteControls[Index].DXOffset < DScreenWidth + DSmallSpriteWidth) && DSmallSpriteControls[Index].DYOffset && (DBackgroundControls[Index].DYOffset < DScreenHeight + DSmallSpriteWidth)){
+                if(DSmallSpriteControls[Index].DXOffset && (DSmallSpriteControls[Index].DXOffset < DScreenWidth + DSmallSpriteWidth) && DSmallSpriteControls[Index].DYOffset && (DSmallSpriteControls[Index].DYOffset < DScreenHeight + DSmallSpriteWidth)){
                     // Some part is on screen
                     int DestX = DSmallSpriteControls[Index].DXOffset;
                     int DestY = DSmallSpriteControls[Index].DYOffset;
