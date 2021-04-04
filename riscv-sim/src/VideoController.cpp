@@ -28,17 +28,17 @@ CVideoController::CVideoController(){
     uint8_t *MemoryBase = DVideoRAM->Data().data();
     uint32_t FontSize = 256 * ((MSXFontWidth + 7)/8) * MSXFontHeight;
     for(uint32_t BackgroundIndex = 0; BackgroundIndex < DBackgroundCount; BackgroundIndex++){
-        DBackgrounds.push_back(CGraphicFactory::CreateSurface(DScreenWidth, DScreenHeight, ESurfaceFormat::ARGB32));
+        DBackgrounds.push_back(CGraphicFactory::CreateSurface(DScreenWidth * VIDEO_SCALE, DScreenHeight * VIDEO_SCALE, ESurfaceFormat::ARGB32));
         DBackgroundBases.push_back(MemoryBase);
         MemoryBase += DScreenWidth * DScreenHeight;
     }
     for(uint32_t LargeSpriteIndex = 0; LargeSpriteIndex < DLargeSpriteCount; LargeSpriteIndex++){
-        DLargeSprites.push_back(CGraphicFactory::CreateSurface(DLargeSpriteWidth, DLargeSpriteHeight, ESurfaceFormat::ARGB32));
+        DLargeSprites.push_back(CGraphicFactory::CreateSurface(DLargeSpriteWidth * VIDEO_SCALE, DLargeSpriteHeight * VIDEO_SCALE, ESurfaceFormat::ARGB32));
         DLargeSpriteBases.push_back(MemoryBase);
         MemoryBase += DLargeSpriteWidth * DLargeSpriteHeight;
     }
     for(uint32_t SmallSpriteIndex = 0; SmallSpriteIndex < DSmallSpriteCount; SmallSpriteIndex++){
-        DSmallSprites.push_back(CGraphicFactory::CreateSurface(DSmallSpriteWidth, DSmallSpriteHeight, ESurfaceFormat::ARGB32));
+        DSmallSprites.push_back(CGraphicFactory::CreateSurface(DSmallSpriteWidth * VIDEO_SCALE, DSmallSpriteHeight * VIDEO_SCALE, ESurfaceFormat::ARGB32));
         DSmallSpriteBases.push_back(MemoryBase);
         MemoryBase += DSmallSpriteWidth * DSmallSpriteHeight;
     }
@@ -76,9 +76,19 @@ bool CVideoController::RefreshGraphicsSurfaceRefreshCallback(void *calldata, uin
     const uint8_t *VideoMemory = static_cast<SSurfaceRefreshData *>(calldata)->DVideoMemory;
 
     uint32_t *SurfaceMemory = (uint32_t *)data;
-    uint32_t PixelCount = width * height;
-    while(PixelCount--){
-        *SurfaceMemory++ = Palette[*VideoMemory++];
+    // uint32_t PixelCount = width * height;
+    // while(PixelCount--){
+    //     *SurfaceMemory++ = Palette[*VideoMemory++];
+    // }
+    for(uint32_t RowIndex = 0; RowIndex < uint32_t(height) / VIDEO_SCALE; RowIndex++){
+        for(uint32_t ColIndex = 0; ColIndex < uint32_t(width) / VIDEO_SCALE; ColIndex++){
+            for(uint32_t i = 0; i < VIDEO_SCALE; i++){
+                for(uint32_t j = 0; j < VIDEO_SCALE; j++){
+                    SurfaceMemory[ColIndex * VIDEO_SCALE + i + (RowIndex * VIDEO_SCALE + j) * stride / sizeof(uint32_t)] = Palette[*VideoMemory];
+                }
+            }
+            VideoMemory++;
+        }
     }
     return true;
 }
@@ -106,21 +116,27 @@ bool CVideoController::RefreshTextMode(uint8_t *data, ESurfaceFormat format, int
         for(uint32_t ColIndex = 0; ColIndex < DTextWidth; ColIndex++){
             uint8_t OutChar = DTextBase[RowIndex * DTextWidth + ColIndex];
             for(uint32_t CharRow = 0; CharRow < DCharacterHeight; CharRow++){
-                uint32_t *RowPointer = (uint32_t *)(data + stride * (RowIndex * DCharacterHeight + CharRow));
-                RowPointer += ColIndex * DCharacterWidth * 8;
+                uint32_t *RowPointer = (uint32_t *)(data + stride * VIDEO_SCALE * (RowIndex * DCharacterHeight + CharRow));
+                RowPointer += ColIndex * DCharacterWidth * VIDEO_SCALE * 8;
                 for(uint32_t CharRowByteIndex = 0; CharRowByteIndex < DCharacterWidth; CharRowByteIndex++){
                     uint8_t BitMask = 0x80;
                     uint8_t CharRowByte = DFontBase[DCharacterStride * OutChar + CharRow * DCharacterWidth + CharRowByteIndex];
                     while(BitMask){
-                        *RowPointer++ = CharRowByte & BitMask ? 0xFFFFFFFF : 0xFF000000;                        
+                        // *RowPointer++ = CharRowByte & BitMask ? 0xFFFFFFFF : 0xFF000000;                        
+                        for(uint32_t i = 0; i < VIDEO_SCALE; i++){
+                            for(uint32_t j = 0; j < VIDEO_SCALE; j++){
+                                *(RowPointer + i + stride / sizeof(uint32_t) * j) = CharRowByte & BitMask ? 0xFFFFFFFF : 0xFF000000;
+                            }
+                        }
+                        RowPointer += VIDEO_SCALE;
                         BitMask >>= 1;
                     }
                 }
             }
         }
     }
-    for(uint32_t RowIndex = DTextHeight * DCharacterHeight; RowIndex < uint32_t(height); RowIndex++){
-        uint32_t *RowPointer = (uint32_t *)(data + stride * RowIndex);
+    for(uint32_t RowIndex = DTextHeight * DCharacterHeight; RowIndex * VIDEO_SCALE < uint32_t(height); RowIndex++){
+        uint32_t *RowPointer = (uint32_t *)(data + stride * RowIndex * VIDEO_SCALE);
         for(uint32_t ColIndex = 0; ColIndex < uint32_t(width); ColIndex++){
             *RowPointer++ = 0xFF000000;
         }
@@ -153,7 +169,7 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
     auto TempRC = surface->CreateResourceContext();
     TempRC->SetSourceRGB(0x0);
     TempRC->SetLineWidth(1);
-    TempRC->Rectangle(0,0,DScreenWidth,DScreenHeight);
+    TempRC->Rectangle(0,0,DScreenWidth * VIDEO_SCALE,DScreenHeight * VIDEO_SCALE);
     TempRC->Fill();
     
     for(auto &Renderings : RenderingOrders){
@@ -165,7 +181,11 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
                     int DestY = DBackgroundControls[Index].DYOffset;
                     DestX -= DScreenWidth;
                     DestY -= DScreenHeight;
-                    surface->Draw(DBackgrounds[Index],DestX,DestY,DScreenWidth,DScreenHeight,0,0);
+                    DestX *= VIDEO_SCALE;
+                    DestY *= VIDEO_SCALE;
+                    uint32_t DestW = DScreenWidth * VIDEO_SCALE;
+                    uint32_t DestH = DScreenHeight * VIDEO_SCALE;
+                    surface->Draw(DBackgrounds[Index],DestX,DestY,DestW,DestH,0,0);
                 }
             }
             else if(Index < DBackgroundCount + DLargeSpriteCount){
@@ -176,7 +196,11 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
                     int DestY = DLargeSpriteControls[Index].DYOffset;
                     DestX -= DLargeSpriteWidth;
                     DestY -= DLargeSpriteHeight;
-                    surface->Draw(DLargeSprites[Index],DestX,DestY,DLargeSpriteControls[Index].DWidth+DLargeSpriteWidth/2+1,DLargeSpriteControls[Index].DHeight+DLargeSpriteHeight/2+1,0,0);
+                    DestX *= VIDEO_SCALE;
+                    DestY *= VIDEO_SCALE;
+                    uint32_t DestW = (DLargeSpriteControls[Index].DWidth+DLargeSpriteWidth/2+1) * VIDEO_SCALE;
+                    uint32_t DestH = (DLargeSpriteControls[Index].DHeight+DLargeSpriteHeight/2+1) * VIDEO_SCALE;
+                    surface->Draw(DLargeSprites[Index],DestX,DestY,DestW,DestH,0,0);
                 }
             }
             else{
@@ -187,7 +211,11 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
                     int DestY = DSmallSpriteControls[Index].DYOffset;
                     DestX -= DSmallSpriteWidth;
                     DestY -= DSmallSpriteHeight;
-                    surface->Draw(DSmallSprites[Index],DestX,DestY,DSmallSpriteControls[Index].DWidth+1,DSmallSpriteControls[Index].DHeight+1,0,0);
+                    DestX *= VIDEO_SCALE;
+                    DestY *= VIDEO_SCALE;
+                    uint32_t DestW = (DSmallSpriteControls[Index].DWidth+1) * VIDEO_SCALE;
+                    uint32_t DestH = (DSmallSpriteControls[Index].DHeight+1) * VIDEO_SCALE;
+                    surface->Draw(DSmallSprites[Index],DestX,DestY,DestW,DestH,0,0);
                 }
             }
         }

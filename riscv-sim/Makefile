@@ -17,6 +17,10 @@ BIN_DIR = ./bin
 
 PKGS = gtk+-3.0 
 
+SCALE = 1
+
+CFLAGS   += -DVIDEO_SCALE=$(SCALE)
+
 ifdef DEBUG_MODE
 DEFINES  += -DDEBUG
 CFLAGS   += -g -ggdb -D_GLIBCXX_DEBUG

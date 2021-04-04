@@ -465,14 +465,14 @@ void CRISCVConsoleApplication::CreateConsoleWidgets(){
     DConsoleBox->PackStart(DConsoleVideo,false,false,GetWidgetSpacing());
     DConsoleBox->PackStart(DControlsBox,false,false,GetWidgetSpacing());
     
-    DDoubleBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
-    DWorkingBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
-    DConsoleVideo->SetSizeRequest(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight());
+    DDoubleBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth() * VIDEO_SCALE, DRISCVConsole->ScreenHeight() * VIDEO_SCALE, ESurfaceFormat::ARGB32);
+    DWorkingBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth() * VIDEO_SCALE, DRISCVConsole->ScreenHeight() * VIDEO_SCALE, ESurfaceFormat::ARGB32);
+    DConsoleVideo->SetSizeRequest(DRISCVConsole->ScreenWidth() * VIDEO_SCALE, DRISCVConsole->ScreenHeight() * VIDEO_SCALE);
     DConsoleVideo->SetDrawEventCallback(this, DrawingAreaDrawCallback);
     auto TempRC = DDoubleBufferSurface->CreateResourceContext();
     TempRC->SetSourceRGB(0x0);
     TempRC->SetLineWidth(1);
-    TempRC->Rectangle(0,0,DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight());
+    TempRC->Rectangle(0,0,DRISCVConsole->ScreenWidth() * VIDEO_SCALE, DRISCVConsole->ScreenHeight() * VIDEO_SCALE);
     TempRC->StrokePreserve();
     TempRC->Fill();    
     DConsoleVideo->Invalidate();
