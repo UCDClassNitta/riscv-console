@@ -462,6 +462,10 @@ void CRISCVConsoleApplication::CreateConsoleWidgets(){
     DControlsBox->PackStart(DControllerGrid,false,false,GetWidgetSpacing());
     DControlsBox->PackStart(DSystemControlGrid,false,false,GetWidgetSpacing());
 
+    // Center the buttons
+    DControllerGrid->SetHorizontalExpand(true);
+    DSystemControlGrid->SetHorizontalExpand(true);
+
     DConsoleBox->PackStart(DConsoleVideo,false,false,GetWidgetSpacing());
     DConsoleBox->PackStart(DControlsBox,false,false,GetWidgetSpacing());
     
