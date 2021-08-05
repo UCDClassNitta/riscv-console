@@ -35,6 +35,8 @@ SIM_APP_NAME = riscv-console-sim
 AUTO_RUN_APP_NAME = riscv-console-autorunner
 
 SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
+    $(OBJ_DIR)/AutoRunner.o                     \
+    $(OBJ_DIR)/AutoRecorder.o                   \
     $(OBJ_DIR)/GraphicFactoryCairo.o            \
     $(OBJ_DIR)/GUIFactoryGTK3.o                 \
     $(OBJ_DIR)/GUIScrollableLabelBox.o          \

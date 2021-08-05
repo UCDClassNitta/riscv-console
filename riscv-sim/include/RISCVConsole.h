@@ -128,21 +128,21 @@ class CRISCVConsole{
 
         void Step();
 
-        void PressDirection(EDirection dir);
-        void ReleaseDirection(EDirection dir);
+        uint64_t PressDirection(EDirection dir);
+        uint64_t ReleaseDirection(EDirection dir);
 
-        void PressButton(EButtonNumber button);
-        void ReleaseButton(EButtonNumber button);
+        uint64_t PressButton(EButtonNumber button);
+        uint64_t ReleaseButton(EButtonNumber button);
 
-        void PressCommand();
+        uint64_t PressCommand();
 
         bool VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurface);
 
         bool ProgramFirmware(std::shared_ptr< CDataSource > elfsrc);
 
-        bool InsertCartridge(std::shared_ptr< CDataSource > elfsrc);
+        uint64_t InsertCartridge(std::shared_ptr< CDataSource > elfsrc);
 
-        bool RemoveCartridge();
+        uint64_t RemoveCartridge();
 
         void AddBreakpoint(uint32_t addr);
 
