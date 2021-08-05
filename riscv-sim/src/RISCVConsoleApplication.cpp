@@ -20,7 +20,7 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, c
     DApplication = CGUIFactory::ApplicationInstance(appname);
     
     DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
-
+    DInputRecorder = std::make_shared<CAutoRecorder>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
     DApplication->SetActivateCallback(this, ActivateCallback);
     
 }
@@ -128,6 +128,11 @@ bool CRISCVConsoleApplication::ClearButtonClickEventCallback(std::shared_ptr<CGU
     return App->ClearButtonClickEvent(widget,event);
 }
 
+bool CRISCVConsoleApplication::RecordButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->RecordButtonToggledEvent(widget);
+}
+
 bool CRISCVConsoleApplication::InstructionComboBoxChangedEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->InstructionComboBoxChangedEvent(widget);
@@ -227,6 +232,8 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidg
             auto InFile = std::make_shared<CFileDataSource>(Filename);
             if(DRISCVConsole->ProgramFirmware(InFile)){
                 if(DDebugMode){
+                    std::string FirmwareRelativePath = CPath::RelativePath(CPath::CurrentPath(),Filename);
+                    DInputRecorder->AddFWEvent(FirmwareRelativePath);
                     DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
                     DDebugInstructionComboBox->ClearItems();
                     for(auto &Label : DRISCVConsole->InstructionLabels()){
@@ -253,8 +260,11 @@ bool CRISCVConsoleApplication::CartridgeButtonToggledEvent(std::shared_ptr<CGUIW
             Filename = FileChooser->GetFilename();
             DFileOpenFolder = FileChooser->GetCurrentFolder();
             auto InFile = std::make_shared<CFileDataSource>(Filename);
-            if(DRISCVConsole->InsertCartridge(InFile)){
+            auto EventCycle = DRISCVConsole->InsertCartridge(InFile);
+            if(EventCycle != std::numeric_limits<uint64_t>::max()){
                 if(DDebugMode){
+                    std::string CartridgeRelativePath = CPath::RelativePath(CPath::CurrentPath(),Filename);
+                    DInputRecorder->AddInsertCREvent(CartridgeRelativePath,EventCycle);
                     DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
                     DDebugInstructionComboBox->ClearItems();
                     for(auto &Label : DRISCVConsole->InstructionLabels()){
@@ -265,14 +275,14 @@ bool CRISCVConsoleApplication::CartridgeButtonToggledEvent(std::shared_ptr<CGUIW
             }
             else{
                 DCartridgeButton->SetActive(false);
-
             }
         }
         DCartridgeInLoading = false;
     }
     else if(!DCartridgeInLoading){
-        DRISCVConsole->RemoveCartridge();
+        auto EventCycle = DRISCVConsole->RemoveCartridge();
         if(DDebugMode){
+            DInputRecorder->AddRemoveCREvent(EventCycle);
             DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
             DDebugInstructionComboBox->ClearItems();
             for(auto &Label : DRISCVConsole->InstructionLabels()){
@@ -293,7 +303,8 @@ bool CRISCVConsoleApplication::ControllerButtonClickEvent(std::shared_ptr<CGUIWi
 }
 
 bool CRISCVConsoleApplication::CommandButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
-    DRISCVConsole->PressCommand();
+    auto Cycle = DRISCVConsole->PressCommand();
+    DInputRecorder->AddCommandPressEvent(Cycle);
     return true;
 }
 
@@ -321,22 +332,27 @@ bool CRISCVConsoleApplication::PowerButtonToggledEvent(std::shared_ptr<CGUIWidge
 
 void CRISCVConsoleApplication::UpdateConsoleButtonChange(std::shared_ptr<CGUIToggleButton> button){
     auto DirectionSearch = DDirectionButtonMapping.find(button);
+    uint64_t Cycle;
     if(DirectionSearch != DDirectionButtonMapping.end()){
         if(button->GetActive()){
-            DRISCVConsole->PressDirection(DirectionSearch->second);
+            Cycle = DRISCVConsole->PressDirection(DirectionSearch->second);
+            DInputRecorder->AddDirectionPressEvent(DirectionSearch->second, Cycle);
         }
         else{
-            DRISCVConsole->ReleaseDirection(DirectionSearch->second);
+            Cycle = DRISCVConsole->ReleaseDirection(DirectionSearch->second);
+            DInputRecorder->AddDirectionReleaseEvent(DirectionSearch->second, Cycle);
         }
         return;
     }
     auto ButtonSearch = DButtonNumberButtonMapping.find(button);
     if(ButtonSearch != DButtonNumberButtonMapping.end()){
         if(button->GetActive()){
-            DRISCVConsole->PressButton(ButtonSearch->second);
+            Cycle = DRISCVConsole->PressButton(ButtonSearch->second);
+            DInputRecorder->AddButtonPressEvent(ButtonSearch->second, Cycle);
         }
         else{
-            DRISCVConsole->ReleaseButton(ButtonSearch->second);
+            Cycle = DRISCVConsole->ReleaseButton(ButtonSearch->second);
+            DInputRecorder->AddButtonReleaseEvent(ButtonSearch->second, Cycle);
         }
     }
 }
@@ -403,6 +419,26 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
         DDebugInstructions->UpdateBufferedLine(LineIndex, Line);
     }
     DRISCVConsole->ClearBreakpoints();
+    return true;
+}
+
+bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidget> widget){
+
+    if(!DDebugRecordButton->GetActive()){
+        std::string Filename;
+        auto FileChooser = CGUIFactory::NewFileChooserDialog("Save Record",false,DMainWindow);
+        FileChooser->SetCurrentFolder(DFileOpenFolder);
+        if(FileChooser->Run()){
+            Filename = FileChooser->GetFilename();
+            DRISCVConsole->Stop();
+            DInputRecorder->OutputJSONFile(Filename);
+            RefreshDebugRegisters();
+        }
+    }
+    else{
+        DInputRecorder->ResetRecord();
+    }
+    
     return true;
 }
 
@@ -696,6 +732,7 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
     DDebugRunButton = CGUIFactory::NewToggleButton();
     DDebugStepButton = CGUIFactory::NewButton();
     DDebugClearButton = CGUIFactory::NewButton();
+    DDebugRecordButton = CGUIFactory::NewToggleButton();
     DDebugRunButton->SetLabel("Run");
     DDebugRunButton->SetToggledEventCallback(this, RunButtonToggledEventCallback);
 
@@ -704,9 +741,14 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
 
     DDebugClearButton->SetLabel("Clear");
     DDebugClearButton->SetButtonPressEventCallback(this,ClearButtonClickEventCallback);
+
+    DDebugRecordButton->SetLabel("Record");
+    DDebugRecordButton->SetToggledEventCallback(this, RecordButtonToggledEventCallback);
+
     DDebugControlBox->PackStart(DDebugRunButton,false,false,GetWidgetSpacing());
     DDebugControlBox->PackStart(DDebugStepButton,false,false,GetWidgetSpacing());
     DDebugControlBox->PackStart(DDebugClearButton,false,false,GetWidgetSpacing());
+    DDebugControlBox->PackStart(DDebugRecordButton,false,false,GetWidgetSpacing());
 
 }
 

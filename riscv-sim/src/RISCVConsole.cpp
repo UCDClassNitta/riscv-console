@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 
 const uint32_t CRISCVConsole::DMainMemorySize = 0x1000000;          // 16MB
 const uint32_t CRISCVConsole::DMainMemoryBase = 0x70000000;         // Set at base in first 2GB region
@@ -316,24 +317,34 @@ void CRISCVConsole::Step(){
     SystemStep();
 }
 
-void CRISCVConsole::PressDirection(EDirection dir){
+uint64_t CRISCVConsole::PressDirection(EDirection dir){
     DChipset->ControllerPress(to_underlying(dir));
+    // Provide best effort instruction for potential recording
+    return DCPU->RetiredInstructionCount();
 }
 
-void CRISCVConsole::ReleaseDirection(EDirection dir){
+uint64_t CRISCVConsole::ReleaseDirection(EDirection dir){
     DChipset->ControllerRelease(to_underlying(dir));
+    // Provide best effort instruction for potential recording
+    return DCPU->RetiredInstructionCount();
 }
 
-void CRISCVConsole::PressButton(EButtonNumber button){
+uint64_t CRISCVConsole::PressButton(EButtonNumber button){
     DChipset->ControllerPress(to_underlying(button));
+    // Provide best effort instruction for potential recording
+    return DCPU->RetiredInstructionCount();
 }
 
-void CRISCVConsole::ReleaseButton(EButtonNumber button){
+uint64_t CRISCVConsole::ReleaseButton(EButtonNumber button){
     DChipset->ControllerRelease(to_underlying(button));
+    // Provide best effort instruction for potential recording
+    return DCPU->RetiredInstructionCount();
 }
 
-void CRISCVConsole::PressCommand(){
+uint64_t CRISCVConsole::PressCommand(){
     DChipset->ControllerCommandPress();
+    // Provide best effort instruction for potential recording
+    return DCPU->RetiredInstructionCount();
 }
 
 bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurface){
@@ -396,7 +407,7 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
     return false;
 }
 
-bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
+uint64_t CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
     // Program the cartridge
     CElfLoad ElfFile(elfsrc);
     if(ElfFile.ValidFile()){
@@ -418,16 +429,17 @@ bool CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
         DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
         DChipset->InsertCartridge(ElfFile.Entry());
         ConstructCartridgeStrings(ElfFile);
+        auto EventCycle = DCPU->RetiredInstructionCount();
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
             SystemRun();
         }
-        return true;
+        return EventCycle;
     }
-    return false;
+    return std::numeric_limits<uint64_t>::max();
 }
 
-bool CRISCVConsole::RemoveCartridge(){
+uint64_t CRISCVConsole::RemoveCartridge(){
     auto CurrentState = DSystemCommand.load();
     SystemStop();
 
@@ -445,12 +457,13 @@ bool CRISCVConsole::RemoveCartridge(){
     DCartridgeFlash->WriteEnabled(false);
     DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
     DChipset->RemoveCartridge();
+    auto EventCycle = DCPU->RetiredInstructionCount();
     if(CurrentState == to_underlying(EThreadState::Run)){
         // Clear the cache for cartridge
         SystemRun();
     }
 
-    return true;
+    return EventCycle;
 }
 
 void CRISCVConsole::AddBreakpoint(uint32_t addr){

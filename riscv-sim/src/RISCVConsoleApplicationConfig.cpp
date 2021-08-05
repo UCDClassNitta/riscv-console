@@ -32,8 +32,8 @@ CRISCVConsoleApplicationConfiguration::CRISCVConsoleApplicationConfiguration(){
     DParameters[EParameter::Button4Key] = "k";
 
     DParameters[EParameter::WidgetSpacing] = "5";
-    DParameters[EParameter::InstructionLines] = "8";
-    DParameters[EParameter::MemoryLines] = "8";
+    DParameters[EParameter::InstructionLines] = "14";
+    DParameters[EParameter::MemoryLines] = "10";
 
     DParameters[EParameter::ScreenTimer] = "10";
     DParameters[EParameter::TimerUS] = "1000";
