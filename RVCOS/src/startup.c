@@ -37,6 +37,20 @@ __attribute__((always_inline)) inline void csr_disable_interrupts(void){
 #define MTIMECMP_HIGH   (*((volatile uint32_t *)0x40000014))
 #define CONTROLLER      (*((volatile uint32_t *)0x40000018))
 
+void* sbrk(int incr) {
+  extern char _end;		/* Defined by the linker */
+  static char *heap_end;
+  char *prev_heap_end;
+ 
+  if (heap_end == 0) {
+    heap_end = &_end;
+  }
+  prev_heap_end = heap_end;
+
+  heap_end += incr;
+  return;
+}
+
 void init(void){
     uint8_t *Source = _erodata;
     uint8_t *Base = _data < _sdata ? _data : _sdata;
