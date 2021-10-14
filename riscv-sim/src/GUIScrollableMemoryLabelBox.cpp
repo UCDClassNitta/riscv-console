@@ -74,9 +74,8 @@ void CGUIScrollableMemoryLabelBox::RefreshLabels(){
     size_t CurrentLine = GetBaseLine();
     if(!DAscending){
         CurrentLine = DBufferedLineCount - CurrentLine - 1;
-        CurrentLine = CurrentLine < GetLineCount() ? 0 : CurrentLine - GetLineCount();
+        CurrentLine = CurrentLine < GetLineCount() ? 0 : CurrentLine - GetLineCount() + 1;
     }
-
     LineIndexToBaseAddressMemoryIndex(CurrentLine,MinAddress,MemoryIndex);
     CurrentAddress = MinAddress;
     for(size_t Index = 0; Index < GetLineCount(); Index++){
