@@ -9,7 +9,7 @@ int main() {
     int b = 12;
     int last_global = 42;
     int x_pos = 12;
-
+    // Hi Nicholas!
     VIDEO_MEMORY[0] = 'H';
     VIDEO_MEMORY[1] = 'e';
     VIDEO_MEMORY[2] = 'l';
