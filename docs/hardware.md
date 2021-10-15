@@ -5,7 +5,7 @@ The main components of the hardware are the [RISC-V processor](#processor), [fla
 | ------------ | ----------------- | ------------------------------------- |
 | 0x00000000   | 0x1000000 (16MiB) | [Firmware Flash](#firmware-flash)     |
 | 0x20000000   | 0x1000000 (16MiB) | [Cartridge ROM](#cartridge-rom)       |
-| 0x40000000   | 0x40 (64B)        | [Chipset Registers](./chipset.md)     |
+| 0x40000000   | 0x40 (72B)        | [Chipset Registers](./chipset.md)     |
 | 0x50000000   | 0x100000 (1MiB)   | [Video Controller Memory](./video.md) | 
 | 0x70000000   | 0x1000000 (16MiB) | [RAM](#ram)                           |
 

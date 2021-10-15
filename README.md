@@ -11,6 +11,7 @@ This project is a simulator for a hypothetical RISC-V based game console. The re
     * [Simulator Documentation](docs/simulator.md)
     * [Hardware Documentation](docs/hardware.md)
     * [Autorunner Documentation](docs/autorunner.md)
+    * [Troubleshooting](docs/troubleshooting.md)
 
 ## Getting Started
 The simulation environment and toolchain have been setup to run within a Docker container. The directions assume that you have git, Docker, X-11 support and a bash shell on your machine. If you are running on Windows and wish to use PowerShell follow the directions [here](docs/powershell.md). 
