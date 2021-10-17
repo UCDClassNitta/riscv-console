@@ -1,5 +1,5 @@
 #include <stdint.h>
-
+#include "RVCOS.h"
 extern uint8_t _erodata[];
 extern uint8_t _data[];
 extern uint8_t _edata[];
@@ -31,25 +31,29 @@ __attribute__((always_inline)) inline void csr_disable_interrupts(void){
     asm volatile ("csrci mstatus, 0x8");
 }
 
+__attribute__((always_inline)) inline void set_gp(uint32_t addr) {
+  asm volatile("sw gp, %0" : : "r"(addr));
+}
+
 #define MTIME_LOW       (*((volatile uint32_t *)0x40000008))
 #define MTIME_HIGH      (*((volatile uint32_t *)0x4000000C))
 #define MTIMECMP_LOW    (*((volatile uint32_t *)0x40000010))
 #define MTIMECMP_HIGH   (*((volatile uint32_t *)0x40000014))
 #define CONTROLLER      (*((volatile uint32_t *)0x40000018))
 
-void* sbrk(int incr) {
-  extern char _end;		/* Defined by the linker */
-  static char *heap_end;
-  char *prev_heap_end;
- 
-  if (heap_end == 0) {
-    heap_end = &_end;
-  }
-  prev_heap_end = heap_end;
+// void sbrk(int incr) {
+//   extern char _end;		/* Defined by the linker */
+//   static char *heap_end;
+//   char *prev_heap_end;
 
-  heap_end += incr;
-  return;
-}
+//   if (heap_end == 0) {
+//     heap_end = &_end;
+//   }
+//   prev_heap_end = heap_end;
+
+//   heap_end += incr;
+//   return;
+// }
 
 void init(void){
     uint8_t *Source = _erodata;

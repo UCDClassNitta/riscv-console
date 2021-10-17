@@ -1,5 +1,5 @@
 #include <stdint.h>
-
+#include "RVCOS.h"
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
@@ -7,6 +7,11 @@ volatile uint32_t *saved_sp;
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
+
+TStatus RVCInitalize(uint32_t *gp) {
+    
+}
+
 int main() {
     saved_sp = &controller_status;
     while(1){
