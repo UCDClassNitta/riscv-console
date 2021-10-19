@@ -3,13 +3,20 @@
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
-
+volatile uint32_t global_p;
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
 
 TStatus RVCInitalize(uint32_t *gp) {
-    
+    global_p = *gp;
+    if (global_p == 0) {
+    // Failure since it didn't change global variable
+        return RVCOS_STATUS_FAILURE;
+    } else {
+    // return success
+        return RVCOS_STATUS_SUCCESS;
+    }
 }
 
 int main() {
