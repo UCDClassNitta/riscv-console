@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 
 extern uint8_t _erodata[];
 extern uint8_t _data[];
@@ -67,5 +68,16 @@ void c_interrupt_handler(void){
     MTIMECMP_LOW = NewCompare;
     global++;
     controller_status = CONTROLLER;
+}
+
+void *sbrk(int incr) {
+  extern char heapbase;        /* Defined by the linker */
+  static char *heap_end;
+  char *prev_heap_end;
+ 
+  if (heap_end == 0) {
+    heap_end = &heapbase;
+  }
+  heap_end += incr;
 }
 
