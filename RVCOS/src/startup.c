@@ -32,7 +32,7 @@ __attribute__((always_inline)) inline void csr_disable_interrupts(void){
 }
 
 __attribute__((always_inline)) inline void set_gp(uint32_t addr) {
-  asm volatile("sw gp, %0" : : "r"(addr));
+    asm volatile("sw gp, %0" : : "r"(addr));
 }
 
 #define MTIME_LOW       (*((volatile uint32_t *)0x40000008))

@@ -7,15 +7,53 @@ volatile uint32_t global_p;
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
+volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken from riscv-example, main code
+
+volatile struct TCB* threadArray[256]; 
+
+struct TCB{
+    int tid;
+    uint32_t *gp;
+    int state; // different states: running, ready, dead, waiting, created
+    int priority; // different priorities: high, normal, low
+    int pid;
+    uint32_t *sp; 
+};
 
 TStatus RVCInitalize(uint32_t *gp) {
-    global_p = *gp;
+    struct TCB* mainThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of main thread
+    mainThread->tid = 0;
+    mainThread->state = RVCOS_THREAD_STATE_CREATED;
+    mainThread->priority = RVCOS_THREAD_PRIORITY_NORMAL;
+    mainThread->pid = -1; // main thread has no parent so set to -1
+    threadArray[0] = mainThread; 
+    // for gp and sp need to call an assembly function
+    
+    struct TCB* idleThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of idle thread
+    idleThread->tid = 1;
+    idleThread->state = RVCOS_THREAD_STATE_CREATED;
+    idleThread->priority = RVCOS_THREAD_PRIORITY_LOW;
+    idleThread->pid = -1;
+    threadArray[1] = idleThread;
+    // call assembly function to set gp and sp
+
+    global_p = *gp; 
     if (global_p == 0) {
     // Failure since it didn't change global variable
         return RVCOS_STATUS_FAILURE;
     } else {
     // return success
         return RVCOS_STATUS_SUCCESS;
+    }
+}
+
+TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
+    if (buffer == NULL){
+        return RVCOS_STATUS_ERROR_INVALID_PARAMETER; 
+    }
+    else{
+        //write out writesize characters to the location specified by buffer
+        VIDEO_MEMORY[*buffer] = writesize;  // this probably is not how you do this but idk
     }
 }
 
