@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "RVCOS.h"
-volatile int global = 42;
+volatile int global;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
 volatile uint32_t global_p;
@@ -17,11 +17,13 @@ struct TCB{
     int state; // different states: running, ready, dead, waiting, created
     int priority; // different priorities: high, normal, low
     int pid;
-    uint32_t *sp; 
+    uint32_t *sp[256]; 
 };
 
 TStatus RVCInitalize(uint32_t *gp) {
+    //void* s_array[sizeof(struct TCB)];
     struct TCB* mainThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of main thread
+    //struct TCB* mainThread = s_array;
     mainThread->tid = 0;
     mainThread->state = RVCOS_THREAD_STATE_CREATED;
     mainThread->priority = RVCOS_THREAD_PRIORITY_NORMAL;
@@ -53,7 +55,13 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
     }
     else{
         //write out writesize characters to the location specified by buffer
-        VIDEO_MEMORY[*buffer] = writesize;  // this probably is not how you do this but idk
+        for (int i = 0; i < writesize; i++) {
+            char c = *buffer;
+            VIDEO_MEMORY[global + i] = c;
+            buffer++;
+        }
+        global = global + writesize;
+        // if there are errors try casting (int)
     }
 }
 
