@@ -36,7 +36,7 @@ int getTID(struct TCB* thread){
     return thread->tid;
 }
 
-TStatus RVCInitalize(uint32_t *gp) {
+TStatus RVCInitialize(uint32_t *gp) {
     struct TCB* mainThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of main thread
     mainThread->tid = 0;
     mainThread->state = RVCOS_THREAD_STATE_CREATED;
@@ -120,7 +120,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize,
 }
 
 int main() {
-    saved_sp = &controller_status; // was used to see how the compiler would assign the save_sp so we could 
+    saved_sp = &CART_STAT_REG; // was used to see how the compiler would assign the save_sp so we could 
     while(1){                      // do it in assembly in the enter_cartridge function
         if(CART_STAT_REG & 0x1){
             enter_cartridge();
@@ -130,5 +130,9 @@ int main() {
 }
 
 uint32_t c_syscall_handler(uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t code){
+    switch(code){
+        case 0: return RVCInitialize((void *)p1);
+        case 0x0B: return RVCWriteText((void *)p1, (void *)p2);
+    }
     return code + 1;
 }
