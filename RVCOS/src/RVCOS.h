@@ -16,6 +16,7 @@
 #define RVCOS_THREAD_STATE_READY                    ((TThreadState)0x04)
 #define RVCOS_THREAD_STATE_WAITING                  ((TThreadState)0x05)
 
+#define RVCOS_THREAD_PRIORITY_LOWEST                ((TThreadPriority)0x00)  // based on the helpful hint 
 #define RVCOS_THREAD_PRIORITY_LOW                   ((TThreadPriority)0x01)
 #define RVCOS_THREAD_PRIORITY_NORMAL                ((TThreadPriority)0x02)
 #define RVCOS_THREAD_PRIORITY_HIGH                  ((TThreadPriority)0x03)

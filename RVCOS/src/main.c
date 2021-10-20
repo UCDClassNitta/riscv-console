@@ -1,12 +1,13 @@
 #include <stdint.h>
 #include "RVCOS.h"
-volatile int global;
+volatile int global; // used for global cursor
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
-volatile uint32_t global_p;
+volatile uint32_t app_global_p;
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
+#define CONTROLLER_STATUS_REG (*(volatile uint32_t*)0x40000018) // base address of the Multi-Button Controller Status Register
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken from riscv-example, main code
 
 volatile struct TCB* threadArray[256]; 
@@ -18,29 +19,38 @@ struct TCB{
     int priority; // different priorities: high, normal, low
     int pid;
     uint32_t *sp[256]; 
+    int memsize
 };
 
+int getTState(struct TCB* thread){
+    return thread->state;
+}
+
+int getTPrio(struct TCB* thread){
+    return thread->priority;
+}
+
+int getTID(struct TCB* thread){
+    return thread->tid;
+}
+
 TStatus RVCInitalize(uint32_t *gp) {
-    //void* s_array[sizeof(struct TCB)];
     struct TCB* mainThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of main thread
-    //struct TCB* mainThread = s_array;
     mainThread->tid = 0;
     mainThread->state = RVCOS_THREAD_STATE_CREATED;
     mainThread->priority = RVCOS_THREAD_PRIORITY_NORMAL;
     mainThread->pid = -1; // main thread has no parent so set to -1
     threadArray[0] = mainThread; 
-    // for gp and sp need to call an assembly function
     
     struct TCB* idleThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of idle thread
     idleThread->tid = 1;
     idleThread->state = RVCOS_THREAD_STATE_CREATED;
-    idleThread->priority = RVCOS_THREAD_PRIORITY_LOW;
+    idleThread->priority = RVCOS_THREAD_PRIORITY_LOWEST;
     idleThread->pid = -1;
     threadArray[1] = idleThread;
-    // call assembly function to set gp and sp
 
-    global_p = *gp; 
-    if (global_p == 0) {
+    app_global_p = *gp; 
+    if (app_global_p == 0) {
     // Failure since it didn't change global variable
         return RVCOS_STATUS_FAILURE;
     } else {
@@ -62,12 +72,54 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
         }
         global = global + writesize;
         // if there are errors try casting (int)
+        return RVCOS_STATUS_SUCCESS;
     }
 }
 
+typedef struct{ 
+    uint32_t DLeft:1; 
+    uint32_t DUp:1; 
+    uint32_t DDown:1; 
+    uint32_t DRight:1; 
+    uint32_t DButton1:1; 
+    uint32_t DButton2:1; 
+    uint32_t DButton3:1; 
+    uint32_t DButton4:1; 
+    uint32_t DReserved:24; 
+} SControllerStatus, *SControllerStatusRef; 
+ 
+TStatus RVCReadController(SControllerStatusRef statusref){
+    if (statusref == NULL){
+        return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+    }
+    else{
+        *(uint32_t *)statusref = CONTROLLER_STATUS_REG; // the struct is 32 bits and aligned with the bits in the register
+        return RVCOS_STATUS_SUCCESS;                    // from Piazza post question @410
+    }
+}
+
+TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, 
+                        TThreadPriority prio, TThreadIDRef tid){
+    if (entry == NULL || tid == NULL){
+        return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+    }
+    else{
+        // unsure what to do with entry, need to ask in OH, also dont know what param is
+        void* newThreadStack[memsize];
+        struct TCB* newThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of a thread
+        newThread->tid = 0; // need to come up with way to make tids
+        tid = newThread->tid;
+        newThread->state = RVCOS_THREAD_STATE_CREATED;
+        newThread->priority = prio;
+        //newThread->pid = -1; 
+        //threadArray[0] = newThread; 
+    }
+    return RVCOS_STATUS_SUCCESS;
+}
+
 int main() {
-    saved_sp = &controller_status;
-    while(1){
+    saved_sp = &controller_status; // was used to see how the compiler would assign the save_sp so we could 
+    while(1){                      // do it in assembly in the enter_cartridge function
         if(CART_STAT_REG & 0x1){
             enter_cartridge();
         }
