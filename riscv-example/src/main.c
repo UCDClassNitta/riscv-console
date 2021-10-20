@@ -1,5 +1,4 @@
 #include <stdint.h>
-
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 

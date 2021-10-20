@@ -1,5 +1,7 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include "RVCOS.h"
+
 volatile int global; // used for global cursor
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
@@ -19,7 +21,7 @@ struct TCB{
     int priority; // different priorities: high, normal, low
     int pid;
     uint32_t *sp[256]; 
-    int memsize
+    int memsize;
 };
 
 int getTState(struct TCB* thread){
@@ -76,17 +78,17 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
     }
 }
 
-typedef struct{ 
-    uint32_t DLeft:1; 
-    uint32_t DUp:1; 
-    uint32_t DDown:1; 
-    uint32_t DRight:1; 
-    uint32_t DButton1:1; 
-    uint32_t DButton2:1; 
-    uint32_t DButton3:1; 
-    uint32_t DButton4:1; 
-    uint32_t DReserved:24; 
-} SControllerStatus, *SControllerStatusRef; 
+// typedef struct{ 
+//     uint32_t DLeft:1; 
+//     uint32_t DUp:1; 
+//     uint32_t DDown:1; 
+//     uint32_t DRight:1; 
+//     uint32_t DButton1:1; 
+//     uint32_t DButton2:1; 
+//     uint32_t DButton3:1; 
+//     uint32_t DButton4:1; 
+//     uint32_t DReserved:24; 
+// } SControllerStatus, *SControllerStatusRef; 
  
 TStatus RVCReadController(SControllerStatusRef statusref){
     if (statusref == NULL){

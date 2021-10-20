@@ -5,9 +5,9 @@
 _interrupt_handler:
     csrw    mscratch,ra
     csrr    ra,mcause
-    addi    ra,ra,-11              // the mcause will be 11 in the case of an ecall.
-    bnez    ra,hardware_interrupt  // if the interrput is not = to 0, its not a syscall so go to hardware interrupt
-    csrr    ra,mscratch            // otherwise it is a syscall, so go to syscall handler
+    addi    ra,ra,-11              # the mcause will be 11 in the case of an ecall.
+    bnez    ra,hardware_interrupt  # if the interrput is not = to 0, its not a syscall so go to hardware interrupt
+    csrr    ra,mscratch            # otherwise it is a syscall, so go to syscall handler
     addi    sp,sp,-8
     sw      ra,4(sp)
     sw      gp,0(sp)
