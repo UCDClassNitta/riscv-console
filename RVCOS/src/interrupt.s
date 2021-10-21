@@ -1,5 +1,5 @@
 .section .text, "ax"
-.global _interrupt_handler, enter_cartridge
+.global _interrupt_handler, enter_cartridge, call_th_ent
 .extern saved_sp
 
 _interrupt_handler:
@@ -71,4 +71,19 @@ enter_cartridge:
     lw      s1,4(sp)
     lw      ra,0(sp)
     addi    sp,sp,12
+    ret
+
+
+call_th_ent:
+    addi sp,sp,-4
+    sw ra, 0(sp)
+    mv gp, a2
+    jalr a1       // a1 should be the entry parameter
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    .option pop
+    nop
+    lw ra, 0(sp)
+    addi sp, sp, 4
     ret
