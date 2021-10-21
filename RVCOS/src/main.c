@@ -11,7 +11,6 @@ void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
 #define CONTROLLER_STATUS_REG (*(volatile uint32_t*)0x40000018) // base address of the Multi-Button Controller Status Register
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken from riscv-example, main code
-
 volatile struct TCB* threadArray[256]; 
 
 struct TCB{
@@ -97,9 +96,8 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
     else{
         //write out writesize characters to the location specified by buffer
         for (int i = 0; i < writesize; i++) {
-            char c = *buffer;
+            char c = buffer[i];
             VIDEO_MEMORY[global + i] = c;
-            buffer++;
         }
         global = global + writesize;
         // if there are errors try casting (int)
@@ -142,7 +140,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize,
         newThread->param = param;
         newThread->memsize = memsize;
         newThread->tid = 0; // need to come up with way to make tids
-        tid = newThread->tid;
+        // tid = newThread->tid;
         newThread->state = RVCOS_THREAD_STATE_CREATED;
         newThread->priority = prio;
         //newThread->pid = -1; 
@@ -164,7 +162,7 @@ int main() {
 uint32_t c_syscall_handler(uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t code){
     switch(code){
         case 0: return RVCInitialize((void *)p1);
-        case 0x0B: return RVCWriteText((void *)p1, (void *)p2);
+        case 0x0B: return RVCWriteText((void *)p1, p2);
     }
     return code + 1;
 }
