@@ -15,13 +15,19 @@ volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken
 volatile struct TCB* threadArray[256]; 
 
 struct TCB{
-    int tid;
+    TThreadID tid;
     uint32_t *gp;
-    int state; // different states: running, ready, dead, waiting, created
-    int priority; // different priorities: high, normal, low
+    TThreadState state; // different states: running, ready, dead, waiting, created
+    TThreadPriority priority; // different priorities: high, normal, low
     int pid;
-    uint32_t *sp[256]; 
-    int memsize;
+    uint32_t *sp; 
+    TMemorySize memsize;
+    TThreadEntry entry;
+    void *param;
+    int ticks;
+    int wait_id;
+    TStatus ret_val;
+    void* stack_base; // return value of malloc
 };
 
 int getTState(struct TCB* thread){
@@ -36,13 +42,36 @@ int getTID(struct TCB* thread){
     return thread->tid;
 }
 
+uint32_t *init_Stack(uint32_t* sp, void (*function)(uint32_t), uint32_t param){
+    sp--;
+    *sp = (uint32_t)function; // function will either be skeleton or idle
+    sp--;
+    *sp = param;
+    return sp;
+}
+
+void idle(){
+    while(1);
+}
+
+void* skeleton(TThreadID thread_id){
+    struct TCB* currThread = threadArray[thread_id]; 
+    TThreadEntry entry = currThread->entry;
+    void* param = currThread->param;
+    csr_write_mie(0x888);       // Enable all interrupt soruces
+    csr_enable_interrupts();    // Global interrupt enable
+    TStatus ret_val = call_th_ent(entry, param, app_global_p); 
+    //Threadterminate;
+    
+}
+
 TStatus RVCInitialize(uint32_t *gp) {
     struct TCB* mainThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of main thread
     mainThread->tid = 0;
     mainThread->state = RVCOS_THREAD_STATE_CREATED;
     mainThread->priority = RVCOS_THREAD_PRIORITY_NORMAL;
     mainThread->pid = -1; // main thread has no parent so set to -1
-    threadArray[0] = mainThread; 
+    threadArray[0] = mainThread;
     
     struct TCB* idleThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of idle thread
     idleThread->tid = 1;
@@ -106,9 +135,12 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize,
         return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
     }
     else{
-        // unsure what to do with entry, need to ask in OH, also dont know what param is
-        void* newThreadStack[memsize];
-        struct TCB* newThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of a thread
+        //void* newThreadStack[memsize];
+        struct TCB* newThread;
+        newThread->stack_base = (struct TCB*)malloc(memsize); // initializing TCB of a thread
+        newThread->entry = entry;
+        newThread->param = param;
+        newThread->memsize = memsize;
         newThread->tid = 0; // need to come up with way to make tids
         tid = newThread->tid;
         newThread->state = RVCOS_THREAD_STATE_CREATED;
