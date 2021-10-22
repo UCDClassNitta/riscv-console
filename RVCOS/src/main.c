@@ -12,13 +12,14 @@ void enter_cartridge(void);
 #define CONTROLLER_STATUS_REG (*(volatile uint32_t*)0x40000018) // base address of the Multi-Button Controller Status Register
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken from riscv-example, main code
 volatile struct TCB* threadArray[256]; 
+volatile int global_tid_nums = 1;  // should only be 2-256
 
 struct TCB{
     TThreadID tid;
     uint32_t *gp;
     TThreadState state; // different states: running, ready, dead, waiting, created
     TThreadPriority priority; // different priorities: high, normal, low
-    int pid;
+    //int pid;
     uint32_t *sp; 
     TMemorySize memsize;
     TThreadEntry entry;
@@ -26,7 +27,7 @@ struct TCB{
     int ticks;
     int wait_id;
     TStatus ret_val;
-    void* stack_base; // return value of malloc
+    uint8_t* stack_base; // return value of malloc
 };
 
 int getTState(struct TCB* thread){
@@ -45,11 +46,12 @@ uint32_t *init_Stack(uint32_t* sp, void (*function)(uint32_t), uint32_t param){
     sp--;
     *sp = (uint32_t)function; // function will either be skeleton or idle
     sp--;
-    *sp = param;
+    *sp = param;  // param could either be the thread's id, or the thread's tcb
+                  // right now it is passed the thread's id
     return sp;
 }
 
-void idle(){
+TThreadEntry idle(){
     while(1);
 }
 
@@ -59,6 +61,7 @@ void* skeleton(TThreadID thread_id){
     // void* param = currThread->param;
     // csr_write_mie(0x888);       // Enable all interrupt soruces
     // csr_enable_interrupts();    // Global interrupt enable
+    // call entry(param) but make sure to switch the gp right before the call
     // TStatus ret_val = call_th_ent(entry, param, app_global_p); 
     //Threadterminate;
     
@@ -69,15 +72,18 @@ TStatus RVCInitialize(uint32_t *gp) {
     mainThread->tid = 0;
     mainThread->state = RVCOS_THREAD_STATE_CREATED;
     mainThread->priority = RVCOS_THREAD_PRIORITY_NORMAL;
-    mainThread->pid = -1; // main thread has no parent so set to -1
+    //mainThread->pid = -1; // main thread has no parent so set to -1
     threadArray[0] = mainThread;
     
     struct TCB* idleThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of idle thread
     idleThread->tid = 1;
     idleThread->state = RVCOS_THREAD_STATE_CREATED;
     idleThread->priority = RVCOS_THREAD_PRIORITY_LOWEST;
-    idleThread->pid = -1;
+    //idleThread->pid = -1;
     threadArray[1] = idleThread;
+    idleThread->entry = idle();
+    idleThread->stack_base = malloc(1024);
+    idleThread->sp = init_Stack((uint32_t*)(idleThread->stack_base + 1024), idle(), idleThread->tid);
 
     app_global_p = *gp; 
     if (app_global_p == 0) {
@@ -119,18 +125,6 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
         return RVCOS_STATUS_SUCCESS;
     }
 }
-
-// typedef struct{ 
-//     uint32_t DLeft:1; 
-//     uint32_t DUp:1; 
-//     uint32_t DDown:1; 
-//     uint32_t DRight:1; 
-//     uint32_t DButton1:1; 
-//     uint32_t DButton2:1; 
-//     uint32_t DButton3:1; 
-//     uint32_t DButton4:1; 
-//     uint32_t DReserved:24; 
-// } SControllerStatus, *SControllerStatusRef; 
  
 TStatus RVCReadController(SControllerStatusRef statusref){
     if (statusref == NULL){
@@ -149,19 +143,55 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize,
     }
     else{
         //void* newThreadStack[memsize];
-        struct TCB* newThread;
-        newThread->stack_base = (struct TCB*)malloc(memsize); // initializing TCB of a thread
+        global_tid_nums++;  // starts at 2, since global_tid_nums is initialized to 2
+        if(global_tid_nums > 256){
+            return RVCOS_STATUS_ERROR_INSUFFICIENT_RESOURCES;
+        }
+        struct TCB* newThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of a thread
+        newThread->stack_base = malloc(memsize); // initialize stack of memsize for the newThread
         newThread->entry = entry;
         newThread->param = param;
         newThread->memsize = memsize;
-        newThread->tid = 0; // need to come up with way to make tids
-        // tid = newThread->tid;
+        newThread->tid = global_tid_nums; 
+        tid = newThread->tid;
         newThread->state = RVCOS_THREAD_STATE_CREATED;
         newThread->priority = prio;
         //newThread->pid = -1; 
-        //threadArray[0] = newThread; 
+        threadArray[global_tid_nums] = newThread;
     }
     return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCThreadDelete(TThreadID thread){
+    if (threadArray[thread] == NULL){
+        return RVCOS_STATUS_ERROR_INVALID_ID;
+    }
+    struct TCB* currThread = threadArray[thread];
+    if (currThread->state != RVCOS_THREAD_STATE_DEAD){
+        return  RVCOS_STATUS_ERROR_INVALID_STATE;
+    }
+    else{
+        threadArray[thread] = NULL;
+        free(currThread->stack_base);
+        free(currThread);
+        return RVCOS_STATUS_SUCCESS; 
+    }
+}
+
+TStatus RVCThreadActivate(TThreadID thread){   // we handle scheduling and context switching in here
+    if (threadArray[thread] == NULL){
+        return RVCOS_STATUS_ERROR_INVALID_ID;
+    }
+    struct TCB* currThread = threadArray[thread];
+    if (currThread->state != RVCOS_THREAD_STATE_DEAD || currThread->state != RVCOS_THREAD_STATE_CREATED){
+        return  RVCOS_STATUS_ERROR_INVALID_STATE;
+    }
+    else{
+        currThread->sp = init_Stack((uint32_t*)(currThread->stack_base + currThread->memsize), skeleton(currThread->tid), currThread->tid); // initializes stack/ activates thread
+        // need to make queues next
+        currThread->state = RVCOS_THREAD_STATE_READY;
+        return RVCOS_STATUS_SUCCESS; 
+    }
 }
 
 int main() {
