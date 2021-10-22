@@ -78,7 +78,7 @@ call_th_ent:
     addi sp,sp,-4
     sw ra, 0(sp)
     mv gp, a2
-    jalr a1       // a1 should be the entry parameter
+    jalr a1       # a1 should be the entry parameter
     .option push
     .option norelax
     la gp, __global_pointer$

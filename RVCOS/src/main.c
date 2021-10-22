@@ -54,12 +54,12 @@ void idle(){
 }
 
 void* skeleton(TThreadID thread_id){
-    struct TCB* currThread = threadArray[thread_id]; 
-    TThreadEntry entry = currThread->entry;
-    void* param = currThread->param;
-    csr_write_mie(0x888);       // Enable all interrupt soruces
-    csr_enable_interrupts();    // Global interrupt enable
-    TStatus ret_val = call_th_ent(entry, param, app_global_p); 
+    // struct TCB* currThread = threadArray[thread_id]; 
+    // TThreadEntry entry = currThread->entry;
+    // void* param = currThread->param;
+    // csr_write_mie(0x888);       // Enable all interrupt soruces
+    // csr_enable_interrupts();    // Global interrupt enable
+    // TStatus ret_val = call_th_ent(entry, param, app_global_p); 
     //Threadterminate;
     
 }
@@ -95,11 +95,26 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize){
     }
     else{
         //write out writesize characters to the location specified by buffer
-        for (int i = 0; i < writesize; i++) {
-            char c = buffer[i];
-            VIDEO_MEMORY[global + i] = c;
+        if (global < 2304) { // 2304 = 64 columns x 36 rows
+        
+            for (int i = 0; i < (int)writesize; i++) {
+                char c = buffer[i];
+                VIDEO_MEMORY[global] = ' ';
+                if (c == '\n') {
+                    global += 0x40;
+                    global -= 1;
+                    VIDEO_MEMORY[global] = c;
+                } else if(c == '\b') {
+                    global -= 1;
+                    VIDEO_MEMORY[global] = c;
+                } else {
+                    VIDEO_MEMORY[global] = c;
+                    global++;
+                }
+            }
+            //VIDEO_MEMORY[global] = *buffer;
+            //global = global + writesize;
         }
-        global = global + writesize;
         // if there are errors try casting (int)
         return RVCOS_STATUS_SUCCESS;
     }
@@ -163,6 +178,7 @@ uint32_t c_syscall_handler(uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint3
     switch(code){
         case 0: return RVCInitialize((void *)p1);
         case 0x0B: return RVCWriteText((void *)p1, p2);
+        case 0x0C: return RVCReadController((void *)p1);
     }
     return code + 1;
 }
