@@ -1,10 +1,10 @@
 #include <stdint.h>
-
+#include "RVCOS.h"
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
 volatile uint32_t *MainThread, *OtherThread;
-volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
+//volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 
 typedef uint32_t (*TEntry)(uint32_t param);
 typedef void (*TFunctionPointer)(void);
@@ -82,11 +82,11 @@ int main() {
           if ((x_pos & 0x3F) != 0x3F) {
             x_pos++;
           }
+          VIDEO_MEMORY[x_pos] = 'X';
         }
-        VIDEO_MEMORY[x_pos] = 'X';
+        ContextSwitch(&MainThread, OtherThread);
+        last_global = global;
       }
-      ContextSwitch(&MainThread, OtherThread);
-      last_global = global;
     }
   }
   return 0;
