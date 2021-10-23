@@ -8,6 +8,8 @@ volatile uint32_t *saved_sp;
 volatile uint32_t app_global_p;
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
+uint32_t call_th_ent(void *param, TThreadEntry entry, uint32_t *gp);
+void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
 #define CONTROLLER_STATUS_REG (*(volatile uint32_t*)0x40000018) // base address of the Multi-Button Controller Status Register
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);  // taken from riscv-example, main code
@@ -42,12 +44,33 @@ int getTID(struct TCB* thread){
     return thread->tid;
 }
 
-uint32_t *init_Stack(uint32_t* sp, void (*function)(uint32_t), uint32_t param){
+uint32_t *init_Stack(uint32_t* sp, TThreadEntry function, uint32_t param, uint32_t tp){
     sp--;
-    *sp = (uint32_t)function; // function will either be skeleton or idle
+    *sp = (uint32_t)function; //sw      ra,48(sp)
     sp--;
-    *sp = param;  // param could either be the thread's id, or the thread's tcb
-                  // right now it is passed the thread's id
+    *sp = tp;//sw      tp,44(sp)  this will hold the current thread's id
+    sp--;
+    *sp = 0;//sw      t0,40(sp)
+    sp--;
+    *sp = 0;//sw      t1,36(sp)
+    sp--;
+    *sp = 0;//sw      t2,32(sp)
+    sp--;
+    *sp = 0;//sw      s0,28(sp)
+    sp--;
+    *sp = 0;//sw      s1,24(sp)
+    sp--;
+    *sp = param;//sw      a0,20(sp)
+    sp--;
+    *sp = 0;//sw      a1,16(sp)
+    sp--;
+    *sp = 0;//sw      a2,12(sp)
+    sp--;
+    *sp = 0;//sw      a3,8(sp)
+    sp--;
+    *sp = 0;//sw      a4,4(sp)
+    sp--;
+    *sp = 0;//sw      a5,0(sp)
     return sp;
 }
 
@@ -78,13 +101,13 @@ TStatus RVCInitialize(uint32_t *gp) {
     
     struct TCB* idleThread = (struct TCB*)malloc(sizeof(struct TCB)); // initializing TCB of idle thread
     idleThread->tid = 1;
-    idleThread->state = RVCOS_THREAD_STATE_CREATED;
+    idleThread->state = RVCOS_THREAD_STATE_READY;   // idle thread needs to be in ready state
     idleThread->priority = RVCOS_THREAD_PRIORITY_LOWEST;
     //idleThread->pid = -1;
     threadArray[1] = idleThread;
     idleThread->entry = idle();
     idleThread->stack_base = malloc(1024);
-    idleThread->sp = init_Stack((uint32_t*)(idleThread->stack_base + 1024), idle(), idleThread->tid);
+    idleThread->sp = init_Stack((uint32_t*)(idleThread->stack_base + 1024), idle(), idleThread->param, idleThread->tid);
 
     app_global_p = *gp; 
     if (app_global_p == 0) {
@@ -188,7 +211,7 @@ TStatus RVCThreadActivate(TThreadID thread){   // we handle scheduling and conte
         return  RVCOS_STATUS_ERROR_INVALID_STATE;
     }
     else{
-        currThread->sp = init_Stack((uint32_t*)(currThread->stack_base + currThread->memsize), skeleton(currThread->tid), currThread->tid); // initializes stack/ activates thread
+        currThread->sp = init_Stack((uint32_t*)(currThread->stack_base + currThread->memsize), skeleton(currThread->tid), currThread->param, currThread->tid); // initializes stack/ activates thread
         // need to make queues next
         currThread->state = RVCOS_THREAD_STATE_READY;
         return RVCOS_STATUS_SUCCESS; 
