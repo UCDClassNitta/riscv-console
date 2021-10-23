@@ -71,12 +71,12 @@ void c_interrupt_handler(void){
 }
 
 void *sbrk(int incr) {
-  extern char heapbase;        /* Defined by the linker */
+  extern char _heapbase;        /* Defined by the linker */
   static char *heap_end;
   char *prev_heap_end;
  
   if (heap_end == 0) {
-    heap_end = &heapbase;
+    heap_end = &_heapbase;
   }
   heap_end += incr;
 }

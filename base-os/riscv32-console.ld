@@ -87,6 +87,6 @@ SECTIONS
     {
         _heapbase = .;
 
-        _eheapbase =.;
+        /* _eheapbase =.; */
     }
 }
