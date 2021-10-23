@@ -63,6 +63,7 @@ void* skeleton(TThreadID thread_id){
     // csr_enable_interrupts();    // Global interrupt enable
     // call entry(param) but make sure to switch the gp right before the call
     // TStatus ret_val = call_th_ent(entry, param, app_global_p); 
+    // Disable intterupts before terminate
     //Threadterminate;
     
 }
@@ -206,7 +207,17 @@ int main() {
 
 uint32_t c_syscall_handler(uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t code){
     switch(code){
-        case 0: return RVCInitialize((void *)p1);
+        case 0x00: return RVCInitialize((void *)p1);
+        case 0x01: return RVCThreadCreate((void *)p1, p2, p3, p4, p5);
+        case 0x02: return RVCThreadDelete((void *)p1);
+        case 0x03: return RVCThreadActivate((void *)p1);
+        // case 0x04: return RVCThreadTerminate((void *)p1, p2);
+        // case 0x05: return RVCThreadWait((void *)p1, p2);
+        // case 0x06: return RVCThreadID((void *)p1);
+        // case 0x07: return RVCThreadState((void *)p1, p2);
+        // case 0x08: return RVCThreadSleep((void *)p1);
+        // case 0x09: return RVCTickMS((void *)p1);
+        // case 0x0A: return RVCTickCount((void *)p1);
         case 0x0B: return RVCWriteText((void *)p1, p2);
         case 0x0C: return RVCReadController((void *)p1);
     }
