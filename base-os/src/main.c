@@ -17,8 +17,7 @@ uint32_t call_on_other_gp(void *param, TEntry entry, uint32_t *gp);
 
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C) // addr is the num, cast to pointer, then deref
 
-uint32_t MyThread(uint32_t param)
-{
+uint32_t MyThread(uint32_t param) {
   int last_global = 42;
   VIDEO_MEMORY[61] = '0';
   VIDEO_MEMORY[62] = '0';
@@ -30,20 +29,15 @@ uint32_t MyThread(uint32_t param)
   VIDEO_MEMORY[190] = '0';
   VIDEO_MEMORY[191] = '0';
 
-  while (1)
-  {
-    if (global >= last_global + param)
-    {
+  while (1) {
+    if (global >= last_global + param) {
       ContextSwitch(&OtherThread, MainThread);
       VIDEO_MEMORY[63]++;
-      if (VIDEO_MEMORY[63] > 'z')
-      {
+      if (VIDEO_MEMORY[63] > 'z') {
         VIDEO_MEMORY[63] = '0';
       }
-      for (int i = 0; i < 6; i++)
-      {
-        for (int j = 0; j < 6; j++)
-        {
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
           VIDEO_MEMORY[58 + j + 64 * i] = VIDEO_MEMORY[63];
         }
       }
@@ -53,8 +47,7 @@ uint32_t MyThread(uint32_t param)
   return 2; // arbitrary
 }
 
-int main()
-{
+int main() {
   saved_sp = &controller_status;
   int last_global = 42;
 
@@ -62,42 +55,31 @@ int main()
   int param = 20;
   uint32_t OtherThreadStack[1024]; // 1024 is arbitrary
 
-  while (1)
-  {
-    if (CART_STAT_REG & 0x1) // if the catridge status reg says it's ready to load cartridge
-    {
-      enter_cartridge(); // load
+  while (1) {
+    if (CART_STAT_REG & 0x1) {
+      enter_cartridge();
     }
-    if (global >= last_global + param)
-    {
-      if (controller_status)
-      {
+
+    if (global >= last_global + param) {
+      if (controller_status) {
         VIDEO_MEMORY[x_pos] = ' ';
-        if (controller_status & 0x1)
-        {
-          if (x_pos & 0x3F)
-          {
+        if (controller_status & 0x1) {
+          if (x_pos & 0x3F) {
             x_pos--;
           }
         }
-        if (controller_status & 0x2)
-        {
-          if (x_pos >= 0x40)
-          {
+        if (controller_status & 0x2) {
+          if (x_pos >= 0x40) {
             x_pos -= 0x40;
           }
         }
-        if (controller_status & 0x4)
-        {
-          if (x_pos < 0x8C0)
-          {
+        if (controller_status & 0x4) {
+          if (x_pos < 0x8C0) {
             x_pos += 0x40;
           }
         }
-        if (controller_status & 0x8)
-        {
-          if ((x_pos & 0x3F) != 0x3F)
-          {
+        if (controller_status & 0x8) {
+          if ((x_pos & 0x3F) != 0x3F) {
             x_pos++;
           }
         }
@@ -110,7 +92,6 @@ int main()
   return 0;
 }
 
-uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t code)
-{
+uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t code) {
   return code + 1;
 }
