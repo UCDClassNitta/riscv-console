@@ -36,3 +36,6 @@ bin/
 
 # User preferences for VS code
 .vscode/
+
+# Have to modify runsim.sh to run on Windows, so disabling it
+runsim.sh
