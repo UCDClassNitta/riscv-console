@@ -6,6 +6,8 @@ volatile int global; // used for global cursor
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
 volatile uint32_t app_global_p;
+#define MTIMECMP_LOW    (*((volatile uint32_t *)0x40000010))
+#define MTIMECMP_HIGH   (*((volatile uint32_t *)0x40000014))
 typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C)
@@ -58,9 +60,20 @@ void* skeleton(TThreadID thread_id){
     struct TCB* currThread = threadArray[thread_id]; 
     TThreadEntry entry = currThread->entry;
     void* param = currThread->param;
+<<<<<<< Updated upstream
     csr_write_mie(0x888);       // Enable all interrupt soruces
     csr_enable_interrupts();    // Global interrupt enable
     TStatus ret_val = call_th_ent(entry, param, app_global_p); 
+=======
+    asm volatile ("csrw mie, %0" : : "r"(0x888));   // Enable all interrupt soruces: csr_write_mie(0x888); 
+    asm volatile ("csrsi mstatus, 0x8");            // Global interrupt enable: csr_enable_interrupts()   
+    MTIMECMP_LOW = 1;
+    MTIMECMP_HIGH = 0;
+    // call entry(param) but make sure to switch the gp right before the call
+
+    TStatus ret_val = call_th_ent(entry, param, app_global_p); 
+    // Disable intterupts before terminate
+>>>>>>> Stashed changes
     //Threadterminate;
     
 }
