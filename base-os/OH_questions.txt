@@ -1,0 +1,9 @@
+10/19/21
+````````
+1. Return type of sbrk?
+2. How do we define heap_base in linker file?
+    -How large is the data section?
+3. What parts of SBRK make up data section?
+4. Why is gp initialized as an expression not a constant
+5. What are various RISC-V assembly instructions/syntax (0(a5)), ra
+6. How to reference variables between C and assembly
