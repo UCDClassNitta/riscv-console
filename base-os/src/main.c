@@ -1,10 +1,10 @@
 #include <stdint.h>
-
+#include "RVCOS.h"
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
 volatile uint32_t *MainThread, *OtherThread;
-volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
+//volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 
 typedef uint32_t (*TEntry)(uint32_t param);
 typedef void (*TFunctionPointer)(void);
@@ -62,49 +62,56 @@ int main()
   int param = 20;
   uint32_t OtherThreadStack[1024]; // 1024 is arbitrary
 
+  /**
+   * @brief
+   *
+   *
+   */
+  RVCWriteText("abcde", 5);
+
   while (1)
   {
     if (CART_STAT_REG & 0x1) // if the catridge status reg says it's ready to load cartridge
     {
       enter_cartridge(); // load
-    }
-    if (global >= last_global + param)
-    {
-      if (controller_status)
+      if (global >= last_global + param)
       {
-        VIDEO_MEMORY[x_pos] = ' ';
-        if (controller_status & 0x1)
+        if (controller_status)
         {
-          if (x_pos & 0x3F)
+          VIDEO_MEMORY[x_pos] = ' ';
+          if (controller_status & 0x1)
           {
-            x_pos--;
+            if (x_pos & 0x3F)
+            {
+              x_pos--;
+            }
           }
-        }
-        if (controller_status & 0x2)
-        {
-          if (x_pos >= 0x40)
+          if (controller_status & 0x2)
           {
-            x_pos -= 0x40;
+            if (x_pos >= 0x40)
+            {
+              x_pos -= 0x40;
+            }
           }
-        }
-        if (controller_status & 0x4)
-        {
-          if (x_pos < 0x8C0)
+          if (controller_status & 0x4)
           {
-            x_pos += 0x40;
+            if (x_pos < 0x8C0)
+            {
+              x_pos += 0x40;
+            }
           }
-        }
-        if (controller_status & 0x8)
-        {
-          if ((x_pos & 0x3F) != 0x3F)
+          if (controller_status & 0x8)
           {
-            x_pos++;
+            if ((x_pos & 0x3F) != 0x3F)
+            {
+              x_pos++;
+            }
           }
+          VIDEO_MEMORY[x_pos] = 'X';
         }
-        VIDEO_MEMORY[x_pos] = 'X';
+        ContextSwitch(&MainThread, OtherThread);
+        last_global = global;
       }
-      ContextSwitch(&MainThread, OtherThread);
-      last_global = global;
     }
   }
   return 0;
