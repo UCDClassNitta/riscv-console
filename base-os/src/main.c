@@ -86,13 +86,45 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
   //RVCWriteText(p1, p2);
 
   switch (syscall_code) {
-    case 0:{
+    case 0: {
       RVCInitialize(p1);
     }
-
+    case 1: {
+      RVCThreadCreate(p1, p2, p3, p4, p5);
+    }
+    case 2: {
+      RVCThreadDelete(p1);
+    }
+    case 3: {
+      RVCThreadActivate(p1);
+    }
+    case 4: {
+      RVCThreadTerminate(p1, p2);
+    }
+    case 5: {
+      RVCThreadWait(p1, p2);
+    }
+    case 6: {
+      RVCThreadID(p1);
+    }
+    case 7: {
+      RVCThreadState(p1, p2);
+    }
+    case 8: {
+      RVCThreadSleep(p1);
+    }
+    case 9: {
+      RVCTickMS(p1);
+    }
+    case 10: {
+      RVCTickCount(p1);
+    }
     case 11: {
       RVCWriteText(p1, p2);
       break;
+    }
+    case 12: {
+      RVCReadController(p1);
     }
   default:
     break;
