@@ -76,6 +76,7 @@ int main() {
  * @param syscall_code .. switch case on this to call the corresponding functions
  * @return uint32_t
  */
+
 uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t syscall_code) {
 
   char *syscall_text[100];
