@@ -71,7 +71,17 @@ TStatus RVCReadController(SControllerStatusRef statusref);
  * 
  */
 
+typedef struct _TCB {
+  TThreadID thread_id;
+  TThreadState state;
+  TThreadPriority priority;
+
+
+} TCB; 
+
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
+volatile uint32_t *main_gp = 0;
+
 TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 {
   const uint32_t stat = 0;
@@ -81,6 +91,21 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
   }
 
   return stat;
+}
+
+TStatus RVCInitialize(uint32_t *gp){
+  if (main_gp){
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+
+  TCB *main_thread_tcb = malloc(sizeof(TCB));
+  main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
+  main_gp = gp;
+
+  char *gp_text[100];
+  itoa(gp, gp_text, 10);
+  RVCWriteText(gp_text, strlen(gp_text));
+  return RVCOS_STATUS_SUCCESS;
 }
 
 #endif

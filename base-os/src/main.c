@@ -55,7 +55,7 @@ int main() {
   int param = 20;
   //uint32_t OtherThreadStack[1024]; // 1024 is arbitrary
 
-  RVCWriteText("hello", 5);
+  //RVCWriteText("hello", 5);
 
   while (1) {
     if (CART_STAT_REG & 0x1) {
@@ -77,48 +77,26 @@ int main() {
  * @return uint32_t
  */
 uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t syscall_code) {
+
+  char *syscall_text[100];
+  itoa(syscall_code, syscall_text, 10);
   char *testStr = "syscall called";
-  RVCWriteText(testStr, strlen(testStr));
-  RVCWriteText(p1, p2);
+  RVCWriteText(syscall_text, strlen(syscall_text));
+  //RVCWriteText(p1, p2);
+
+  switch (syscall_code) {
+    case 0:{
+      RVCInitialize(p1);
+    }
+
+    case 11: {
+      RVCWriteText(p1, p2);
+      break;
+    }
+  default:
+    break;
+  }
+
 
   return syscall_code + 1; // plus 1 just to make a change
 }
-
-// if (global >= last_global + param)
-// {
-//   if (controller_status)
-//   {
-//     VIDEO_MEMORY[x_pos] = ' ';
-//     if (controller_status & 0x1)
-//     {
-//       if (x_pos & 0x3F)
-//       {
-//         x_pos--;
-//       }
-//     }
-//     if (controller_status & 0x2)
-//     {
-//       if (x_pos >= 0x40)
-//       {
-//         x_pos -= 0x40;
-//       }
-//     }
-//     if (controller_status & 0x4)
-//     {
-//       if (x_pos < 0x8C0)
-//       {
-//         x_pos += 0x40;
-//       }
-//     }
-//     if (controller_status & 0x8)
-//     {
-//       if ((x_pos & 0x3F) != 0x3F)
-//       {
-//         x_pos++;
-//       }
-//       VIDEO_MEMORY[x_pos] = 'X';
-//     }
-//     ContextSwitch(&MainThread, OtherThread);
-//     last_global = global;
-//   }
-// }
