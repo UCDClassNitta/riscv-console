@@ -44,36 +44,36 @@ int main(){
     TThreadID CurrentThreadID;
     TThreadState ThreadState;
 
-    // WriteString("Main Thread:   ");
-    // RVCThreadID(&MainThreadID);
-    // RVCThreadState(MainThreadID,&ThreadState);
-    // if(RVCOS_THREAD_STATE_RUNNING != ThreadState){
-    //     WriteString("Invalid State\n");
-    //     return 1;
-    // }
-    // WriteString("Valid State\n");
-    // RVCThreadCreate(HighPriorityThread,NULL,2048,RVCOS_THREAD_PRIORITY_HIGH,&HighThreadID);
-    // WriteString("High Created:  ");
-    // RVCThreadState(HighThreadID,&ThreadState);
-    // if(RVCOS_THREAD_STATE_CREATED != ThreadState){
-    //     WriteString("Invalid State\n");
-    //     return 1;
-    // }
-    // WriteString("Valid State\n");
-    // RVCThreadActivate(HighThreadID);
-    // WriteString("Checking High: ");
-    // RVCThreadState(HighThreadID,&ThreadState);
-    // if(RVCOS_THREAD_STATE_DEAD != ThreadState){
-    //     WriteString("Invalid State\n");
-    //     return 1;
-    // }
-    // WriteString("Valid State\n");
-    // RVCThreadID(&CurrentThreadID);
-    // if(CurrentThreadID != MainThreadID){
-    //     WriteString("Invalid Main Thread ID\n");
-    //     return 1;
-    // }
-    // WriteString("Main Exiting\n");
+    WriteString("Main Thread:   ");
+    RVCThreadID(&MainThreadID);
+    RVCThreadState(MainThreadID,&ThreadState);
+    if(RVCOS_THREAD_STATE_RUNNING != ThreadState){
+        WriteString("Invalid State\n");
+        return 1;
+    }
+    WriteString("Valid State\n");
+    RVCThreadCreate(HighPriorityThread,NULL,2048,RVCOS_THREAD_PRIORITY_HIGH,&HighThreadID);
+    WriteString("High Created:  ");
+    RVCThreadState(HighThreadID,&ThreadState);
+    if(RVCOS_THREAD_STATE_CREATED != ThreadState){
+        WriteString("Invalid State\n");
+        return 1;
+    }
+    WriteString("Valid State\n");
+    RVCThreadActivate(HighThreadID);
+    WriteString("Checking High: ");
+    RVCThreadState(HighThreadID,&ThreadState);
+    if(RVCOS_THREAD_STATE_DEAD != ThreadState){
+        WriteString("Invalid State\n");
+        return 1;
+    }
+    WriteString("Valid State\n");
+    RVCThreadID(&CurrentThreadID);
+    if(CurrentThreadID != MainThreadID){
+        WriteString("Invalid Main Thread ID\n");
+        return 1;
+    }
+    WriteString("Main Exiting\n");
     
     return 0;
 }

@@ -4,7 +4,6 @@ volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
 volatile uint32_t *MainThread, *OtherThread;
-//volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 
 typedef uint32_t (*TEntry)(uint32_t param);
 typedef void (*TFunctionPointer)(void);
@@ -76,14 +75,11 @@ int main() {
  * @param syscall_code .. switch case on this to call the corresponding functions
  * @return uint32_t
  */
-
 uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint32_t p5, uint32_t syscall_code) {
 
-  char *syscall_text[100];
-  itoa(syscall_code, syscall_text, 10);
-  char *testStr = "syscall called";
-  RVCWriteText(syscall_text, strlen(syscall_text));
-  //RVCWriteText(p1, p2);
+  // char *syscall_text[100];
+  // itoa(syscall_code, syscall_text, 10);
+  // RVCWriteText(syscall_text, strlen(syscall_text));
 
   switch (syscall_code) {
     case 0: {
@@ -92,40 +88,40 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
     case 1: {
       RVCThreadCreate(p1, p2, p3, p4, p5);
     }
-    case 2: {
-      RVCThreadDelete(p1);
-    }
-    case 3: {
-      RVCThreadActivate(p1);
-    }
-    case 4: {
-      RVCThreadTerminate(p1, p2);
-    }
-    case 5: {
-      RVCThreadWait(p1, p2);
-    }
-    case 6: {
-      RVCThreadID(p1);
-    }
-    case 7: {
-      RVCThreadState(p1, p2);
-    }
-    case 8: {
-      RVCThreadSleep(p1);
-    }
-    case 9: {
-      RVCTickMS(p1);
-    }
-    case 10: {
-      RVCTickCount(p1);
-    }
+    // case 2: {
+    //   RVCThreadDelete(p1);
+    // }
+    // case 3: {
+    //   RVCThreadActivate(p1);
+    // }
+    // case 4: {
+    //   RVCThreadTerminate(p1, p2);
+    // }
+    // case 5: {
+    //   RVCThreadWait(p1, p2);
+    // }
+    // case 6: {
+    //   RVCThreadID(p1);
+    // }
+    // case 7: {
+    //   RVCThreadState(p1, p2);
+    // }
+    // case 8: {
+    //   RVCThreadSleep(p1);
+    // }
+    // case 9: {
+    //   RVCTickMS(p1);
+    // }
+    // case 10: {
+    //   RVCTickCount(p1);
+    // }
     case 11: {
       RVCWriteText(p1, p2);
       break;
     }
-    case 12: {
-      RVCReadController(p1);
-    }
+    // case 12: {
+    //   RVCReadController(p1);
+    // }
   default:
     break;
   }
