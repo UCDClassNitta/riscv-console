@@ -24,11 +24,37 @@ void thread_skeleton(uint32_t thread)
   // Do any setup for making tp = thread_id
   asm volatile("csrsi mstatus, 0x8"); // enable interrupts
 
-  
   // call entry(param) but make sure to switch the gp right before the call
 
   uint32_t ret_val = call_on_other_gp(global_tcb_arr[thread]->param, global_tcb_arr[thread]->entry, main_gp);
   RVCThreadTerminate(thread, ret_val);
+}
+
+void schedule()
+{
+  uint32_t old_id = running_thread_id;
+  uint32_t new_id = 0;
+  if (high_prio->size > 0)
+  {
+    new_id = dequeue(3);
+    running_thread_id = new_id;
+    
+  }
+  else if (med_prio->size > 0)
+  {
+    new_id = dequeue(2);
+    running_thread_id = new_id;
+  }
+  else if (low_prio->size > 0)
+  {
+    new_id = dequeue(1);
+    running_thread_id = new_id;
+  }
+  else
+  {
+    running_thread_id = 0; // goto idle
+  }
+  ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
 }
 
 void WriteString(const char *str)
@@ -93,11 +119,12 @@ void enqueue(uint32_t id, uint32_t target_prio)
   }
   }
 
- if (target->size < 256){
-   target->tail++;
-   target->queue[target->tail] = id; // insert at tail
-   target->size++;
- }
+  if (target->size < 256)
+  {
+    target->tail++;
+    target->queue[target->tail] = id; // insert at tail
+    target->size++;
+  }
 }
 
 // Remove thread from respective queue by @param id
@@ -176,18 +203,19 @@ TStatus RVCInitialize(uint32_t *gp)
   main_thread_tcb->priority = 2;
 
   global_tcb_arr[1] = main_thread_tcb;
-  WriteString("rvc init");
 
   return RVCOS_STATUS_SUCCESS;
 }
 
 TStatus RVCThreadDelete(TThreadID thread)
 {
-  if (!global_tcb_arr[thread]) {
+  if (!global_tcb_arr[thread])
+  {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
 
-  if (global_tcb_arr[thread]->state != RVCOS_THREAD_STATE_DEAD) {
+  if (global_tcb_arr[thread]->state != RVCOS_THREAD_STATE_DEAD)
+  {
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
@@ -210,7 +238,6 @@ TStatus RVCThreadDelete(TThreadID thread)
  */
 TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid)
 {
-  WriteString("rvc create");
   if (!entry || !tid)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
@@ -245,26 +272,20 @@ TStatus RVCThreadActivate(TThreadID thread)
    * save all reg
    *
    */
-  WriteString("rvc activate");
 
   char *thread_text[100];
-  WriteString(itoa(thread, thread_text, 10));
 
   if (global_tcb_arr[thread] == NULL)
   {
-    WriteString("1st");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
 
-  WriteString("state");
   uint32_t state = global_tcb_arr[thread]->state;
   if (state == RVCOS_THREAD_STATE_CREATED || state == RVCOS_THREAD_STATE_DEAD)
   {
-    WriteString("bad");
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
-  WriteString("dequeue");
   global_tcb_arr[thread]->sp = malloc(global_tcb_arr[thread]->mem_size);
 
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_READY;
@@ -273,13 +294,11 @@ TStatus RVCThreadActivate(TThreadID thread)
   //  set thread to STATUS_RUNNING
   //  run thread from entry point
 
-  WriteString("dequeue finished");
   return RVCOS_STATUS_SUCCESS;
 }
 
 TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval)
 {
-  WriteString("rvc terminate");
   if (!global_tcb_arr[thread])
   {
     return RVCOS_STATUS_ERROR_INVALID_ID;
@@ -314,7 +333,6 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 
 TStatus RVCThreadID(TThreadIDRef threaddref)
 {
-  WriteString("thread id");
   if (!threaddref)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
@@ -326,7 +344,6 @@ TStatus RVCThreadID(TThreadIDRef threaddref)
 
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
 {
-  WriteString("thread state");
 
   if (!global_tcb_arr[thread])
   {
@@ -343,6 +360,16 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
 
 TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref)
 {
+
+  if (!global_tcb_arr[thread])
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (returnref == NULL)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
   return RVCOS_STATUS_SUCCESS;
 }
 
@@ -353,37 +380,32 @@ TStatus RVCThreadSleep(TTick tick)
 
 TStatus RVCTickMS(uint32_t *tickmsref)
 {
+  if (tickmsref)
+  {
+    uint32_t time = TIME_REG * 1000;
+    *tickmsref = time;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
   return RVCOS_STATUS_SUCCESS;
 }
 TStatus RVCTickCount(TTickRef tickref)
 {
-  return RVCOS_STATUS_SUCCESS;
+  if (tickref)
+  {
+    uint32_t time = TIME_REG;
+    *tickref = time;
+    return RVCOS_STATUS_SUCCESS;
+  } else {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
 }
 
 TStatus RVCReadController(SControllerStatusRef statusref)
 {
   return RVCOS_STATUS_SUCCESS;
-}
-
-void schedule()
-{
-  if (high_prio->size > 0)
-  {
-    uint32_t id = dequeue(3);
-    running_thread_id = id;
-  }
-  else if (med_prio->size > 0)
-  {
-    uint32_t id = dequeue(2);
-    running_thread_id = id;
-  }
-  else if (low_prio->size > 0)
-  {
-    uint32_t id = dequeue(1);
-    running_thread_id = id;
-  }
-  else
-  {
-    running_thread_id = 0; // goto idle
-  }
 }

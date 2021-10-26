@@ -31,6 +31,8 @@
 #define RVCOS_TIMEOUT_INFINITE                      ((TTick)0)
 #define RVCOS_TIMEOUT_IMMEDIATE                     ((TTick)-1)
 
+#define TIME_REG (*(volatile uint32_t *)0x40000008)
+
 typedef uint32_t TStatus, *TStatusRef;
 typedef uint32_t TTick, *TTickRef;
 typedef int32_t  TThreadReturn, *TThreadReturnRef;

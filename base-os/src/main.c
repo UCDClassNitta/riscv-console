@@ -2,7 +2,7 @@
 #include "RVCOS.h"
 
 #define CART_STAT_REG (*(volatile uint32_t *)0x4000001C) // addr is the num, cast to pointer, then deref
-#define TIME_REG (*(volatile uint32_t *)0x40000040)
+#define TIME_REG (*(volatile uint32_t *)0x40000008)
 
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
@@ -35,14 +35,8 @@ int main() {
       while (CART_STAT_REG & 0x1) // wait for the cartridge to be removed
       {
         ;
-        // uint32_t time = TIME_REG;
-        // WriteInt(time);
       }
     }
-    // if (CART_STAT_REG & ??){
-
-    // }
-
   }
   return 0;
 }
@@ -110,9 +104,9 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
       RVCWriteText(p1, p2);
       break;
     }
-    // case 12: {
-    //   RVCReadController(p1);
-    // }
+    case 12: {
+      RVCReadController(p1);
+    }
   default:
     break;
   }
