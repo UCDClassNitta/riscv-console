@@ -1,6 +1,6 @@
 .section .text, "ax"
-.global _interrupt_handler, enter_cartridge, ContextSwitch
-.extern saved_sp
+.global _interrupt_handler, enter_cartridge, ContextSwitch, call_on_other_gp # things here will be callable in C
+.extern saved_sp # From C
 
 _interrupt_handler:
     csrw    mscratch,ra
