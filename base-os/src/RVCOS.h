@@ -39,6 +39,7 @@ typedef uint32_t TThreadID, *TThreadIDRef;
 typedef uint32_t TThreadPriority, *TThreadPriorityRef;
 typedef uint32_t TThreadState, *TThreadStateRef;
 typedef char     TTextCharacter, *TTextCharacterRef;
+typedef uint32_t (*TEntry)(uint32_t param);
 
 typedef TThreadReturn (*TThreadEntry)(void *);
 
@@ -75,9 +76,11 @@ TStatus RVCReadController(SControllerStatusRef statusref);
  * Helpers
  */
 void WriteString(const char *str);
+void WriteInt(const uint32_t num);
 void idleFunction();
 void enqueue(uint32_t id, uint32_t target_prio);
-void dequeue(uint32_t id, uint32_t target_prio);
+uint32_t dequeue(uint32_t target_prio);
+void thread_skeleton(uint32_t thread);
 
 typedef struct _TCB
 {
@@ -95,7 +98,8 @@ typedef struct _TCB
 
 typedef struct _PriorityQueue
 {
-  uint32_t* queue;
+  uint32_t size;
+  uint32_t *queue;
   uint32_t head;
   uint32_t tail;
 } PriorityQueue;

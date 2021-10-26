@@ -1,5 +1,9 @@
 #include <stdint.h>
 #include "RVCOS.h"
+
+#define CART_STAT_REG (*(volatile uint32_t *)0x4000001C) // addr is the num, cast to pointer, then deref
+#define TIME_REG (*(volatile uint32_t *)0x40000040)
+
 volatile int global = 42;
 volatile uint32_t controller_status = 0;
 volatile uint32_t *saved_sp;
@@ -12,9 +16,8 @@ typedef void (*TFunctionPointer)(void);
 void enter_cartridge(void);
 void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp);
 uint32_t *InitStack(uint32_t *sp, TEntry fun, uint32_t param, uint32_t tp);
-uint32_t call_on_other_gp(void *param, TEntry entry, uint32_t *gp);
 
-#define CART_STAT_REG (*(volatile uint32_t *)0x4000001C) // addr is the num, cast to pointer, then deref
+
 
 int main() {
   saved_sp = &controller_status;
@@ -26,8 +29,15 @@ int main() {
 
 
   while (1) {
-    if (CART_STAT_REG & 0x1) {
+    if (CART_STAT_REG & 0x1)
+    {
       enter_cartridge();
+      while (CART_STAT_REG & 0x1) // wait for the cartridge to be removed
+      {
+        ;
+        // uint32_t time = TIME_REG;
+        // WriteInt(time);
+      }
     }
     // if (CART_STAT_REG & ??){
 
@@ -36,6 +46,7 @@ int main() {
   }
   return 0;
 }
+
 
 /**
  * @brief
@@ -122,7 +133,7 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
 uint32_t *InitStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp)
 {
   sp--;
-  *sp = (uint32_t)function; // sw      ra,48(sp)
+  *sp = (uint32_t)thread_skeleton; // sw      ra,48(sp)
   sp--;
   *sp = tp; // sw      tp,44(sp)
   sp--;
