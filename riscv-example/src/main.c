@@ -30,23 +30,23 @@ int main() {
         if(global != last_global){
             if(controller_status){
                 VIDEO_MEMORY[x_pos] = ' ';
-                if(controller_status & 0x1){
+                if(controller_status & 0x1){ // left
                     if(x_pos & 0x3F){
                         x_pos--;
                     }
                 }
-                if(controller_status & 0x2){
+                if(controller_status & 0x2){ //down
                     if(x_pos >= 0x40){
                         x_pos -= 0x40;
                     }
                 }
-                if(controller_status & 0x4){
+                if(controller_status & 0x4){ //up
                     if(x_pos < 0x8C0){
                         x_pos += 0x40;
                     }
                 }
                 if(controller_status & 0x8){
-                    if((x_pos & 0x3F) != 0x3F){
+                    if((x_pos & 0x3F) != 0x3F){ // right
                         x_pos++;
                     }
                 }
