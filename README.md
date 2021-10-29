@@ -4,6 +4,16 @@
 **Zhongning Li** 917626797
 
 **Alexander Hernes** 912304658
+
+## Naming Conventions
+```c
+int variable_name
+void functionName() {}
+typedef TypeName
+#define MACRO_NAME
+```
+
+
 <details>
 <summary>Docs from original repo</summary>
 
@@ -14,6 +24,7 @@ This project is a simulator for a hypothetical RISC-V based game console. The re
 ## Table of Contents
 
 - [Student Names and IDs:](#student-names-and-ids)
+  - [Naming Conventions](#naming-conventions)
 - [RISC-V Console Simulator](#risc-v-console-simulator)
   - [Table of Contents](#table-of-contents)
   - [Getting Started](#getting-started)
