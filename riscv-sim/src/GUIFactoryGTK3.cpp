@@ -55,6 +55,21 @@ const uint32_t SGUIKeyType::Space = GDK_KEY_space;
 const uint32_t SGUIKeyType::Delete = GDK_KEY_Delete;
 const uint32_t SGUIKeyType::Period = GDK_KEY_period;
 const uint32_t SGUIKeyType::BackSpace = GDK_KEY_BackSpace;
+const uint32_t SGUIKeyType::Minus = GDK_KEY_minus;
+const uint32_t SGUIKeyType::Plus = GDK_KEY_plus;
+const uint32_t SGUIKeyType::Equal = GDK_KEY_equal;
+const uint32_t SGUIKeyType::Comma = GDK_KEY_comma;
+const uint32_t SGUIKeyType::Colon = GDK_KEY_colon;
+const uint32_t SGUIKeyType::SemiColon = GDK_KEY_semicolon;
+const uint32_t SGUIKeyType::Slash = GDK_KEY_slash;
+const uint32_t SGUIKeyType::QuestionMark = GDK_KEY_question;
+const uint32_t SGUIKeyType::Exclamation = GDK_KEY_exclam;
+const uint32_t SGUIKeyType::AtSymbol = GDK_KEY_at;
+const uint32_t SGUIKeyType::Ampersand = GDK_KEY_ampersand;
+const uint32_t SGUIKeyType::Pound = GDK_KEY_numbersign;
+const uint32_t SGUIKeyType::Dollar = GDK_KEY_dollar;
+const uint32_t SGUIKeyType::Percent = GDK_KEY_percent;
+const uint32_t SGUIKeyType::Caret = GDK_KEY_caret;
 const uint32_t SGUIKeyType::UpArrow = GDK_KEY_Up;
 const uint32_t SGUIKeyType::DownArrow = GDK_KEY_Down;
 const uint32_t SGUIKeyType::LeftArrow = GDK_KEY_Left;
@@ -1282,6 +1297,10 @@ void CGUIWindowGTK3::SetMaxSize(std::shared_ptr<CGUIWidget> widget, int width, i
     Geometry.max_width = width;
     Geometry.max_height = height;
     gtk_window_set_geometry_hints(GTK_WINDOW(DWidget), WidgetToSize->Widget(), &Geometry, GDK_HINT_MAX_SIZE);    
+}
+
+void CGUIWindowGTK3::Resize(int width, int height){
+    gtk_window_resize(GTK_WINDOW(DWidget), width, height);
 }
 
 void CGUIWindowGTK3::SetTitle(const std::string &title){

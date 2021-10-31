@@ -76,11 +76,14 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         std::unordered_map<uint32_t, std::shared_ptr<CGUIToggleButton> > DKeyControllerMapping;
         std::unordered_map<std::shared_ptr<CGUIToggleButton>, CRISCVConsole::EDirection> DDirectionButtonMapping;
         std::unordered_map<std::shared_ptr<CGUIToggleButton>, CRISCVConsole::EButtonNumber> DButtonNumberButtonMapping;
+        std::unordered_map<uint32_t, bool> DKeyZoomMapping;
 
         std::shared_ptr<CAutoRecorder> DInputRecorder;
         std::shared_ptr<CRISCVConsole> DRISCVConsole;
 
-        std::string DFileOpenFolder;
+        std::string DFirmwareFileOpenFolder;
+        std::string DCartridgeFileOpenFolder;
+        std::string DRecordFileOpenFolder;
         bool DCartridgeInLoading;
 
         static void ActivateCallback(TGUICalldata data);
@@ -152,6 +155,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint);
 
         void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
+        void SetKeyZoomMapping(const std::string &keys, bool zoomin);
         uint32_t GetScreenTimeoutMS();
         uint32_t GetWidgetSpacing();
         uint32_t GetInstructionLineCount();

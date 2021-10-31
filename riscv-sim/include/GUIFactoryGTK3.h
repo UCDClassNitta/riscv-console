@@ -333,6 +333,7 @@ class CGUIWindowGTK3 : public virtual CGUIWindow, public CGUIContainerGTK3{
         void SetMaxSize(int width, int height) override;
         void SetMinSize(std::shared_ptr<CGUIWidget> widget, int width, int height) override;
         void SetMaxSize(std::shared_ptr<CGUIWidget> widget, int width, int height) override;
+        void Resize(int width, int height) override;
         void SetTitle(const std::string &title) override;
         void Close() override;
 };

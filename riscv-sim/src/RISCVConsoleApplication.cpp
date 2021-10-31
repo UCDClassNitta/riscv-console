@@ -16,7 +16,7 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, c
     auto ConfigFile = std::make_shared<CFileDataSource>(ConfigFilePath);
     DConfiguration.Load(ConfigFile);
 
-    DFileOpenFolder = CPath::CurrentPath().ToString();
+    DFirmwareFileOpenFolder = DCartridgeFileOpenFolder = DRecordFileOpenFolder = CPath::CurrentPath().ToString();
     DApplication = CGUIFactory::ApplicationInstance(appname);
     
     DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
@@ -200,6 +200,7 @@ bool CRISCVConsoleApplication::MainWindowKeyPressEvent(std::shared_ptr<CGUIWidge
         ButtonSearch->second->SetActive(true);
         UpdateConsoleButtonChange(ButtonSearch->second);
     }
+
     return true;
 }
 
@@ -209,6 +210,34 @@ bool CRISCVConsoleApplication::MainWindowKeyReleaseEvent(std::shared_ptr<CGUIWid
         ButtonSearch->second->SetActive(false);
         UpdateConsoleButtonChange(ButtonSearch->second);
     }
+    else{
+        auto ZoomSearch = DKeyZoomMapping.find(event.DValue.DValue);
+        if(ZoomSearch != DKeyZoomMapping.end()){
+            double CurrentScale = (double)DConsoleVideo->AllocatedHeight() / DRISCVConsole->ScreenHeight();
+            double Scales[] = {1.0, 1.5, 2.0};
+            int ScaleIndex = 0;
+            int ScaleCount = sizeof(Scales)/sizeof(double);
+            while(ScaleIndex < ScaleCount){
+                if(CurrentScale == Scales[ScaleIndex]){
+                    break;
+                }
+                ScaleIndex++;
+            }
+            if(ZoomSearch->second){
+                if(ScaleIndex + 1 < ScaleCount){
+                    CurrentScale = Scales[ScaleIndex + 1];
+                    DConsoleVideo->SetSizeRequest(DRISCVConsole->ScreenWidth()*CurrentScale, DRISCVConsole->ScreenHeight()*CurrentScale);
+                }
+            }
+            else{
+                if(ScaleIndex){
+                    CurrentScale = Scales[ScaleIndex - 1];
+                    DConsoleVideo->SetSizeRequest(DRISCVConsole->ScreenWidth()*CurrentScale, DRISCVConsole->ScreenHeight()*CurrentScale);
+                    DMainWindow->Resize(1,1);
+                }
+            }
+        }
+    }
     return true;
 }
 
@@ -217,7 +246,17 @@ bool CRISCVConsoleApplication::MainWindowConfigureEvent(std::shared_ptr<CGUIWidg
 }
 
 bool CRISCVConsoleApplication::DrawingAreaDraw(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc){
-    rc->DrawSurface(DDoubleBufferSurface, 0, 0, -1, -1, 0, 0);
+    if(DConsoleVideo->AllocatedHeight() == DRISCVConsole->ScreenHeight()){
+        rc->DrawSurface(DDoubleBufferSurface, 0, 0, -1, -1, 0, 0);
+    }
+    else{
+        double Scale = (double)DConsoleVideo->AllocatedHeight() / DRISCVConsole->ScreenHeight();
+        rc->Save();
+        rc->Scale(Scale,Scale);
+        rc->DrawSurface(DDoubleBufferSurface, 0, 0, -1, -1, 0, 0);
+        rc->Restore();
+    }
+    
     return true;
 }
 
@@ -225,10 +264,10 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidg
     std::string Filename;
     {
         auto FileChooser = CGUIFactory::NewFileChooserDialog("Select Firmware",true,DMainWindow);
-        FileChooser->SetCurrentFolder(DFileOpenFolder);
+        FileChooser->SetCurrentFolder(DFirmwareFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
-            DFileOpenFolder = FileChooser->GetCurrentFolder();
+            DFirmwareFileOpenFolder = FileChooser->GetCurrentFolder();
             auto InFile = std::make_shared<CFileDataSource>(Filename);
             if(DRISCVConsole->ProgramFirmware(InFile)){
                 if(DDebugMode){
@@ -255,10 +294,10 @@ bool CRISCVConsoleApplication::CartridgeButtonToggledEvent(std::shared_ptr<CGUIW
         DCartridgeInLoading = true;
         std::string Filename;
         auto FileChooser = CGUIFactory::NewFileChooserDialog("Select Cartridge",true,DMainWindow);
-        FileChooser->SetCurrentFolder(DFileOpenFolder);
+        FileChooser->SetCurrentFolder(DCartridgeFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
-            DFileOpenFolder = FileChooser->GetCurrentFolder();
+            DCartridgeFileOpenFolder = FileChooser->GetCurrentFolder();
             auto InFile = std::make_shared<CFileDataSource>(Filename);
             auto EventCycle = DRISCVConsole->InsertCartridge(InFile);
             if(EventCycle != std::numeric_limits<uint64_t>::max()){
@@ -427,9 +466,10 @@ bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidg
     if(!DDebugRecordButton->GetActive()){
         std::string Filename;
         auto FileChooser = CGUIFactory::NewFileChooserDialog("Save Record",false,DMainWindow);
-        FileChooser->SetCurrentFolder(DFileOpenFolder);
+        FileChooser->SetCurrentFolder(DRecordFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
+            DRecordFileOpenFolder = FileChooser->GetCurrentFolder();
             DRISCVConsole->Stop();
             DInputRecorder->OutputJSONFile(Filename);
             RefreshDebugRegisters();
@@ -569,6 +609,9 @@ void CRISCVConsoleApplication::CreateControllerWidgets(){
     DButton4->SetButtonPressEventCallback(this, ControllerButtonClickEventCallback);
     DButton4->SetButtonReleaseEventCallback(this, ControllerButtonClickEventCallback);
 
+    SetKeyZoomMapping(DConfiguration.GetStringParameter(CRISCVConsoleApplicationConfiguration::EParameter::ZoomInKey),true);
+    SetKeyZoomMapping(DConfiguration.GetStringParameter(CRISCVConsoleApplicationConfiguration::EParameter::ZoomOutKey),false);
+    
     DCommandButton->SetLabel("CMD");
     DCommandButton->SetButtonPressEventCallback(this,CommandButtonClickEventCallback);
 
@@ -825,6 +868,24 @@ void CRISCVConsoleApplication::SetKeyControllerMapping(const std::string &label,
         DKeyControllerMapping[SGUIKeyType::Key0 + Delta] = button;
     }
     button->SetLabel(NewLabel);
+}
+
+void CRISCVConsoleApplication::SetKeyZoomMapping(const std::string &keys, bool zoomin){
+    for(auto Letter : keys){
+        if(('a' <= Letter)&&('z' >= Letter)){
+            auto Delta = Letter - 'a';
+            DKeyZoomMapping[SGUIKeyType::KeyA + Delta] = zoomin;
+            DKeyZoomMapping[SGUIKeyType::Keya + Delta] = zoomin;
+        }
+        else if(('A' <= Letter)&&('Z' >= Letter)){
+            auto Delta = Letter - 'A';
+            DKeyZoomMapping[SGUIKeyType::KeyA + Delta] = zoomin;
+            DKeyZoomMapping[SGUIKeyType::Keya + Delta] = zoomin;
+        }
+        else{
+            DKeyZoomMapping[(uint32_t)Letter] = zoomin;
+        }
+    }
 }
 
 uint32_t CRISCVConsoleApplication::GetScreenTimeoutMS(){
