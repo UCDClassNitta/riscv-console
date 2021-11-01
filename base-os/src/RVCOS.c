@@ -335,7 +335,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 {
   const uint32_t stat = 0;
 
-  uint32_t physical_write_pos = write_line_index * 64;
+  uint32_t physical_write_pos = last_write_pos;
 
   for (uint32_t j = 0; j < writesize; j++) // for each char
   {
@@ -343,12 +343,18 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
     {
       write_line_index++;                         // move to next line
       physical_write_pos = write_line_index * 64; // reset physical_write_pos to beginning of new line
-      physical_write_pos -= j + 1;                // now j is not 0 anymore, so push physical_write_pos back by j+1
+      physical_write_pos -= j + 2;                // now j is not 0 anymore, so push physical_write_pos back by j+1
     }
-    VIDEO_MEMORY[physical_write_pos + j] = buffer[j];
+    else if (buffer[j] == '\b')
+    {
+      physical_write_pos = physical_write_pos - 2 > 0 ? physical_write_pos - 2 : 0; // make sure writepos is always >=0
+    }
+    VIDEO_MEMORY[physical_write_pos++] = buffer[j];
   }
 
-  write_line_index = (uint32_t)((physical_write_pos + writesize) / 64) + 1;
+  last_write_pos = (physical_write_pos) % MAX_VRAM_INDEX;
+  write_line_index = (uint32_t)(last_write_pos / 64);
+  // write_line_index = (uint32_t)((physical_write_pos + writesize) / 64) + 1;
 
   return stat;
 }

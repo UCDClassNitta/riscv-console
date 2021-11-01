@@ -33,6 +33,7 @@
 
 #define TIME_REG (*(volatile uint32_t *)0x40000008)       // already derefed, ready to use
 #define CONTROLLER_REG_VAL (*(volatile uint32_t *)0x40000018) // already derefed
+#define MAX_VRAM_INDEX (36 * 64 - 1)
 
 typedef uint32_t TStatus, *TStatusRef;
 typedef uint32_t TTick, *TTickRef;
