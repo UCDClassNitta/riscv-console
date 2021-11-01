@@ -3,7 +3,7 @@
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
 
-volatile int available_tcb_index;
+volatile uint32_t available_tcb_index;
 
 TCB **global_tcb_arr;
 
@@ -57,13 +57,18 @@ void schedule()
   ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
 }
 
+/**
+ * @brief Writes a string to the screen
+ *
+ * @param str string to write
+ */
 void WriteString(const char *str)
 {
   const char *Ptr = str;
   while (*Ptr)
   {
     Ptr++;
-  }
+  } // compute size
   RVCWriteText(str, Ptr - str);
 }
 
@@ -94,6 +99,7 @@ uint32_t getNextAvailableTCBIndex()
   return -1; // no available slots
 }
 
+// TODO: this is using stack behaviour, change back to queue
 // Add thread to respective queue
 // ! this assumes the target queue is never full
 void enqueue(uint32_t id, uint32_t target_prio)
@@ -317,6 +323,14 @@ TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval)
   return RVCOS_STATUS_SUCCESS;
 }
 
+/**
+ * @brief Write the contents of buffer to the screen
+ * this writes to a new line everytime the function is called
+ *
+ * @param buffer
+ * @param writesize
+ * @return TStatus
+ */
 TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 {
   const uint32_t stat = 0;
@@ -325,10 +339,11 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 
   for (uint32_t j = 0; j < writesize; j++) // for each char
   {
-    if (buffer[j] == '\n'){
-      write_line_index++; // move to next line
+    if (buffer[j] == '\n')
+    {
+      write_line_index++;                         // move to next line
       physical_write_pos = write_line_index * 64; // reset physical_write_pos to beginning of new line
-      physical_write_pos -= j+1; // now j is not 0 anymore, so push physical_write_pos back by j+1
+      physical_write_pos -= j + 1;                // now j is not 0 anymore, so push physical_write_pos back by j+1
     }
     VIDEO_MEMORY[physical_write_pos + j] = buffer[j];
   }
@@ -416,5 +431,22 @@ TStatus RVCTickCount(TTickRef tickref)
 
 TStatus RVCReadController(SControllerStatusRef statusref)
 {
+  if (!statusref)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  statusref->DLeft = CONTROLLER_REG_VAL >> 0 & 0x1;
+  statusref->DUp = CONTROLLER_REG_VAL >> 1 & 0x1;
+  statusref->DDown = CONTROLLER_REG_VAL >> 2 & 0x1;
+  statusref->DRight = CONTROLLER_REG_VAL >> 3 & 0x1;
+
+  statusref->DButton1 = CONTROLLER_REG_VAL >> 4 & 0x1;
+  statusref->DButton2 = CONTROLLER_REG_VAL >> 5 & 0x1;
+  statusref->DButton3 = CONTROLLER_REG_VAL >> 6 & 0x1;
+  statusref->DButton4 = CONTROLLER_REG_VAL >> 7 & 0x1;
+
+  statusref->DReserved = CONTROLLER_REG_VAL >> 8; // no need to AND b/c we want all 24 bits
+
   return RVCOS_STATUS_SUCCESS;
 }
