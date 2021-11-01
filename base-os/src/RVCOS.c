@@ -12,7 +12,6 @@ PriorityQueue *med_prio;
 PriorityQueue *high_prio;
 PriorityQueue *wait_q;
 
-volatile uint32_t write_line_index = 0;
 volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
