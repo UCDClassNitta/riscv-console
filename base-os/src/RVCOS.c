@@ -351,6 +351,8 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
     VIDEO_MEMORY[physical_write_pos++] = buffer[j];
   }
 
+  // change this line to change the behavior of writing to a filled screen/
+  // now it just goes back to 0 and overwrites what's on screen
   last_write_pos = (physical_write_pos) % MAX_VRAM_INDEX;
  
   return stat;
@@ -418,6 +420,8 @@ TStatus RVCTickMS(uint32_t *tickmsref)
 
   return RVCOS_STATUS_SUCCESS;
 }
+
+//? what does this function do?
 TStatus RVCTickCount(TTickRef tickref)
 {
   if (tickref)
