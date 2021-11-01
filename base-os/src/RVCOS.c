@@ -341,9 +341,9 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
   {
     if (buffer[j] == '\n')
     {
-      write_line_index++;                         // move to next line
-      physical_write_pos = write_line_index * 64; // reset physical_write_pos to beginning of new line
-      physical_write_pos -= j + 2;                // now j is not 0 anymore, so push physical_write_pos back by j+1
+      uint32_t next_line = (physical_write_pos / 64) + 1;
+      physical_write_pos = next_line * 64;
+      physical_write_pos -= j-1; // now j is not 0 anymore, so push physical_write_pos back by j
     }
     else if (buffer[j] == '\b')
     {
@@ -353,9 +353,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
   }
 
   last_write_pos = (physical_write_pos) % MAX_VRAM_INDEX;
-  write_line_index = (uint32_t)(last_write_pos / 64);
-  // write_line_index = (uint32_t)((physical_write_pos + writesize) / 64) + 1;
-
+ 
   return stat;
 }
 
