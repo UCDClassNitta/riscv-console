@@ -13,6 +13,7 @@ PriorityQueue *high_prio;
 PriorityQueue *wait_q;
 
 volatile uint32_t write_line_index = 0;
+volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
 uint32_t call_on_other_gp(void *param, TEntry entry, uint32_t *gp);
@@ -38,7 +39,6 @@ void schedule()
   {
     new_id = dequeue(3);
     running_thread_id = new_id;
-    
   }
   else if (med_prio->size > 0)
   {
@@ -321,12 +321,19 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 {
   const uint32_t stat = 0;
 
-  for (int j = 0; j < writesize; j++)
+  uint32_t physical_write_pos = write_line_index * 64;
+
+  for (uint32_t j = 0; j < writesize; j++) // for each char
   {
-    VIDEO_MEMORY[write_line_index + j] = buffer[j];
+    if (buffer[j] == '\n'){
+      write_line_index++; // move to next line
+      physical_write_pos = write_line_index * 64; // reset physical_write_pos to beginning of new line
+      physical_write_pos -= j+1; // now j is not 0 anymore, so push physical_write_pos back by j+1
+    }
+    VIDEO_MEMORY[physical_write_pos + j] = buffer[j];
   }
 
-  write_line_index += writesize + 1;
+  write_line_index = (uint32_t)((physical_write_pos + writesize) / 64) + 1;
 
   return stat;
 }
@@ -400,7 +407,9 @@ TStatus RVCTickCount(TTickRef tickref)
     uint32_t time = TIME_REG;
     *tickref = time;
     return RVCOS_STATUS_SUCCESS;
-  } else {
+  }
+  else
+  {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 }
