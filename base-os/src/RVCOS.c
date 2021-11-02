@@ -1,4 +1,5 @@
 #include "RVCOS.h"
+#include "queues.h"
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
@@ -36,17 +37,17 @@ void schedule()
   uint32_t new_id = 0;
   if (high_prio->size > 0)
   {
-    new_id = dequeue(3);
+    dequeue(high_prio, &new_id);
     running_thread_id = new_id;
   }
   else if (med_prio->size > 0)
   {
-    new_id = dequeue(2);
+    dequeue(med_prio, &new_id);
     running_thread_id = new_id;
   }
   else if (low_prio->size > 0)
   {
-    new_id = dequeue(1);
+    dequeue(low_prio, &new_id);
     running_thread_id = new_id;
   }
   else
@@ -98,76 +99,29 @@ uint32_t getNextAvailableTCBIndex()
   return -1; // no available slots
 }
 
-// TODO: this is using stack behaviour, change back to queue
+
+// TODO check the order here
+PriorityQueue* getPQByPrioNum(uint32_t prio_num)
+{ 
+  switch (prio_num)
+  {
+  case 1:
+    return high_prio;
+    break;
+  case 2:
+    return med_prio;
+    break;
+  case 3:
+    return low_prio;
+    break;
+  }
+}
+
 // Add thread to respective queue
 // ! this assumes the target queue is never full
-void enqueue(uint32_t id, uint32_t target_prio)
-{
 
-  PriorityQueue *target;
-  switch (target_prio)
-  {
-  case 1:
-  {
-    target = low_prio;
-    break;
-  }
-  case 2:
-  {
-    target = med_prio;
-    break;
-  }
-  case 3:
-  {
-    target = high_prio;
-    break;
-  }
-  }
 
-  if (target->size < 256)
-  {
-    target->tail++;
-    target->queue[target->tail] = id; // insert at tail
-    target->size++;
-  }
-}
-
-// Remove thread from respective queue by @param id
-// ! this assumes the target queue is never full
-uint32_t dequeue(uint32_t target_prio)
-{
-  PriorityQueue *target;
-  switch (target_prio)
-  {
-  case 1:
-  {
-    target = low_prio;
-    break;
-  }
-  case 2:
-  {
-    target = med_prio;
-    break;
-  }
-  case 3:
-  {
-    target = high_prio;
-    break;
-  }
-  }
-
-  uint32_t old_id = 1;
-  if (target->size > 0)
-  {
-    target->tail--;
-    uint32_t old_id = target->queue[target->tail];
-    free(global_tcb_arr[old_id]);
-    target->queue[target->tail] = NULL;
-    target->size--;
-  }
-  return old_id;
-}
-
+// ! change the logic of queues here
 TStatus RVCInitialize(uint32_t *gp)
 {
   if (!gp)
@@ -178,30 +132,26 @@ TStatus RVCInitialize(uint32_t *gp)
 
   global_tcb_arr = malloc(sizeof(TCB *) * 256);
 
+
+// TODO: change all of this to linked list implementation
   // init all PQs
   low_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-  low_prio->queue = malloc(sizeof(uint32_t) * 256);
-  low_prio->head = 0;
-  low_prio->tail = 0;
-
   med_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-  med_prio->queue = malloc(sizeof(uint32_t) * 256);
-  med_prio->head = 0;
-  med_prio->tail = 0;
-
   high_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-  high_prio->queue = malloc(sizeof(uint32_t) * 256);
-  high_prio->head = 0;
-  high_prio->tail = 0;
 
   // Creating IDLE thread and IDLE thread TCB
   uint32_t *idle_tid;
-  // ! create handles putting it in TCB[]
+  // create handles putting it in TCB[]
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
+  WriteString("made idle thread");
 
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
+
+  WriteString("main id: ");
+  WriteInt(main_thread_tcb->thread_id);
+
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
   main_thread_tcb->sp = 0x71000000;     // top of physical stack
   main_thread_tcb->mem_size = 0xE00000; //? is this 14MB
@@ -224,7 +174,8 @@ TStatus RVCThreadDelete(TThreadID thread)
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
-  dequeue(global_tcb_arr[thread]->priority);
+  uint32_t tid; // here just for the function param, not used
+  dequeue(getPQByPrioNum(global_tcb_arr[thread]->priority), &tid);
   free(global_tcb_arr[thread]->sp);
   free(global_tcb_arr[thread]);
 
@@ -267,6 +218,8 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
     curr_thread_tcb->thread_id = *tid;
     global_tcb_arr[*tid] = curr_thread_tcb;
   }
+
+  enqueue(getPQByPrioNum(prio), tid);
   return RVCOS_STATUS_SUCCESS;
 }
 
@@ -294,10 +247,13 @@ TStatus RVCThreadActivate(TThreadID thread)
   global_tcb_arr[thread]->sp = malloc(global_tcb_arr[thread]->mem_size);
 
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_READY;
-  uint32_t prio = global_tcb_arr[thread]->priority;
-  // dequeue(thread, prio);
+
+  uint32_t tid;
+  dequeue(getPQByPrioNum(global_tcb_arr[thread]->priority), &tid);
   //  set thread to STATUS_RUNNING
-  //  run thread from entry point
+  running_thread_id = tid;
+  // TODO  run thread from entry point
+
 
   return RVCOS_STATUS_SUCCESS;
 }
@@ -364,14 +320,12 @@ TStatus RVCThreadID(TThreadIDRef threaddref)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
-
-  threaddref = global_tcb_arr[running_thread_id];
+  *threaddref = running_thread_id;
   return RVCOS_STATUS_SUCCESS;
 }
 
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
 {
-
   if (!global_tcb_arr[thread])
   {
     return RVCOS_STATUS_ERROR_INVALID_ID;
@@ -381,6 +335,8 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
+  WriteString("the running thread state is: ");
+  WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }

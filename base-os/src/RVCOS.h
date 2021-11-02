@@ -83,11 +83,9 @@ TStatus RVCReadController(SControllerStatusRef statusref);
 void WriteString(const char *str);
 void WriteInt(const uint32_t num);
 void idleFunction();
-void enqueue(uint32_t id, uint32_t target_prio);
-uint32_t dequeue(uint32_t target_prio);
 void thread_skeleton(uint32_t thread);
 
-typedef struct _TCB
+typedef struct 
 {
   TThreadID thread_id;
   TThreadState state;
@@ -101,12 +99,6 @@ typedef struct _TCB
   uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
 
-typedef struct _PriorityQueue
-{
-  uint32_t size;
-  uint32_t *queue;
-  uint32_t head;
-  uint32_t tail;
-} PriorityQueue;
+
 
 #endif
