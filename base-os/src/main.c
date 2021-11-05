@@ -25,8 +25,6 @@ int main() {
 
   int x_pos = 12;
   int param = 20;
-  //uint32_t OtherThreadStack[1024]; // 1024 is arbitrary
-
 
   while (1) {
     if (CART_STAT_REG & 0x1)

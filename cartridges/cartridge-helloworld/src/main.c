@@ -2,7 +2,7 @@
 #include "RVCOS.h"
 
 int main() {
-  RVCWriteText("Hello World!Hello World!\nHello World!Hello World!Hello World!Hello World!", 72);
+  WriteString("Hello World!Hello World!\nHello World!Hello World!Hello World!Hello World!");
 
   SControllerStatus ControllerStatus;
   while (1){

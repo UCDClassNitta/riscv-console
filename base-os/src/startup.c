@@ -70,7 +70,7 @@ void c_interrupt_handler(void){
     controller_status = CONTROLLER;
 }
 
-void *sbrk(int incr) {
+void * _sbrk(int incr) {
   extern char _heapbase;        /* Defined by the linker */
   static char *heap_end;
   char *prev_heap_end;
@@ -78,6 +78,29 @@ void *sbrk(int incr) {
   if (heap_end == 0) {
     heap_end = &_heapbase;
   }
+  prev_heap_end = heap_end;
   heap_end += incr;
+
+  return (void *)prev_heap_end;
 }
 
+// caddr_t sbrk(int incr)
+// {
+//   extern char _end; /* Defined by the linker */
+//   static char *heap_end;
+//   char *prev_heap_end;
+
+//   if (heap_end == 0)
+//   {
+//     heap_end = &_end;
+//   }
+//   prev_heap_end = heap_end;
+//   if (heap_end + incr > stack_ptr)
+//   {
+//     write(1, "Heap and stack collision\n", 25);
+//     abort();
+//   }
+
+//   heap_end += incr;
+//   return (caddr_t)prev_heap_end;
+// }
