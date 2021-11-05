@@ -89,16 +89,18 @@ void idleFunction()
 
 uint32_t getNextAvailableTCBIndex()
 {
-  WriteString("next available:\n");
+  WriteString("next available: ");
   for (uint32_t i = 0; i < 255; i++)
   {
     WriteInt(i);
     WriteString(" ");
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
+      WriteString("\n");
       return i;
     }
   }
+  WriteString("all full\n");
   return -1; // no available slots
 }
 
@@ -163,12 +165,10 @@ TStatus RVCInitialize(uint32_t *gp)
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
-  WriteString("\n");
-  WriteInt(MAIN_THREAD_ID);
-  WriteString("main id temsp: ");
+  
+  WriteString("main id: ");
   WriteInt(main_thread_tcb->thread_id);
-  // uint32_t temp = main_thread_tcb->thread_id;
-  // WriteInt(temp);
+  WriteString("\n");
 
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
   main_thread_tcb->sp = 0x71000000;     // top of physical stack
@@ -216,7 +216,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
   if (!tid)
   {
     WriteInt(tid);
-    WriteString("bad tid");
+    WriteString("bad tid\n");
   }
 
   if (!entry || !tid)
