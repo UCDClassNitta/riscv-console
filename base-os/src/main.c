@@ -26,15 +26,6 @@ int main() {
   int x_pos = 12;
   int param = 20;
 
-  int *a = (int *)malloc(sizeof(int));
-  *a = 3;
-  WriteInt(*a);
-  WriteString("\n");
-  WriteInt((int)a);
-  free(a);
-
-  WriteString("freed\n");
-
   while (1) {
     if (CART_STAT_REG & 0x1)
     {

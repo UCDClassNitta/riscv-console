@@ -8,6 +8,7 @@
  */
 void enqueue(PriorityQueue *target_prio, uint32_t *tcb_id_ref)
 {
+  WriteString("enqueue\n");
   PriorityQueueNode *head_node = target_prio->head;
   if (head_node == NULL)
   {

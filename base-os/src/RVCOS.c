@@ -127,6 +127,7 @@ TStatus RVCInitialize(uint32_t *gp)
   }
   main_gp = gp;
 
+  WriteString("try to init\n");
   global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
   WriteInt(global_tcb_arr);
   WriteString("\n");
@@ -310,7 +311,7 @@ TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval)
 TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 {
   const uint32_t stat = 0;
-
+  uint32_t n_pos = 0;
   uint32_t physical_write_pos = last_write_pos;
 
   for (uint32_t j = 0; j < writesize; j++)
@@ -320,6 +321,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
       uint32_t next_line = (physical_write_pos / 64) + 1;
       physical_write_pos = next_line * 64;
       physical_write_pos -= j; // now j is not 0 anymore, so push physical_write_pos back by j
+      n_pos = j-1;
     }
     else if (buffer[j] == '\b')
     {
@@ -330,7 +332,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 
   // change this line to change the behavior of writing to a filled screen/
   // now it just goes back to 0 and overwrites what's on screen
-  last_write_pos = (physical_write_pos) % MAX_VRAM_INDEX;
+  last_write_pos = (physical_write_pos + n_pos) % MAX_VRAM_INDEX;
 
   return stat;
 }
