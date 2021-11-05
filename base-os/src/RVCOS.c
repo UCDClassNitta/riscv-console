@@ -9,6 +9,7 @@ TCB **global_tcb_arr;
 PriorityQueue *low_prio;
 PriorityQueue *med_prio;
 PriorityQueue *high_prio;
+PriorityQueue *idle_prio;
 PriorityQueue *wait_q;
 
 volatile uint32_t last_write_pos = 0;
@@ -106,15 +107,17 @@ PriorityQueue *getPQByPrioNum(uint32_t prio_num)
 {
   switch (prio_num)
   {
-  case 1:
+  case 3:
     return high_prio;
     break;
   case 2:
     return med_prio;
     break;
-  case 3:
+  case 1:
     return low_prio;
     break;
+  case 0:
+    return idle_prio;
   }
 }
 
@@ -137,20 +140,21 @@ TStatus RVCInitialize(uint32_t *gp)
   } // manual calloc
 
   // TODO: change all of this to linked list implementation
-  // init all PQs
+  // Init all PQs
   low_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
   med_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
   high_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
+  idle_prio = (PriorityQueue *)malloc(sizeof(PriorityQueue));
 
-  low_prio->head = med_prio->head = high_prio->head = NULL;
-  low_prio->tail = med_prio->tail = high_prio->tail = NULL;
-  low_prio->size = med_prio->size = high_prio->size = 0;
+  low_prio->head = med_prio->head = high_prio->head = idle_prio->head = NULL;
+  low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
+  low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
   WriteString("Low prio pointer: ");
   WriteInt((uint32_t)low_prio);
   WriteString("\n");
   // Creating IDLE thread and IDLE thread TCB
-  uint32_t* idle_tid = malloc(sizeof(uint32_t));
+  uint32_t *idle_tid = malloc(sizeof(uint32_t));
   // create handles putting it in TCB[]
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
   free(idle_tid);
@@ -321,7 +325,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
       uint32_t next_line = (physical_write_pos / 64) + 1;
       physical_write_pos = next_line * 64;
       physical_write_pos -= j; // now j is not 0 anymore, so push physical_write_pos back by j
-      n_pos = j-1;
+      n_pos = j - 1;
     }
     else if (buffer[j] == '\b')
     {
