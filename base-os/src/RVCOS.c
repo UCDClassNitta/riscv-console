@@ -20,8 +20,6 @@ void thread_skeleton(uint32_t thread);
 
 void thread_skeleton(uint32_t thread)
 {
-
-  // Do any setup for making tp = thread_id
   asm volatile("csrsi mstatus, 0x8"); // enable interrupts
 
   // call entry(param) but make sure to switch the gp right before the call
@@ -440,3 +438,37 @@ TStatus RVCReadController(SControllerStatusRef statusref)
 
   return RVCOS_STATUS_SUCCESS;
 }
+
+TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref) {
+  return 1;
+}
+TStatus RVCMemoryPoolDelete(TMemoryPoolID memory) {
+  return 1;
+}
+TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft) {
+  return 1;
+}
+TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer) {
+  return 1;
+}
+TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer) {
+  return 1;
+}
+
+TStatus RVCMutexCreate(TMutexIDRef mutexref) {
+  return 1;
+}
+TStatus RVCMutexDelete(TMutexID mutex) {
+  return 1;
+}
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref) {
+  return 1;
+}
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
+  return 1;
+}
+TStatus RVCMutexRelease(TMutexID mutex) {
+  return 1;
+}
+
+

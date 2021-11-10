@@ -34,6 +34,9 @@
 #define RVCOS_MEMORY_POOL_ID_SYSTEM ((TMemoryPoolID)0)
 #define RVCOS_MEMORY_POOL_ID_INVALID ((TMemoryPoolID)-1)
 
+#define RVCMemoryAllocate(size,pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
+#define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
+
 #define RVCOS_MUTEX_ID_INVALID ((TMutexID)-1)
 
 #define TIME_REG (*(volatile uint32_t *)0x40000008)       // already derefed, ready to use
@@ -81,9 +84,6 @@ TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref);
 TStatus RVCThreadID(TThreadIDRef threadref);
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef stateref);
 TStatus RVCThreadSleep(TTick tick);
-
-#define RVCMemoryAllocate(size,pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
-#define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
 
 TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref);
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory);
