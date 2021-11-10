@@ -16,9 +16,8 @@ volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
 uint32_t call_on_other_gp(void *param, TEntry entry, uint32_t *gp);
-void thread_skeleton(uint32_t thread);
 
-void thread_skeleton(uint32_t thread)
+void threadSkeleton(uint32_t thread)
 {
 
   // Do any setup for making tp = thread_id

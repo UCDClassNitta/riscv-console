@@ -106,7 +106,7 @@ TStatus RVCReadController(SControllerStatusRef statusref);
 void WriteString(const char *str);
 void WriteInt(const uint32_t num);
 void idleFunction();
-void thread_skeleton(uint32_t thread);
+void threadSkeleton(uint32_t thread);
 
 typedef struct {
   TThreadID thread_id;
