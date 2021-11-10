@@ -1,5 +1,6 @@
 #include "RVCOS.h"
 #include "queues.h"
+#include "RVCMemory.h"
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
@@ -164,7 +165,7 @@ TStatus RVCInitialize(uint32_t *gp)
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
-  
+
   WriteString("main id: ");
   WriteInt(main_thread_tcb->thread_id);
   WriteString("\n");
@@ -437,5 +438,48 @@ TStatus RVCReadController(SControllerStatusRef statusref)
 
   statusref->DReserved = CONTROLLER_REG_VAL >> 8; // no need to AND b/c we want all 24 bits
 
+  return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCMutexCreate(TMutexIDRef mutexref)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexDelete(TMutexID mutex)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout)
+{
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexRelease(TMutexID mutex)
+{
   return RVCOS_STATUS_SUCCESS;
 }

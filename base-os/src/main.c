@@ -161,7 +161,7 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
 uint32_t *InitStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp)
 {
   sp--;
-  *sp = (uint32_t)thread_skeleton; // sw      ra,48(sp)
+  *sp = (uint32_t)function; // sw      ra,48(sp)
   sp--;
   *sp = tp; // sw      tp,44(sp)
   sp--;
