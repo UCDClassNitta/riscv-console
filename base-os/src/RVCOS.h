@@ -31,6 +31,11 @@
 #define RVCOS_TIMEOUT_INFINITE ((TTick)0)
 #define RVCOS_TIMEOUT_IMMEDIATE ((TTick)-1)
 
+#define RVCOS_MEMORY_POOL_ID_SYSTEM ((TMemoryPoolID)0)
+#define RVCOS_MEMORY_POOL_ID_INVALID ((TMemoryPoolID)-1)
+
+#define RVCOS_MUTEX_ID_INVALID ((TMutexID)-1)
+
 #define TIME_REG (*(volatile uint32_t *)0x40000008)       // already derefed, ready to use
 #define CONTROLLER_REG_VAL (*(volatile uint32_t *)0x40000018) // already derefed
 #define MAX_VRAM_INDEX (36 * 64 - 1)
@@ -43,6 +48,9 @@ typedef uint32_t TThreadID, *TThreadIDRef;
 typedef uint32_t TThreadPriority, *TThreadPriorityRef;
 typedef uint32_t TThreadState, *TThreadStateRef;
 typedef char TTextCharacter, *TTextCharacterRef;
+typedef uint32_t TMemoryPoolID, *TMemoryPoolIDRef;
+typedef uint32_t TMutexID, *TMutexIDRef;
+
 typedef uint32_t (*TEntry)(uint32_t param);
 
 typedef TThreadReturn (*TThreadEntry)(void *);
@@ -74,6 +82,21 @@ TStatus RVCThreadID(TThreadIDRef threadref);
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef stateref);
 TStatus RVCThreadSleep(TTick tick);
 
+#define RVCMemoryAllocate(size,pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
+#define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
+
+TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref);
+TStatus RVCMemoryPoolDelete(TMemoryPoolID memory);
+TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft);
+TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer);
+TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer);
+
+TStatus RVCMutexCreate(TMutexIDRef mutexref);
+TStatus RVCMutexDelete(TMutexID mutex);
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref);
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout);
+TStatus RVCMutexRelease(TMutexID mutex);
+
 TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize);
 TStatus RVCReadController(SControllerStatusRef statusref);
 
@@ -85,8 +108,7 @@ void WriteInt(const uint32_t num);
 void idleFunction();
 void thread_skeleton(uint32_t thread);
 
-typedef struct 
-{
+typedef struct {
   TThreadID thread_id;
   TThreadState state;
   TThreadPriority priority;
@@ -98,6 +120,11 @@ typedef struct
   void *sp;
   uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
+
+typedef struct {
+  TMutexID mutex_id;
+  TMutexIDRef mutex_ref;
+} MUTEX;
 
 
 

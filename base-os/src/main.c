@@ -17,8 +17,6 @@ void enter_cartridge(void);
 void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp);
 uint32_t *InitStack(uint32_t *sp, TEntry fun, uint32_t param, uint32_t tp);
 
-
-
 int main() {
   saved_sp = &controller_status;
   int last_global = 42;
@@ -38,7 +36,6 @@ int main() {
   }
   return 0;
 }
-
 
 /**
  * @brief
@@ -104,12 +101,51 @@ uint32_t c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, u
     }
     case 12: {
       RVCReadController(p1);
+      break;
+    }
+    case 13: {
+      RVCMemoryPoolCreate(p1, p2, p3);
+      break;
+    }
+    case 14: {
+      RVCMemoryPoolDelete(p1);
+      break;
+    }
+    case 15: {
+      RVCMemoryPoolQuery(p1, p2);
+      break;
+    }
+    case 16: {
+      RVCMemoryPoolAllocate(p1, p2, p3);
+      break;
+    }
+    case 17: {
+      RVCMemoryPoolDeallocate(p1, p2);
+      break;
+    }
+    case 18: {
+      RVCMutexCreate(p1);
+      break;
+    }
+    case 19: {
+      RVCMutexDelete(p1);
+      break;
+    }
+    case 20: {
+      RVCMutexQuery(p1, p2);
+      break;
+    }
+    case 21: {
+      RVCMutexAcquire(p1, p2);
+      break;
+    }
+    case 22: {
+      RVCMutexRelease(p1);
+      break;
     }
   default:
     break;
   }
-
-
   return syscall_code + 1; // plus 1 just to make a change
 }
 
