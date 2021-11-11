@@ -57,7 +57,6 @@ SMemoryPoolFreeChunkRef allocateFreeChunk(void)
   if (3 > sys_mem_allocator.count && !alloc_is_suspended)
   {
     alloc_is_suspended = 1;
-    printf("@line %d \n", __LINE__);
     uint8_t *Ptr = (uint8_t*)private_memAlloc(sys_mem_allocator.struct_size * MIN_ALLOC_SIZE);
     for (int Index = 0; Index < MIN_ALLOC_SIZE; Index++)
     {
@@ -72,3 +71,19 @@ void deallocByChunk(SMemoryPoolFreeChunkRef chunk)
 {
   deallocate(&sys_mem_allocator, (void *)chunk);
 }
+// int main(int argc, char *argv[])
+// {
+//   SMemoryPoolFreeChunkRef Array[MIN_ALLOC_SIZE * 2];
+
+//   allocatorInit(&sys_mem_allocator, sizeof(SMemoryPoolFreeChunk));
+//   for (int Index = 0; Index < 5; Index++)
+//   {
+//     deallocByChunk(&initial_free_chunks[Index]);
+//   }
+//   for (int Index = 0; Index < MIN_ALLOC_SIZE * 2; Index++)
+//   {
+//     Array[Index] = allocateFreeChunk();
+//     printf("%d => %p\n", Index, Array[Index]);
+//   }
+//   return 0;
+// }

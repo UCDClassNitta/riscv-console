@@ -45,22 +45,4 @@ typedef struct
 SMemoryPoolFreeChunkRef allocateFreeChunk(void);
 void deallocByChunk(SMemoryPoolFreeChunkRef chunk);
 
-// int main(int argc, char *argv[])
-// {
-//   SMemoryPoolFreeChunkRef Array[MIN_ALLOC_SIZE * 2];
-
-//   allocatorInit(&sys_mem_allocator, sizeof(SMemoryPoolFreeChunk));
-//   for (int Index = 0; Index < 5; Index++)
-//   {
-//     deallocByChunk(&initial_free_chunks[Index]);
-//   }
-//   for (int Index = 0; Index < MIN_ALLOC_SIZE * 2; Index++)
-//   {
-//     Array[Index] = allocateFreeChunk();
-//     printf("%d => %p\n", Index, Array[Index]);
-//   }
-//   return 0;
-// }
-
-
 #endif 

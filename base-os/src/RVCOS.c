@@ -71,11 +71,30 @@ void WriteString(const char *str)
   RVCWriteText(str, Ptr - str);
 }
 
-void WriteInt(uint32_t num)
-{
-  char *thread_text[33];
-  itoa(num, thread_text, 10);
-  WriteString(thread_text);
+void WriteInt(int val){
+    char Buffer[16];
+    int Index = 14;
+    int IsNeg = 0;
+    Buffer[15] = '\0';
+    do{
+        Buffer[Index] = val % 10;
+        if(Buffer[Index] < 0){
+            Buffer[Index] = -Buffer[Index];
+        }
+        Buffer[Index] += '0';
+        Index--;
+        val /= 10;
+        if(val < 0){
+            val = -val;
+            IsNeg = 1;
+        }
+    }while(val);
+    if(IsNeg){
+        Buffer[Index] = '-';
+        Index--;
+    }
+    Buffer[Index] = ' ';
+    WriteString(Buffer + Index);
 }
 
 void idleFunction()
@@ -445,7 +464,6 @@ TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memor
 {
   return RVCOS_STATUS_SUCCESS;
 }
-
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
 {
   return RVCOS_STATUS_SUCCESS;
@@ -462,6 +480,8 @@ TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
 {
   return RVCOS_STATUS_SUCCESS;
 }
+
+/** Mutex Functions **/
 
 TStatus RVCMutexCreate(TMutexIDRef mutexref)
 {

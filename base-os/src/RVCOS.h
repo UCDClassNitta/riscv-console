@@ -36,7 +36,7 @@
 
 #define RVCOS_MUTEX_ID_INVALID ((TMutexID)-1)
 
-#define TIME_REG (*(volatile uint32_t *)0x40000008)       // already derefed, ready to use
+#define TIME_REG (*(volatile uint32_t *)0x40000008)           // already derefed, ready to use as value
 #define CONTROLLER_REG_VAL (*(volatile uint32_t *)0x40000018) // already derefed
 #define MAX_VRAM_INDEX (36 * 64 - 1)
 
@@ -68,6 +68,8 @@ typedef struct
   uint32_t DReserved : 24; // 24 bit field
 } SControllerStatus, *SControllerStatusRef;
 
+typedef char Byte;
+
 TStatus RVCInitialize(uint32_t *gp);
 
 TStatus RVCTickMS(uint32_t *tickmsref);
@@ -82,8 +84,8 @@ TStatus RVCThreadID(TThreadIDRef threadref);
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef stateref);
 TStatus RVCThreadSleep(TTick tick);
 
-#define RVCMemoryAllocate(size,pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
-#define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
+#define RVCMemoryAllocate(size, pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
+#define RVCMemoryDeallocate(pointer) RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
 
 TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref);
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory);
@@ -104,11 +106,12 @@ TStatus RVCReadController(SControllerStatusRef statusref);
  * Helper functions
  */
 void WriteString(const char *str);
-void WriteInt(const uint32_t num);
+void WriteInt(int val);
 void idleFunction();
 void threadSkeleton(uint32_t thread);
 
-typedef struct {
+typedef struct
+{
   TThreadID thread_id;
   TThreadState state;
   TThreadPriority priority;
@@ -121,11 +124,17 @@ typedef struct {
   uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
 
-typedef struct {
+typedef struct
+{
   TMutexID mutex_id;
   TMutexIDRef mutex_ref;
-} MUTEX;
+} Mutex;
 
-
+typedef struct
+{
+  void *base;
+  TMemorySize size;
+  TMemoryPoolID memory_id;
+} MemoryChunk;
 
 #endif

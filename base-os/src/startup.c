@@ -32,7 +32,7 @@ __attribute__((always_inline)) inline void csr_disable_interrupts(void){
     asm volatile ("csrci mstatus, 0x8");
 }
 
-#define MTIME_LOW       (*((volatile uint32_t *)0x40000008))
+#define MTIME_LOW       (*((volatile uint32_t *)0x40000008)) // Machine Time
 #define MTIME_HIGH      (*((volatile uint32_t *)0x4000000C))
 #define MTIMECMP_LOW    (*((volatile uint32_t *)0x40000010))
 #define MTIMECMP_HIGH   (*((volatile uint32_t *)0x40000014))
@@ -62,7 +62,7 @@ extern volatile int global;
 extern volatile uint32_t controller_status;
 
 //Need to save MEPC and global pointer before calling this! In interrupts.s
-void c_interrupt_handler(void){
+void c_interrupt_handler(void){ // TODO: Add Parameters if needed, param values are in a0, a1, ...
     uint64_t NewCompare = (((uint64_t)MTIMECMP_HIGH)<<32) | MTIMECMP_LOW;
     NewCompare += 100;
     MTIMECMP_HIGH = NewCompare>>32;
@@ -84,24 +84,3 @@ void * _sbrk(int incr) {
 
   return (void *)prev_heap_end;
 }
-
-// caddr_t sbrk(int incr)
-// {
-//   extern char _end; /* Defined by the linker */
-//   static char *heap_end;
-//   char *prev_heap_end;
-
-//   if (heap_end == 0)
-//   {
-//     heap_end = &_end;
-//   }
-//   prev_heap_end = heap_end;
-//   if (heap_end + incr > stack_ptr)
-//   {
-//     write(1, "Heap and stack collision\n", 25);
-//     abort();
-//   }
-
-//   heap_end += incr;
-//   return (caddr_t)prev_heap_end;
-// }
