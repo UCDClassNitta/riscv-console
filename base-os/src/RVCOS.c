@@ -640,7 +640,9 @@ TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
     return RVCOS_STATUS_SUCCESS;
   }
   else if (timeout == RVCOS_TIMEOUT_INFINITE) {
-    //block thread until mutex is acquired
+    uint32_t thread_id = global_mutex_arr[mutex]->owner; //block thread until mutex is acquired
+    global_tcb_arr[thread_id]->state == RVCOS_THREAD_STATE_WAITING;
+    
     return RVCOS_STATUS_SUCCESS;
   }
   else {
