@@ -109,6 +109,7 @@ uint32_t getNextAvailableMemPoolIndex()
   curr_available_mem_pool_index++;
   return curr_available_mem_pool_index - 1;
 }
+
 uint32_t getNextAvailableMUTEXIndex()
 {
   // WriteString("next available: ");
