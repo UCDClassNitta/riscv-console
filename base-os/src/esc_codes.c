@@ -1,7 +1,7 @@
 #include "esc_codes.h"
 
 uint32_t esc_codes(const TTextCharacter *buffer, TMemorySize writesize) {
-    switch ((uint32_t)buffer[2]) {
+    switch ((uint32_t)buffer[4]) {
         case 65: { //A
             return (uint32_t)1;
             break;
@@ -23,7 +23,7 @@ uint32_t esc_codes(const TTextCharacter *buffer, TMemorySize writesize) {
             break;
         }
         case 50: { //2
-            if ((uint32_t)buffer[3] == 'J') { //Ensure it's valid esc sequence
+            if ((uint32_t)buffer[5] == 'J') { //Ensure it's valid esc sequence
                 return (uint32_t)6;
             }
             break;                    
