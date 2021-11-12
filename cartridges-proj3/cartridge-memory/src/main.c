@@ -53,6 +53,7 @@ int main()
   WriteString("Allocating pool: \n");
   TStatus s = RVCMemoryAllocate(256, (void **)&MemoryBase);
   WriteInt(s);
+  WriteString("\n");
   // if(RVCOS_STATUS_SUCCESS != s){
   //     WriteString("Failed to allocate memory pool\n");
   //     return -1;
