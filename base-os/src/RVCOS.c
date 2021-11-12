@@ -325,10 +325,8 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 
   for (uint32_t j = 0; j < writesize; j++)
   {
-    if ((uint32_t)buffer[j] == '\x1B' && (uint32_t)buffer[j + 1] == '[')
-    {
-      if (writesize > 5)
-      {
+    if ((uint32_t)buffer[j + 2] == '\x1B' && (uint32_t)buffer[j + 3] == '[') {
+      if (writesize > 7) {
         char row[3];
         char col[3];
 
@@ -336,56 +334,39 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         uint32_t row_int;
         uint32_t col_int;
 
-        if ((uint32_t)buffer[j + 3] == ';')
-        { // Row is single digit
-          strncpy(row, (buffer + j) + 2, 1);
-          row[1] = '\0';
-          row_int = atoi(row);
+        if ((uint32_t)buffer[j + 5] == ';') { //Row is single digit
+            strncpy(row, (buffer + j) + 4, 1);
+            row[1] = '\0';
+            row_int = atoi(row);
 
-          if ((uint32_t)buffer[j + 5] == 'H')
-          { // Col is single digit
-            strncpy(col, (buffer + j) + 4, 1);
-            col[1] = '\0';
-            col_int = atoi(col);
-          }
-          else if ((uint32_t)buffer[j + 6] == 'H')
-          { // Col is double digit
-            strncpy(col, (buffer + j) + 4, 2);
-            col[2] = '\0';
-            col_int = atoi(col);
-            ;
-          }
-          else
-          {
-            break;
-          }
+            if ((uint32_t)buffer[j + 7] == 'H') { //Col is single digit
+                strncpy(col, (buffer + j) + 6, 1);
+                col[1] = '\0';
+                col_int = atoi(col);
+            }
+            else if ((uint32_t)buffer[j + 8] == 'H') { //Col is double digit
+                strncpy(col, (buffer + j) + 6, 2);
+                col[2] = '\0';
+                col_int = atoi(col);;
+            }
+            else {break;}
         }
-        else if ((uint32_t)buffer[j + 4] == ';')
-        { // Row is double digit
-          strncpy(row, (buffer + j) + 2, 2);
-          row[2] = '\0';
-          row_int = atoi(row);
+        else if ((uint32_t)buffer[j + 6] == ';') { //Row is double digit
+            strncpy(row, (buffer + j) + 4, 2);
+            row[2] = '\0';
+            row_int = atoi(row);
 
-          if ((uint32_t)buffer[j + 6] == 'H')
-          { // Col is single digit
-            strncpy(col, (buffer + j) + 5, 1);
-            col[1] = '\0';
-            col_int = atoi(col);
-          }
-          else if ((uint32_t)buffer[j + 7] == 'H')
-          { // Col is double digit
-            strncpy(col, (buffer + j) + 5, 2);
-            col[2] = '\0';
-            col_int = atoi(col);
-          }
-          else
-          {
-            break;
-          }
-        }
-        else
-        {
-          break;
+            if ((uint32_t)buffer[j + 8] == 'H') { //Col is single digit
+                strncpy(col, (buffer + j) + 7, 1);
+                col[1] = '\0';
+                col_int = atoi(col);
+            }
+            else if ((uint32_t)buffer[j + 9] == 'H') { //Col is double digit
+                strncpy(col, (buffer + j) + 7, 2);
+                col[2] = '\0';
+                col_int = atoi(col);
+            }
+            else {break;}
         }
 
         // Final check to ensure integer values are within range
