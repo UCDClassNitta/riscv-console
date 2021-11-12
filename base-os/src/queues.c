@@ -8,18 +8,15 @@
  */
 void enqueue(PriorityQueue *target_prio, uint32_t *tcb_id_ref)
 {
-  WriteString("enqueue\n");
   PriorityQueueNode *head_node = target_prio->head;
   if (head_node == NULL)
   {
-    WriteString("if st\n");
     head_node = (PriorityQueueNode *)malloc(sizeof(PriorityQueueNode));
     head_node->tcb_id = *tcb_id_ref;
     target_prio->tail = head_node;
   }
   else
   {
-    WriteString("else st\n");
     PriorityQueueNode *tail_node = target_prio->tail;
     tail_node->next = (PriorityQueueNode *)malloc(sizeof(PriorityQueueNode));
     tail_node->next->tcb_id = *tcb_id_ref;

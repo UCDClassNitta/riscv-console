@@ -22,7 +22,7 @@ _interrupt_handler:
     csrw    mepc,ra
     mret
 
-//Save MEPC and global pointer before calling c_int_handler, restore afterwards
+# Save MEPC and global pointer before calling c_int_handler, restore afterwards
 hardware_interrupt:
     csrr    ra,mscratch
     addi	sp,sp,-40

@@ -1,10 +1,16 @@
 #include "RVCOS.h"
 #include "queues.h"
+#include "esc_codes.h"
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
 
-TCB **global_tcb_arr;
+TCB **global_tcb_arr = NULL;
+MemoryPoolController *global_mem_pool_arr = NULL; // TODO change the 10
+MUTEX **global_mutex_arr;
+
+uint32_t curr_available_mem_pool_index = 0;
+uint32_t curr_TCB_max_size = 256;
 
 PriorityQueue *low_prio;
 PriorityQueue *med_prio;
@@ -16,12 +22,9 @@ volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
 uint32_t call_on_other_gp(void *param, TEntry entry, uint32_t *gp);
-void thread_skeleton(uint32_t thread);
 
-void thread_skeleton(uint32_t thread)
+void threadSkeleton(uint32_t thread)
 {
-
-  // Do any setup for making tp = thread_id
   asm volatile("csrsi mstatus, 0x8"); // enable interrupts
 
   // call entry(param) but make sure to switch the gp right before the call
@@ -71,11 +74,11 @@ void WriteString(const char *str)
   RVCWriteText(str, Ptr - str);
 }
 
-void WriteInt(uint32_t num)
+void writeInt(uint32_t val)
 {
-  char *thread_text[33];
-  itoa(num, thread_text, 10);
-  WriteString(thread_text);
+  char *val_text[33];
+  itoa(val, val_text, 10);
+  WriteString(val_text);
 }
 
 void idleFunction()
@@ -87,24 +90,37 @@ void idleFunction()
   }
 }
 
+// TODO: Update this to remove 256 cap
 uint32_t getNextAvailableTCBIndex()
 {
-  WriteString("next available: ");
-  for (uint32_t i = 0; i < 255; i++)
+  for (uint32_t i = 0; i < curr_TCB_max_size; i++)
   {
-    WriteInt(i);
-    WriteString(" ");
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
-      WriteString("\n");
       return i;
     }
   }
-  WriteString("all full\n");
   return -1; // no available slots
 }
 
-// TODO check the order here
+uint32_t getNextAvailableMemPoolIndex()
+{
+  curr_available_mem_pool_index++;
+  return curr_available_mem_pool_index - 1;
+}
+
+uint32_t getNextAvailableMUTEXIndex()
+{
+  for (uint32_t i = 0; i < 1024; i++) // Arbitrary 1024
+  {
+    if (!global_mutex_arr[i])
+    { // if the curr slot is empty
+      return i;
+    }
+  }
+  return -1; // no available slots
+}
+
 PriorityQueue *getPQByPrioNum(uint32_t prio_num)
 {
   switch (prio_num)
@@ -123,7 +139,18 @@ PriorityQueue *getPQByPrioNum(uint32_t prio_num)
   }
 }
 
-// ! change the logic of queues here
+void resizeTCBArray()
+{
+  TCB **new_tcb_arr = malloc(sizeof(TCB *) * 2 * curr_TCB_max_size);
+  for (int i = 0; i < curr_TCB_max_size; i++)
+  {
+    new_tcb_arr[i] = global_tcb_arr[i];
+  }
+  curr_TCB_max_size *= 2;
+  free(global_tcb_arr);
+  global_tcb_arr = new_tcb_arr;
+}
+
 TStatus RVCInitialize(uint32_t *gp)
 {
   if (!gp)
@@ -132,10 +159,7 @@ TStatus RVCInitialize(uint32_t *gp)
   }
   main_gp = gp;
 
-  WriteString("try to init\n");
   global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
-  WriteInt(global_tcb_arr);
-  WriteString("\n");
   for (uint32_t i = 0; i < 256; i++)
   {
     global_tcb_arr[i] = NULL;
@@ -152,23 +176,15 @@ TStatus RVCInitialize(uint32_t *gp)
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
-  WriteString("Low prio pointer: ");
-  WriteInt((uint32_t)low_prio);
-  WriteString("\n");
-  // Creating IDLE thread and IDLE thread TCB
+  //  Creating IDLE thread and IDLE thread TCB
   uint32_t *idle_tid = malloc(sizeof(uint32_t));
   // create handles putting it in TCB[]
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
   free(idle_tid);
-  WriteString("made idle thread");
 
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
-  
-  WriteString("main id: ");
-  WriteInt(main_thread_tcb->thread_id);
-  WriteString("\n");
 
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
   main_thread_tcb->sp = 0x71000000;     // top of physical stack
@@ -213,12 +229,6 @@ TStatus RVCThreadDelete(TThreadID thread)
 
 TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid)
 {
-  if (!tid)
-  {
-    WriteInt(tid);
-    WriteString("bad tid\n");
-  }
-
   if (!entry || !tid)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
@@ -234,11 +244,10 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
   curr_thread_tcb->param = param;
 
   *tid = getNextAvailableTCBIndex();
-  WriteString("tid is: ");
-  WriteInt(*tid);
   if (*tid == -1)
   {
-    return RVCOS_STATUS_FAILURE;
+    resizeTCBArray();
+    *tid = getNextAvailableTCBIndex();
   }
   else
   {
@@ -318,8 +327,154 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
   uint32_t n_pos = 0;
   uint32_t physical_write_pos = last_write_pos;
 
+  // For escape codes
+  uint32_t row_int;
+  uint32_t col_int;
+
   for (uint32_t j = 0; j < writesize; j++)
   {
+    if ((uint32_t)buffer[j + 2] == '\x1B' && (uint32_t)buffer[j + 3] == '[')
+    {
+      if (writesize > 7)
+      {
+        char row[3];
+        char col[3];
+
+        // These variables will probably need to be declared in a broader scope when integrated
+        uint32_t row_int;
+        uint32_t col_int;
+
+        if ((uint32_t)buffer[j + 5] == ';')
+        { // Row is single digit
+          strncpy(row, (buffer + j) + 4, 1);
+          row[1] = '\0';
+          row_int = atoi(row);
+
+          if ((uint32_t)buffer[j + 7] == 'H')
+          { // Col is single digit
+            strncpy(col, (buffer + j) + 6, 1);
+            col[1] = '\0';
+            col_int = atoi(col);
+          }
+          else if ((uint32_t)buffer[j + 8] == 'H')
+          { // Col is double digit
+            strncpy(col, (buffer + j) + 6, 2);
+            col[2] = '\0';
+            col_int = atoi(col);
+            ;
+          }
+          else
+          {
+            break;
+          }
+        }
+        else if ((uint32_t)buffer[j + 6] == ';')
+        { // Row is double digit
+          strncpy(row, (buffer + j) + 4, 2);
+          row[2] = '\0';
+          row_int = atoi(row);
+
+          if ((uint32_t)buffer[j + 8] == 'H')
+          { // Col is single digit
+            strncpy(col, (buffer + j) + 7, 1);
+            col[1] = '\0';
+            col_int = atoi(col);
+          }
+          else if ((uint32_t)buffer[j + 9] == 'H')
+          { // Col is double digit
+            strncpy(col, (buffer + j) + 7, 2);
+            col[2] = '\0';
+            col_int = atoi(col);
+          }
+          else
+          {
+            break;
+          }
+        }
+
+        // Final check to ensure integer values are within range
+        uint32_t row_check = (row_int >= 0 && row_int < 36) ? 1 : 0;
+        uint32_t col_check = (col_int >= 0 && col_int < 64) ? 1 : 0;
+
+        if (!row_check || !col_check)
+        {
+          WriteString("Invalid Parameters");
+        }
+        else
+        {
+          WriteString("Moving cursor to specified row and column");
+          // Code to move cursor to row and column
+          // BE CAREFUL of 'off by one' errors here
+          // It's assumed escape code will use 0-35 for rows and 0-63 for columns
+        }
+      }
+
+      // Sent to external esc_codes switch
+      else
+      {
+        uint32_t code = esc_codes(buffer, writesize);
+
+        switch (code)
+        {
+        case 1:
+        {
+          RVCWriteText("\b ", 2);
+          last_write_pos = physical_write_pos - 65 > 0 ? physical_write_pos - 65 : physical_write_pos;
+          RVCWriteText("X", 1);
+          // code to move cursor up
+          break;
+        }
+        case 2:
+        {
+          RVCWriteText("\b ", 2);
+          if (last_write_pos == 0)
+          {
+            VIDEO_MEMORY[0] = ' ';
+            last_write_pos = 64;
+          }
+          else
+          {
+            last_write_pos = (physical_write_pos + 63) % MAX_VRAM_INDEX;
+          }
+          RVCWriteText("X", 1);
+          // code to move cursor down
+          break;
+        }
+        case 3:
+        {
+          RVCWriteText("\b ", 2);
+          RVCWriteText("X", 1);
+          // code to move cursor right
+          break;
+        }
+        case 4:
+        {
+          RVCWriteText("\b \b\b", 4);
+          RVCWriteText("X", 1);
+          // code to move cursor left
+          break;
+        }
+        case 5:
+        {
+          // code to move cursor upper left
+          break;
+        }
+        case 6:
+        {
+          WriteString("2: Erase screen, leave cursor");
+          for (int h = 0; h < MAX_VRAM_INDEX; h++)
+          {
+            VIDEO_MEMORY[h] = '\0';
+          }
+          RVCWriteText("X", 1);
+          break;
+        }
+        default:
+          break;
+        }
+      }
+      return stat;
+    }
     if (buffer[j] == '\n')
     {
       uint32_t next_line = (physical_write_pos / 64) + 1;
@@ -361,14 +516,11 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
-
-  WriteString("the running thread state is: ");
-  WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }
 
-TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref)
+TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref, TTick timeout)
 {
 
   if (!global_tcb_arr[thread])
@@ -437,6 +589,269 @@ TStatus RVCReadController(SControllerStatusRef statusref)
   statusref->DButton4 = CONTROLLER_REG_VAL >> 7 & 0x1;
 
   statusref->DReserved = CONTROLLER_REG_VAL >> 8; // no need to AND b/c we want all 24 bits
+
+  return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref)
+{
+  if (base == NULL || size < 2 * MIN_ALLOC_SIZE || memoryref == NULL)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+  *memoryref = getNextAvailableMemPoolIndex();
+
+  MemoryPoolController pool;
+
+  pool.first_chunk = base + sizeof(MemoryPoolController); // base->||controller||chunk|data||
+  pool.pool_id = *memoryref;
+  pool.pool_size = size;
+  pool.bytes_left = size;
+
+  pool.first_chunk->isFree = 1;
+  pool.first_chunk->data_size = size;
+  pool.first_chunk->next = NULL;
+  pool.first_chunk->prev = NULL;
+
+  global_mem_pool_arr[*memoryref] = pool;
+
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
+{
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mem_pool_arr[memory].first_chunk == NULL)
+  {
+    free(global_mem_pool_arr[memory].first_chunk - sizeof(MemoryPoolController));
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else
+  {
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+}
+TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft)
+{
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  *bytesleft = global_mem_pool_arr[memory].bytes_left;
+  return RVCOS_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Allocates space from a given Memory Pool
+ *
+ * @param memory
+ * @param size
+ * @param pointer
+ * @return TStatus
+ *
+ * @Notes
+ * This assumes @param memory is a already initialized mem pool except when memory == 0
+ */
+TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer)
+{
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (!size || !pointer)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  if (memory == RVCOS_MEMORY_POOL_ID_SYSTEM && global_mem_pool_arr == NULL)
+  {
+    uint32_t max_chunk_count = (size / MIN_ALLOC_SIZE) > 2 ? (size / MIN_ALLOC_SIZE) : 2;
+    *pointer = malloc(size + sizeof(MemoryPoolController) + sizeof(MemoryChunk) * max_chunk_count);
+    global_mem_pool_arr = malloc(10 * sizeof(MemoryPoolController *));
+
+    return RVCOS_STATUS_SUCCESS;
+  }
+
+  // do some normal mem pool stuff
+  MemoryPoolController pool = global_mem_pool_arr[memory];
+  if (!&pool)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  TMemorySize actual_alloc_size = ((size % 64) + 1) * 64;
+
+  MemoryChunk *curr_chunk = pool.first_chunk;
+  while (curr_chunk)
+  {
+    if (curr_chunk->isFree && curr_chunk->data_size >= actual_alloc_size)
+    {
+
+      // mark current as an occupied chunk
+      curr_chunk->isFree = 0;
+      *pointer = curr_chunk + sizeof(MemoryChunk); // move offset to actual mem location
+
+      // now make the free chunk
+      // ! chueck if it's in bounds
+      MemoryChunk *free_chunk = curr_chunk + sizeof(MemoryChunk) + actual_alloc_size;
+      free_chunk->isFree = 1;
+      free_chunk->prev = curr_chunk;
+      free_chunk->next = curr_chunk->next;
+      free_chunk->data_size = curr_chunk->data_size - sizeof(MemoryChunk) - actual_alloc_size; // TODO: check if this expression is correct
+
+      curr_chunk->next->prev = free_chunk;
+      pool.bytes_left -= sizeof(MemoryChunk) + actual_alloc_size;
+
+      break;
+    }
+    curr_chunk = curr_chunk->next;
+  }
+
+  return RVCOS_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Releases the chunk pointed by pointer back to memory pool
+ *
+ * @param memory
+ * @param pointer
+ * @return TStatus
+ */
+TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
+{
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (!pointer)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  MemoryPoolController pool = global_mem_pool_arr[memory];
+  MemoryChunk *chunk_to_return = pointer - sizeof(MemoryChunk);
+
+  chunk_to_return->prev->data_size += chunk_to_return->data_size + sizeof(MemoryChunk);
+  chunk_to_return->prev->next = chunk_to_return->next;
+  chunk_to_return->next->prev = chunk_to_return->prev;
+
+  return RVCOS_STATUS_SUCCESS;
+}
+
+TStatus RVCMutexCreate(TMutexIDRef mutexref)
+{
+
+  if (!mutexref)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  // Need to check this and return failure if it fails
+  MUTEX *curr_mutex = malloc(sizeof(MUTEX));
+  if (!curr_mutex)
+  {
+    return RVCOS_STATUS_ERROR_INSUFFICIENT_RESOURCES;
+  }
+
+  curr_mutex->state = RVCOS_MUTEX_STATE_UNLOCKED;
+  *mutexref = getNextAvailableMUTEXIndex();
+  curr_mutex->mutex_id = *mutexref;
+  global_mutex_arr[*mutexref] = curr_mutex;
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexDelete(TMutexID mutex)
+{
+  if (!global_mutex_arr[mutex])
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mutex_arr[mutex]->owner)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+
+  free(global_mutex_arr[mutex]);
+  return RVCOS_STATUS_SUCCESS;
+}
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref)
+{
+
+  if (!global_mutex_arr[mutex])
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (ownerref == NULL)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+  {
+    *ownerref = RVCOS_THREAD_ID_INVALID;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else
+  {
+    *ownerref = global_mutex_arr[mutex]->owner;
+    return RVCOS_STATUS_SUCCESS;
+  }
+}
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout)
+{
+  if (!global_mutex_arr[mutex])
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (timeout == RVCOS_TIMEOUT_IMMEDIATE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED)
+  {
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_IMMEDIATE)
+  {
+    global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_INFINITE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+  {
+    global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_INFINITE)
+  {
+    uint32_t thread_id = global_mutex_arr[mutex]->owner; // block thread until mutex is acquired
+    global_tcb_arr[thread_id]->state == RVCOS_THREAD_STATE_WAITING;
+
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else
+  {
+    while (timeout > 0)
+    {
+      if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+      {
+        global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
+        return RVCOS_STATUS_SUCCESS;
+      }
+      timeout -= 1;
+    }
+    return RVCOS_STATUS_FAILURE;
+  }
+}
+TStatus RVCMutexRelease(TMutexID mutex)
+{
+  if (!global_mutex_arr[mutex])
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mutex_arr[mutex]->owner != running_thread_id)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+
+  global_mutex_arr[mutex]->owner = NULL;
+  /*may cause another higher priority thread to be scheduled
+  if it acquires the newly released mutex. */
 
   return RVCOS_STATUS_SUCCESS;
 }

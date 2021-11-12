@@ -26,19 +26,14 @@ endif
 
 LDFILE   = riscv32-console.ld
 INCLUDE  += -I $(INC_DIR)
-CFLAGS   += -ffreestanding  -nostartfiles
+CFLAGS   += -ffreestanding  -nostartfiles -nostdlib -nodefaultlibs
 LDFLAGS  +=
 LDFLAGS  += -Wl,--gc-sections -Wl,-T,$(LDFILE)
 
-TARGET_NAME = riscv-console-example
-
-TARGET_OBJS =   $(OBJ_DIR)/RVCOS.o              \
-								$(OBJ_DIR)/main.o               \
+TARGET_NAME = cartridge-controller-input
+TARGET_OBJS =   $(OBJ_DIR)/main.o               \
                 $(OBJ_DIR)/crt0.o               \
-                $(OBJ_DIR)/interrupt.o          \
-                $(OBJ_DIR)/startup.o						\
-								$(OBJ_DIR)/queues.o							\
-								$(OBJ_DIR)/esc_codes.o
+                $(OBJ_DIR)/startup.o
 
 all: directories $(BIN_DIR)/$(TARGET_NAME)
 
