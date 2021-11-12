@@ -30,37 +30,58 @@ CVideoController::CVideoController(){
     for(uint32_t BackgroundIndex = 0; BackgroundIndex < DBackgroundCount; BackgroundIndex++){
         DBackgrounds.push_back(CGraphicFactory::CreateSurface(DScreenWidth, DScreenHeight, ESurfaceFormat::ARGB32));
         DBackgroundBases.push_back(MemoryBase);
+        if(!BackgroundIndex){
+            DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
+        }
         MemoryBase += DScreenWidth * DScreenHeight;
     }
     for(uint32_t LargeSpriteIndex = 0; LargeSpriteIndex < DLargeSpriteCount; LargeSpriteIndex++){
         DLargeSprites.push_back(CGraphicFactory::CreateSurface(DLargeSpriteWidth, DLargeSpriteHeight, ESurfaceFormat::ARGB32));
         DLargeSpriteBases.push_back(MemoryBase);
+        if(!LargeSpriteIndex){
+            DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
+        }
         MemoryBase += DLargeSpriteWidth * DLargeSpriteHeight;
     }
     for(uint32_t SmallSpriteIndex = 0; SmallSpriteIndex < DSmallSpriteCount; SmallSpriteIndex++){
         DSmallSprites.push_back(CGraphicFactory::CreateSurface(DSmallSpriteWidth, DSmallSpriteHeight, ESurfaceFormat::ARGB32));
         DSmallSpriteBases.push_back(MemoryBase);
+        if(!SmallSpriteIndex){
+            DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
+        }
         MemoryBase += DSmallSpriteWidth * DSmallSpriteHeight;
     }
     for(uint32_t PaletteIndex = 0; PaletteIndex < DPaletteCount; PaletteIndex++){
         DBackgroundPalettes.push_back((uint32_t *)MemoryBase);
+        if(!PaletteIndex){
+            DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
+        }
         MemoryBase += sizeof(uint32_t) * 256;
     }
     for(uint32_t PaletteIndex = 0; PaletteIndex < DPaletteCount; PaletteIndex++){
         DSpritePalettes.push_back((uint32_t *)MemoryBase);
+        if(!PaletteIndex){
+            DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
+        }
         MemoryBase += sizeof(uint32_t) * 256;
     }
     DFontBase = MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     MemoryBase += FontSize;
     DTextBase = MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     MemoryBase += DTextWidth * DTextHeight;
     DBackgroundControls = (SBackgroundControl *)MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     MemoryBase += sizeof(SBackgroundControl) * DBackgroundCount;
     DLargeSpriteControls = (SLargeSpriteControl *)MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     MemoryBase += sizeof(SLargeSpriteControl) * DLargeSpriteCount;
     DSmallSpriteControls = (SSmallSpriteControl *)MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     MemoryBase += sizeof(SSmallSpriteControl) * DSmallSpriteCount;
     DModeControl = (const SVideoControllerMode *)MemoryBase;
+    DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
     memcpy((char *)DFontBase,MSXFontData,FontSize);
     DRefreshCounter = DRefreshBaseCount;
     //strcpy((char *)DTextBase,"Hello World!");

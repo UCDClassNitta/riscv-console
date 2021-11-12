@@ -50,6 +50,7 @@ class CVideoController{
         std::vector< const uint8_t * > DSmallSpriteBases;
         std::vector< const uint32_t * > DBackgroundPalettes;
         std::vector< const uint32_t * > DSpritePalettes;
+        std::vector< uint32_t > DSegmentBases;
 
         const SBackgroundControl *DBackgroundControls;
         const SLargeSpriteControl *DLargeSpriteControls;
@@ -98,6 +99,10 @@ class CVideoController{
 
         std::shared_ptr< CRAMMemoryDevice > VideoRAM() const{
             return DVideoRAM;
+        };
+
+        std::vector< uint32_t > SegmentBases() const{
+            return DSegmentBases;
         };
 
         void Refresh(std::shared_ptr<CGraphicSurface> surface);

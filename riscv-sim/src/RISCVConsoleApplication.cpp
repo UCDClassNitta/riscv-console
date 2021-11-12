@@ -400,7 +400,20 @@ bool CRISCVConsoleApplication::DebugMemoryButtonClickEvent(std::shared_ptr<CGUIW
     auto MemoryButton = std::dynamic_pointer_cast<CGUIButton>(widget);
     auto Search = DDebugMemoryButtonMapping.find(MemoryButton);
     if(Search != DDebugMemoryButtonMapping.end()){
-        DDebugMemory->SetBaseAddress(Search->second,true);
+        auto SegmentSearch = DDebugMemorySubSectionMapping.find(Search->second);
+        uint32_t BaseAddress = Search->second;
+        if(SegmentSearch != DDebugMemorySubSectionMapping.end()){
+            if(DLastMemoryBaseAddress != BaseAddress){
+                DDebugMemorySubSectionIndex[BaseAddress] = 0;
+            }
+            DLastMemoryBaseAddress = BaseAddress;
+            BaseAddress += SegmentSearch->second[DDebugMemorySubSectionIndex[DLastMemoryBaseAddress]];
+            DDebugMemorySubSectionIndex[DLastMemoryBaseAddress] = (DDebugMemorySubSectionIndex[DLastMemoryBaseAddress] + 1) % SegmentSearch->second.size();
+        }
+        else{
+            DLastMemoryBaseAddress = BaseAddress;
+        }
+        DDebugMemory->SetBaseAddress(BaseAddress,true);
     }
     else{
         auto RegisterBase = DRISCVConsole->CPU()->Register(DDebugMemoryGlobalPointerRegisterIndex);
@@ -714,11 +727,13 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     DDebugMemoryVideoButton->SetLabel("VID");
     DDebugMemoryVideoButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
     DDebugMemoryButtonMapping[DDebugMemoryVideoButton] = DRISCVConsole->VideoMemoryBase();
+    DDebugMemorySubSectionMapping[DRISCVConsole->VideoMemoryBase()] = DRISCVConsole->VideoMemorySegmentBases();
+    DDebugMemorySubSectionIndex[DRISCVConsole->VideoMemoryBase()] = 0;
     DDebugMemoryDataButton->SetLabel("GP");
     DDebugMemoryDataButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
     DDebugMemoryStackButton->SetLabel("SP");
     DDebugMemoryStackButton->SetToggledEventCallback(this,DebugMemoryStackButtonToggledEventCallback);
-    
+    DLastMemoryBaseAddress = 0;
 
     DConsoleDebugBox->PackStart(DConsoleBox,false,false,GetWidgetSpacing());
     DConsoleDebugBox->PackStart(DDebugBox,false,false,GetWidgetSpacing());

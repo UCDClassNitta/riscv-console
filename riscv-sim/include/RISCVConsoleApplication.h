@@ -69,6 +69,9 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         std::shared_ptr<CGUIButton> DDebugMemoryDataButton;
         std::shared_ptr<CGUIToggleButton> DDebugMemoryStackButton;
         std::unordered_map<std::shared_ptr<CGUIButton>, uint32_t> DDebugMemoryButtonMapping;
+        std::unordered_map<uint32_t, std::vector<uint32_t> > DDebugMemorySubSectionMapping;
+        std::unordered_map<uint32_t, uint32_t > DDebugMemorySubSectionIndex;
+        uint32_t DLastMemoryBaseAddress;
         uint32_t DDebugMemoryGlobalPointerRegisterIndex;
         uint32_t DDebugMemoryStackPointerRegisterIndex;
 
