@@ -23,7 +23,6 @@ typedef struct
 } Allocator, *AllocatorRef;
 void *private_memAlloc(int size);
 
-void allocatorInit(AllocatorRef alloc, int size);
 void *allocate(AllocatorRef alloc);
 void deallocate(AllocatorRef alloc, void *obj);
 
@@ -40,9 +39,8 @@ typedef struct
   void *DBase;
 } SMemoryPoolFreeChunk, *SMemoryPoolFreeChunkRef;
 
-
-
+void allocatorInit(AllocatorRef alloc, int size);
 SMemoryPoolFreeChunkRef allocateFreeChunk(void);
 void deallocByChunk(SMemoryPoolFreeChunkRef chunk);
 
-#endif 
+#endif

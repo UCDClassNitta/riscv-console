@@ -1,11 +1,12 @@
 #include "RVCOS.h"
 #include "queues.h"
-#include "RVCMemory.h"
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
 
-TCB **global_tcb_arr;
+TCB **global_tcb_arr = NULL;
+uint32_t curr_available_mem_pool_index = 0;
+MemoryPoolController *global_mem_pool_arr = NULL; // TODO change the 10
 
 PriorityQueue *low_prio;
 PriorityQueue *med_prio;
@@ -71,30 +72,11 @@ void WriteString(const char *str)
   RVCWriteText(str, Ptr - str);
 }
 
-void WriteInt(int val){
-    char Buffer[16];
-    int Index = 14;
-    int IsNeg = 0;
-    Buffer[15] = '\0';
-    do{
-        Buffer[Index] = val % 10;
-        if(Buffer[Index] < 0){
-            Buffer[Index] = -Buffer[Index];
-        }
-        Buffer[Index] += '0';
-        Index--;
-        val /= 10;
-        if(val < 0){
-            val = -val;
-            IsNeg = 1;
-        }
-    }while(val);
-    if(IsNeg){
-        Buffer[Index] = '-';
-        Index--;
-    }
-    Buffer[Index] = ' ';
-    WriteString(Buffer + Index);
+void writeInt(uint32_t val)
+{
+  char *thread_text[33];
+  itoa(val, thread_text, 10);
+  WriteString(thread_text);
 }
 
 void idleFunction()
@@ -106,12 +88,13 @@ void idleFunction()
   }
 }
 
+// TODO: Update this to remove 256 cap
 uint32_t getNextAvailableTCBIndex()
 {
   WriteString("next available: ");
   for (uint32_t i = 0; i < 255; i++)
   {
-    WriteInt(i);
+    writeInt(i);
     WriteString(" ");
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
@@ -121,6 +104,14 @@ uint32_t getNextAvailableTCBIndex()
   }
   WriteString("all full\n");
   return -1; // no available slots
+}
+
+uint32_t getNextAvailableMemPoolIndex()
+{
+  WriteString("next available mem id: ");
+  writeInt(curr_available_mem_pool_index);
+  curr_available_mem_pool_index++;
+  return curr_available_mem_pool_index - 1;
 }
 
 // TODO check the order here
@@ -151,10 +142,11 @@ TStatus RVCInitialize(uint32_t *gp)
   }
   main_gp = gp;
 
-  WriteString("try to init\n");
-  global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
-  WriteInt(global_tcb_arr);
+  WriteString("GP is: ");
+  writeInt(gp);
   WriteString("\n");
+
+  global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
   for (uint32_t i = 0; i < 256; i++)
   {
     global_tcb_arr[i] = NULL;
@@ -171,9 +163,6 @@ TStatus RVCInitialize(uint32_t *gp)
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
-  WriteString("Low prio pointer: ");
-  WriteInt((uint32_t)low_prio);
-  WriteString("\n");
   // Creating IDLE thread and IDLE thread TCB
   uint32_t *idle_tid = malloc(sizeof(uint32_t));
   // create handles putting it in TCB[]
@@ -186,7 +175,7 @@ TStatus RVCInitialize(uint32_t *gp)
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
 
   WriteString("main id: ");
-  WriteInt(main_thread_tcb->thread_id);
+  writeInt(main_thread_tcb->thread_id);
   WriteString("\n");
 
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
@@ -234,7 +223,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
 {
   if (!tid)
   {
-    WriteInt(tid);
+    writeInt(tid);
     WriteString("bad tid\n");
   }
 
@@ -254,7 +243,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
 
   *tid = getNextAvailableTCBIndex();
   WriteString("tid is: ");
-  WriteInt(*tid);
+  writeInt(*tid);
   if (*tid == -1)
   {
     return RVCOS_STATUS_FAILURE;
@@ -382,7 +371,7 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
   }
 
   WriteString("the running thread state is: ");
-  WriteInt(global_tcb_arr[thread]->state);
+  writeInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }
@@ -462,22 +451,184 @@ TStatus RVCReadController(SControllerStatusRef statusref)
 
 TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref)
 {
+  WriteString("creating pool\n");
+  if (base == NULL || size < 2 * MIN_ALLOC_SIZE || memoryref == NULL)
+  {
+    WriteString("bad params\n");
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+  *memoryref = getNextAvailableMemPoolIndex();
+
+  WriteString("mem id is: \n");
+  writeInt(*memoryref);
+  WriteString("\n");
+
+  MemoryPoolController pool;
+
+  pool.first_chunk = base + sizeof(MemoryPoolController); // base->||controller||chunk|data||
+  pool.pool_id = *memoryref;
+  pool.pool_size = size;
+  pool.bytes_left = size;
+
+  pool.first_chunk->isFree = 1;
+  pool.first_chunk->data_size = size;
+  pool.first_chunk->next = NULL;
+  pool.first_chunk->prev = NULL;
+
+  global_mem_pool_arr[*memoryref] = pool;
+
+  writeInt(size);
+  WriteString("Current Pool addr: ");
+  writeInt(global_mem_pool_arr[*memoryref].first_chunk);
+  WriteString("\n");
+
+  WriteString("Pool Id: ");
+  writeInt(pool.pool_id);
+  WriteString("\n");
+
+  WriteString("Pool size: ");
+  writeInt(global_mem_pool_arr[*memoryref].pool_size);
+  WriteString("\n");
+
+  WriteString("Pool left: ");
+  writeInt(global_mem_pool_arr[*memoryref].bytes_left);
+  WriteString("\n");
   return RVCOS_STATUS_SUCCESS;
 }
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
 {
-  return RVCOS_STATUS_SUCCESS;
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mem_pool_arr[memory].first_chunk == NULL)
+  {
+    WriteString("Successfully freed.\n");
+    free(global_mem_pool_arr[memory].first_chunk - sizeof(MemoryPoolController));
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else
+  {
+    WriteString("Still some memory left.\n");
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
 }
 TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft)
 {
+  if (memory < 0)
+  {
+    WriteString("bad mem id\n");
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+
+  *bytesleft = global_mem_pool_arr[memory].bytes_left;
+  WriteString("Pool Bytes Remaining: ");
+  writeInt(global_mem_pool_arr[memory].bytes_left);
+  WriteString("\n");
+
   return RVCOS_STATUS_SUCCESS;
 }
+
+/**
+ * @brief Allocates space from a given Memory Pool
+ *
+ * @param memory
+ * @param size
+ * @param pointer
+ * @return TStatus
+ *
+ * @Notes
+ * This assumes @param memory is a already initialized mem pool except when memory == 0
+ */
 TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer)
 {
+  if (memory < 0)
+  {
+    WriteString("bad mem id\n");
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (!size || !pointer)
+  {
+    WriteString("bad pointer or size\n");
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  if (memory == RVCOS_MEMORY_POOL_ID_SYSTEM && global_mem_pool_arr == NULL)
+  {
+    WriteString("Making Pool for system\n");
+    uint32_t max_chunk_count = (size / MIN_ALLOC_SIZE) > 2 ? (size / MIN_ALLOC_SIZE) : 2;
+    *pointer = malloc(size + sizeof(MemoryPoolController) + sizeof(MemoryChunk) * max_chunk_count);
+    global_mem_pool_arr = malloc(10 * sizeof(MemoryPoolController *));
+    WriteString("malloc worked\n");
+
+    return RVCOS_STATUS_SUCCESS;
+  }
+
+  // do some normal mem pool stuff
+  MemoryPoolController pool = global_mem_pool_arr[memory];
+  if (!&pool)
+  {
+    WriteString("This pool doesn't exist: ");
+    writeInt(memory);
+    WriteString("\n");
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  TMemorySize actual_alloc_size = ((size % 64) + 1) * 64;
+
+  MemoryChunk *curr_chunk = pool.first_chunk;
+  while (curr_chunk)
+  {
+    if (curr_chunk->isFree && curr_chunk->data_size >= actual_alloc_size)
+    {
+
+      // mark current as an occupied chunk
+      curr_chunk->isFree = 0;
+      *pointer = curr_chunk + sizeof(MemoryChunk); // move offset to actual mem location
+
+      // now make the free chunk
+      // ! chueck if it's in bounds
+      MemoryChunk *free_chunk = curr_chunk + sizeof(MemoryChunk) + actual_alloc_size;
+      free_chunk->isFree = 1;
+      free_chunk->prev = curr_chunk;
+      free_chunk->next = curr_chunk->next;
+      free_chunk->data_size = curr_chunk->data_size - sizeof(MemoryChunk) - actual_alloc_size; // TODO: check if this expression is correct
+
+      curr_chunk->next->prev = free_chunk;
+      pool.bytes_left -= sizeof(MemoryChunk) + actual_alloc_size;
+
+      break;
+    }
+    curr_chunk = curr_chunk->next;
+  }
+
   return RVCOS_STATUS_SUCCESS;
 }
+
+/**
+ * @brief Releases the chunk pointed by pointer back to memory pool
+ *
+ * @param memory
+ * @param pointer
+ * @return TStatus
+ */
 TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
 {
+  if (memory < 0)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (!pointer)
+  {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  MemoryPoolController pool = global_mem_pool_arr[memory];
+  MemoryChunk *chunk_to_return = pointer - sizeof(MemoryChunk);
+
+  chunk_to_return->prev->data_size += chunk_to_return->data_size + sizeof(MemoryChunk);
+  chunk_to_return->prev->next = chunk_to_return->next;
+  chunk_to_return->next->prev = chunk_to_return->prev;
+
   return RVCOS_STATUS_SUCCESS;
 }
 

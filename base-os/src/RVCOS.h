@@ -39,6 +39,7 @@
 #define TIME_REG (*(volatile uint32_t *)0x40000008)           // already derefed, ready to use as value
 #define CONTROLLER_REG_VAL (*(volatile uint32_t *)0x40000018) // already derefed
 #define MAX_VRAM_INDEX (36 * 64 - 1)
+#define MIN_ALLOC_SIZE 0x40
 
 typedef uint32_t TStatus, *TStatusRef;
 typedef uint32_t TTick, *TTickRef;
@@ -106,7 +107,7 @@ TStatus RVCReadController(SControllerStatusRef statusref);
  * Helper functions
  */
 void WriteString(const char *str);
-void WriteInt(int val);
+void writeInt(uint32_t val);
 void idleFunction();
 void threadSkeleton(uint32_t thread);
 
@@ -130,11 +131,20 @@ typedef struct
   TMutexIDRef mutex_ref;
 } Mutex;
 
+typedef struct _MemoryChunk
+{
+  TMemorySize data_size; // in bytes
+  uint32_t isFree;
+  struct _MemoryChunk *next;
+  struct _MemoryChunk *prev;
+} MemoryChunk;
+
 typedef struct
 {
-  void *base;
-  TMemorySize size;
-  TMemoryPoolID memory_id;
-} MemoryChunk;
+  MemoryChunk *first_chunk;
+  TMemoryPoolID pool_id;
+  TMemorySize pool_size;
+  TMemorySize bytes_left;
+} MemoryPoolController;
 
 #endif
