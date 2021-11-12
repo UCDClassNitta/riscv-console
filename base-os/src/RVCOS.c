@@ -520,7 +520,7 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
   return RVCOS_STATUS_SUCCESS;
 }
 
-TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref)
+TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref, TTick timeout)
 {
 
   if (!global_tcb_arr[thread])

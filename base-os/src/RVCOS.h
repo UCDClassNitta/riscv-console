@@ -85,7 +85,7 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
 TStatus RVCThreadDelete(TThreadID thread);
 TStatus RVCThreadActivate(TThreadID thread);
 TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval);
-TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref);
+TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref, TTick timeout);
 TStatus RVCThreadID(TThreadIDRef threadref);
 TStatus RVCThreadState(TThreadID thread, TThreadStateRef stateref);
 TStatus RVCThreadSleep(TTick tick);
