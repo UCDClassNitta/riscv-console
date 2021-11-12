@@ -108,20 +108,21 @@ uint32_t getNextAvailableMemPoolIndex()
   writeInt(curr_available_mem_pool_index);
   curr_available_mem_pool_index++;
   return curr_available_mem_pool_index - 1;
+}
 uint32_t getNextAvailableMUTEXIndex()
 {
-  //WriteString("next available: ");
-  for (uint32_t i = 0; i < 1024; i++) //Arbitrary 1024
+  // WriteString("next available: ");
+  for (uint32_t i = 0; i < 1024; i++) // Arbitrary 1024
   {
-    //WriteInt(i);
-    //WriteString(" ");
+    // WriteInt(i);
+    // WriteString(" ");
     if (!global_mutex_arr[i])
     { // if the curr slot is empty
-      //WriteString("\n");
+      // WriteString("\n");
       return i;
     }
   }
-  //WriteString("all full\n");
+  // WriteString("all full\n");
   return -1; // no available slots
 }
 
@@ -342,8 +343,10 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
 
   for (uint32_t j = 0; j < writesize; j++)
   {
-    if ((uint32_t)buffer[j + 2] == '\x1B' && (uint32_t)buffer[j + 3] == '[') {
-      if (writesize > 7) {
+    if ((uint32_t)buffer[j + 2] == '\x1B' && (uint32_t)buffer[j + 3] == '[')
+    {
+      if (writesize > 7)
+      {
         char row[3];
         char col[3];
 
@@ -351,39 +354,52 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         uint32_t row_int;
         uint32_t col_int;
 
-        if ((uint32_t)buffer[j + 5] == ';') { //Row is single digit
-            strncpy(row, (buffer + j) + 4, 1);
-            row[1] = '\0';
-            row_int = atoi(row);
+        if ((uint32_t)buffer[j + 5] == ';')
+        { // Row is single digit
+          strncpy(row, (buffer + j) + 4, 1);
+          row[1] = '\0';
+          row_int = atoi(row);
 
-            if ((uint32_t)buffer[j + 7] == 'H') { //Col is single digit
-                strncpy(col, (buffer + j) + 6, 1);
-                col[1] = '\0';
-                col_int = atoi(col);
-            }
-            else if ((uint32_t)buffer[j + 8] == 'H') { //Col is double digit
-                strncpy(col, (buffer + j) + 6, 2);
-                col[2] = '\0';
-                col_int = atoi(col);;
-            }
-            else {break;}
+          if ((uint32_t)buffer[j + 7] == 'H')
+          { // Col is single digit
+            strncpy(col, (buffer + j) + 6, 1);
+            col[1] = '\0';
+            col_int = atoi(col);
+          }
+          else if ((uint32_t)buffer[j + 8] == 'H')
+          { // Col is double digit
+            strncpy(col, (buffer + j) + 6, 2);
+            col[2] = '\0';
+            col_int = atoi(col);
+            ;
+          }
+          else
+          {
+            break;
+          }
         }
-        else if ((uint32_t)buffer[j + 6] == ';') { //Row is double digit
-            strncpy(row, (buffer + j) + 4, 2);
-            row[2] = '\0';
-            row_int = atoi(row);
+        else if ((uint32_t)buffer[j + 6] == ';')
+        { // Row is double digit
+          strncpy(row, (buffer + j) + 4, 2);
+          row[2] = '\0';
+          row_int = atoi(row);
 
-            if ((uint32_t)buffer[j + 8] == 'H') { //Col is single digit
-                strncpy(col, (buffer + j) + 7, 1);
-                col[1] = '\0';
-                col_int = atoi(col);
-            }
-            else if ((uint32_t)buffer[j + 9] == 'H') { //Col is double digit
-                strncpy(col, (buffer + j) + 7, 2);
-                col[2] = '\0';
-                col_int = atoi(col);
-            }
-            else {break;}
+          if ((uint32_t)buffer[j + 8] == 'H')
+          { // Col is single digit
+            strncpy(col, (buffer + j) + 7, 1);
+            col[1] = '\0';
+            col_int = atoi(col);
+          }
+          else if ((uint32_t)buffer[j + 9] == 'H')
+          { // Col is double digit
+            strncpy(col, (buffer + j) + 7, 2);
+            col[2] = '\0';
+            col_int = atoi(col);
+          }
+          else
+          {
+            break;
+          }
         }
 
         // Final check to ensure integer values are within range
@@ -413,7 +429,7 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         case 1:
         {
           RVCWriteText("\b ", 2);
-          last_write_pos = physical_write_pos - 65 > 0? physical_write_pos - 65: physical_write_pos;
+          last_write_pos = physical_write_pos - 65 > 0 ? physical_write_pos - 65 : physical_write_pos;
           RVCWriteText("X", 1);
           // code to move cursor up
           break;
@@ -421,11 +437,14 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         case 2:
         {
           RVCWriteText("\b ", 2);
-          if (last_write_pos == 0){
+          if (last_write_pos == 0)
+          {
             VIDEO_MEMORY[0] = ' ';
             last_write_pos = 64;
-          } else {
-            last_write_pos = (physical_write_pos+63) % MAX_VRAM_INDEX;
+          }
+          else
+          {
+            last_write_pos = (physical_write_pos + 63) % MAX_VRAM_INDEX;
           }
           RVCWriteText("X", 1);
           // code to move cursor down
@@ -454,7 +473,8 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         case 6:
         {
           WriteString("2: Erase screen, leave cursor");
-          for (int h = 0; h < MAX_VRAM_INDEX; h++){
+          for (int h = 0; h < MAX_VRAM_INDEX; h++)
+          {
             VIDEO_MEMORY[h] = '\0';
           }
           RVCWriteText("X", 1);
@@ -508,8 +528,8 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
-  //WriteString("the running thread state is: ");
-  //WriteInt(global_tcb_arr[thread]->state);
+  // WriteString("the running thread state is: ");
+  // WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }
@@ -770,15 +790,18 @@ TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
   return RVCOS_STATUS_SUCCESS;
 }
 
-TStatus RVCMutexCreate(TMutexIDRef mutexref) {
+TStatus RVCMutexCreate(TMutexIDRef mutexref)
+{
 
-  if (!mutexref) {
+  if (!mutexref)
+  {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
-  //Need to check this and return failure if it fails
+  // Need to check this and return failure if it fails
   MUTEX *curr_mutex = malloc(sizeof(MUTEX));
-  if (!curr_mutex) {
+  if (!curr_mutex)
+  {
     return RVCOS_STATUS_ERROR_INSUFFICIENT_RESOURCES;
   }
 
@@ -788,59 +811,76 @@ TStatus RVCMutexCreate(TMutexIDRef mutexref) {
   global_mutex_arr[*mutexref] = curr_mutex;
   return RVCOS_STATUS_SUCCESS;
 }
-TStatus RVCMutexDelete(TMutexID mutex) {
-  if (!global_mutex_arr[mutex]) {
+TStatus RVCMutexDelete(TMutexID mutex)
+{
+  if (!global_mutex_arr[mutex])
+  {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-  if (global_mutex_arr[mutex]->owner) {
+  if (global_mutex_arr[mutex]->owner)
+  {
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
   free(global_mutex_arr[mutex]);
   return RVCOS_STATUS_SUCCESS;
 }
-TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref) {
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref)
+{
 
-  if (!global_mutex_arr[mutex]) {
+  if (!global_mutex_arr[mutex])
+  {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-  if (ownerref == NULL) {
+  if (ownerref == NULL)
+  {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
-  if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+  if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+  {
     *ownerref = RVCOS_THREAD_ID_INVALID;
     return RVCOS_STATUS_SUCCESS;
   }
-  else {
+  else
+  {
     *ownerref = global_mutex_arr[mutex]->owner;
     return RVCOS_STATUS_SUCCESS;
   }
 }
-TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
-  if (!global_mutex_arr[mutex]) {
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout)
+{
+  if (!global_mutex_arr[mutex])
+  {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-  if (timeout == RVCOS_TIMEOUT_IMMEDIATE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED) {
+  if (timeout == RVCOS_TIMEOUT_IMMEDIATE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED)
+  {
     return RVCOS_STATUS_SUCCESS;
   }
-  else if (timeout == RVCOS_TIMEOUT_IMMEDIATE) {
+  else if (timeout == RVCOS_TIMEOUT_IMMEDIATE)
+  {
     global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
     return RVCOS_STATUS_SUCCESS;
   }
-  else if (timeout == RVCOS_TIMEOUT_INFINITE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+  else if (timeout == RVCOS_TIMEOUT_INFINITE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+  {
     global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED;
     return RVCOS_STATUS_SUCCESS;
   }
-  else if (timeout == RVCOS_TIMEOUT_INFINITE) {
-    uint32_t thread_id = global_mutex_arr[mutex]->owner; //block thread until mutex is acquired
+  else if (timeout == RVCOS_TIMEOUT_INFINITE)
+  {
+    uint32_t thread_id = global_mutex_arr[mutex]->owner; // block thread until mutex is acquired
     global_tcb_arr[thread_id]->state == RVCOS_THREAD_STATE_WAITING;
-    
+
     return RVCOS_STATUS_SUCCESS;
   }
-  else {
-    while (timeout > 0) {
-      if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+  else
+  {
+    while (timeout > 0)
+    {
+      if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED)
+      {
         global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
         return RVCOS_STATUS_SUCCESS;
       }
@@ -849,11 +889,14 @@ TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
     return RVCOS_STATUS_FAILURE;
   }
 }
-TStatus RVCMutexRelease(TMutexID mutex) {
-  if (!global_mutex_arr[mutex]) {
+TStatus RVCMutexRelease(TMutexID mutex)
+{
+  if (!global_mutex_arr[mutex])
+  {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-  if (global_mutex_arr[mutex]->owner != running_thread_id) {
+  if (global_mutex_arr[mutex]->owner != running_thread_id)
+  {
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
