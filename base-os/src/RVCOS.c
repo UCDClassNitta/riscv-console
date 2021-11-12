@@ -75,9 +75,9 @@ void WriteString(const char *str)
 
 void writeInt(uint32_t val)
 {
-  char *thread_text[33];
-  itoa(val, thread_text, 10);
-  WriteString(thread_text);
+  char *val_text[33];
+  itoa(val, val_text, 10);
+  WriteString(val_text);
 }
 
 void idleFunction()
@@ -104,30 +104,22 @@ uint32_t getNextAvailableTCBIndex()
 
 uint32_t getNextAvailableMemPoolIndex()
 {
-  WriteString("next available mem id: ");
-  writeInt(curr_available_mem_pool_index);
   curr_available_mem_pool_index++;
   return curr_available_mem_pool_index - 1;
 }
 
 uint32_t getNextAvailableMUTEXIndex()
 {
-  // WriteString("next available: ");
   for (uint32_t i = 0; i < 1024; i++) // Arbitrary 1024
   {
-    // WriteInt(i);
-    // WriteString(" ");
     if (!global_mutex_arr[i])
     { // if the curr slot is empty
-      // WriteString("\n");
       return i;
     }
   }
-  // WriteString("all full\n");
   return -1; // no available slots
 }
 
-// TODO check the order here
 PriorityQueue *getPQByPrioNum(uint32_t prio_num)
 {
   switch (prio_num)
@@ -146,7 +138,6 @@ PriorityQueue *getPQByPrioNum(uint32_t prio_num)
   }
 }
 
-// ! change the logic of queues here
 TStatus RVCInitialize(uint32_t *gp)
 {
   if (!gp)
@@ -172,23 +163,15 @@ TStatus RVCInitialize(uint32_t *gp)
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
-  // WriteString("Low prio pointer: ");
-  // WriteInt((uint32_t)low_prio);
-  // WriteString("\n");
   //  Creating IDLE thread and IDLE thread TCB
   uint32_t *idle_tid = malloc(sizeof(uint32_t));
   // create handles putting it in TCB[]
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
   free(idle_tid);
-  // WriteString("made idle thread");
 
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
-
-  // WriteString("main id: ");
-  // WriteInt(main_thread_tcb->thread_id);
-  // WriteString("\n");
 
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
   main_thread_tcb->sp = 0x71000000;     // top of physical stack
@@ -233,12 +216,6 @@ TStatus RVCThreadDelete(TThreadID thread)
 
 TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid)
 {
-  if (!tid)
-  {
-    // WriteInt(tid);
-    // WriteString("bad tid\n");
-  }
-
   if (!entry || !tid)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
@@ -254,8 +231,6 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
   curr_thread_tcb->param = param;
 
   *tid = getNextAvailableTCBIndex();
-  // WriteString("tid is: ");
-  // WriteInt(*tid);
   if (*tid == -1)
   {
     return RVCOS_STATUS_FAILURE;
@@ -467,7 +442,6 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         }
         case 5:
         {
-          WriteString("H: Cursor Upper Left");
           // code to move cursor upper left
           break;
         }
@@ -528,9 +502,6 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
   {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
-
-  // WriteString("the running thread state is: ");
-  // WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }
@@ -610,17 +581,11 @@ TStatus RVCReadController(SControllerStatusRef statusref)
 
 TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref)
 {
-  WriteString("creating pool\n");
   if (base == NULL || size < 2 * MIN_ALLOC_SIZE || memoryref == NULL)
   {
-    WriteString("bad params\n");
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
   *memoryref = getNextAvailableMemPoolIndex();
-
-  WriteString("mem id is: \n");
-  writeInt(*memoryref);
-  WriteString("\n");
 
   MemoryPoolController pool;
 
@@ -636,22 +601,6 @@ TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memor
 
   global_mem_pool_arr[*memoryref] = pool;
 
-  writeInt(size);
-  WriteString("Current Pool addr: ");
-  writeInt(global_mem_pool_arr[*memoryref].first_chunk);
-  WriteString("\n");
-
-  WriteString("Pool Id: ");
-  writeInt(pool.pool_id);
-  WriteString("\n");
-
-  WriteString("Pool size: ");
-  writeInt(global_mem_pool_arr[*memoryref].pool_size);
-  WriteString("\n");
-
-  WriteString("Pool left: ");
-  writeInt(global_mem_pool_arr[*memoryref].bytes_left);
-  WriteString("\n");
   return RVCOS_STATUS_SUCCESS;
 }
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
@@ -662,13 +611,11 @@ TStatus RVCMemoryPoolDelete(TMemoryPoolID memory)
   }
   if (global_mem_pool_arr[memory].first_chunk == NULL)
   {
-    WriteString("Successfully freed.\n");
     free(global_mem_pool_arr[memory].first_chunk - sizeof(MemoryPoolController));
     return RVCOS_STATUS_SUCCESS;
   }
   else
   {
-    WriteString("Still some memory left.\n");
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 }
@@ -676,15 +623,9 @@ TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft)
 {
   if (memory < 0)
   {
-    WriteString("bad mem id\n");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-
   *bytesleft = global_mem_pool_arr[memory].bytes_left;
-  WriteString("Pool Bytes Remaining: ");
-  writeInt(global_mem_pool_arr[memory].bytes_left);
-  WriteString("\n");
-
   return RVCOS_STATUS_SUCCESS;
 }
 
@@ -703,22 +644,18 @@ TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **poi
 {
   if (memory < 0)
   {
-    WriteString("bad mem id\n");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
   if (!size || !pointer)
   {
-    WriteString("bad pointer or size\n");
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
   if (memory == RVCOS_MEMORY_POOL_ID_SYSTEM && global_mem_pool_arr == NULL)
   {
-    WriteString("Making Pool for system\n");
     uint32_t max_chunk_count = (size / MIN_ALLOC_SIZE) > 2 ? (size / MIN_ALLOC_SIZE) : 2;
     *pointer = malloc(size + sizeof(MemoryPoolController) + sizeof(MemoryChunk) * max_chunk_count);
     global_mem_pool_arr = malloc(10 * sizeof(MemoryPoolController *));
-    WriteString("malloc worked\n");
 
     return RVCOS_STATUS_SUCCESS;
   }
@@ -727,9 +664,6 @@ TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **poi
   MemoryPoolController pool = global_mem_pool_arr[memory];
   if (!&pool)
   {
-    WriteString("This pool doesn't exist: ");
-    writeInt(memory);
-    WriteString("\n");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
   TMemorySize actual_alloc_size = ((size % 64) + 1) * 64;

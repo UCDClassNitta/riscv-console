@@ -34,8 +34,8 @@
 #define RVCOS_MEMORY_POOL_ID_SYSTEM ((TMemoryPoolID)0)
 #define RVCOS_MEMORY_POOL_ID_INVALID ((TMemoryPoolID)-1)
 
-#define RVCMemoryAllocate(size,pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
-#define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
+#define RVCMemoryAllocate(size, pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
+#define RVCMemoryDeallocate(pointer) RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
 
 #define RVCOS_MUTEX_ID_INVALID ((TMutexID)-1)
 #define RVCOS_MUTEX_STATE_LOCKED ((TMutexState)0x00)
@@ -55,7 +55,7 @@ typedef uint32_t TThreadPriority, *TThreadPriorityRef;
 typedef uint32_t TThreadState, *TThreadStateRef;
 typedef char TTextCharacter, *TTextCharacterRef;
 typedef uint32_t TMemoryPoolID, *TMemoryPoolIDRef;
-typedef uint32_t TMutexID, *TMutexIDRef, TMutexOwner, TMutexState; //State: 1 = unlocked, 0 = locked
+typedef uint32_t TMutexID, *TMutexIDRef, TMutexOwner, TMutexState; // State: 1 = unlocked, 0 = locked
 
 typedef uint32_t (*TEntry)(uint32_t param);
 
@@ -128,7 +128,7 @@ typedef struct
   void *param;
   void *sp;
 
-  struct MUTEX *held_mutexes; //this is probably wrong. need a list of held mutexes idk syntax for that
+  struct MUTEX *held_mutexes; // this is probably wrong. need a list of held mutexes idk syntax for that
 
   uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
