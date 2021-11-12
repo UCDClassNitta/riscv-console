@@ -10,6 +10,7 @@ MemoryPoolController *global_mem_pool_arr = NULL; // TODO change the 10
 MUTEX **global_mutex_arr;
 
 uint32_t curr_available_mem_pool_index = 0;
+uint32_t curr_TCB_max_size = 256;
 
 PriorityQueue *low_prio;
 PriorityQueue *med_prio;
@@ -92,7 +93,7 @@ void idleFunction()
 // TODO: Update this to remove 256 cap
 uint32_t getNextAvailableTCBIndex()
 {
-  for (uint32_t i = 0; i < 255; i++)
+  for (uint32_t i = 0; i < curr_TCB_max_size; i++)
   {
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
@@ -136,6 +137,18 @@ PriorityQueue *getPQByPrioNum(uint32_t prio_num)
   case 0:
     return idle_prio;
   }
+}
+
+void resizeTCBArray()
+{
+  TCB **new_tcb_arr = malloc(sizeof(TCB *) * 2 * curr_TCB_max_size);
+  for (int i = 0; i < curr_TCB_max_size; i++)
+  {
+    new_tcb_arr[i] = global_tcb_arr[i];
+  }
+  curr_TCB_max_size *= 2;
+  free(global_tcb_arr);
+  global_tcb_arr = new_tcb_arr;
 }
 
 TStatus RVCInitialize(uint32_t *gp)
@@ -233,7 +246,8 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
   *tid = getNextAvailableTCBIndex();
   if (*tid == -1)
   {
-    return RVCOS_STATUS_FAILURE;
+    resizeTCBArray();
+    *tid = getNextAvailableTCBIndex();
   }
   else
   {
