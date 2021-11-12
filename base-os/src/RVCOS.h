@@ -38,6 +38,8 @@
 #define RVCMemoryDeallocate(pointer)    RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
 
 #define RVCOS_MUTEX_ID_INVALID ((TMutexID)-1)
+#define RVCOS_MUTEX_STATE_LOCKED ((TMutexState)0x00)
+#define RVCOS_MUTEX_STATE_UNLOCKED ((TMutexState)0x01)
 
 #define TIME_REG (*(volatile uint32_t *)0x40000008)       // already derefed, ready to use
 #define CONTROLLER_REG_VAL (*(volatile uint32_t *)0x40000018) // already derefed
@@ -52,7 +54,7 @@ typedef uint32_t TThreadPriority, *TThreadPriorityRef;
 typedef uint32_t TThreadState, *TThreadStateRef;
 typedef char TTextCharacter, *TTextCharacterRef;
 typedef uint32_t TMemoryPoolID, *TMemoryPoolIDRef;
-typedef uint32_t TMutexID, *TMutexIDRef;
+typedef uint32_t TMutexID, *TMutexIDRef, TMutexOwner, TMutexState; //State: 1 = unlocked, 0 = locked
 
 typedef uint32_t (*TEntry)(uint32_t param);
 
@@ -114,18 +116,22 @@ typedef struct {
   TThreadPriority priority;
   TThreadEntry entry;
   TThreadReturn ret_val;
-
   uint32_t mem_size;
+
   void *param;
   void *sp;
+
+  struct MUTEX *held_mutexes; //this is probably wrong. need a list of held mutexes idk syntax for that
+
   uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
 
 typedef struct {
   TMutexID mutex_id;
   TMutexIDRef mutex_ref;
+  TMutexOwner owner;
+  TMutexState state;
+
 } MUTEX;
-
-
 
 #endif
