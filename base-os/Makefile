@@ -38,8 +38,6 @@ TARGET_OBJS =   $(OBJ_DIR)/RVCOS.o              \
                 $(OBJ_DIR)/interrupt.o          \
                 $(OBJ_DIR)/startup.o						\
 								$(OBJ_DIR)/queues.o							\
-                $(OBJ_DIR)/startup.o						\
-								$(OBJ_DIR)/queues.o							\
 								$(OBJ_DIR)/esc_codes.o
 
 all: directories $(BIN_DIR)/$(TARGET_NAME)

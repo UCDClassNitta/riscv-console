@@ -90,18 +90,13 @@ void idleFunction()
 // TODO: Update this to remove 256 cap
 uint32_t getNextAvailableTCBIndex()
 {
-  //WriteString("next available: ");
   for (uint32_t i = 0; i < 255; i++)
   {
-    //WriteInt(i);
-    //WriteString(" ");
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
-      //WriteString("\n");
       return i;
     }
   }
-  //WriteString("all full\n");
   return -1; // no available slots
 }
 
@@ -140,10 +135,6 @@ TStatus RVCInitialize(uint32_t *gp)
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
   main_gp = gp;
-
-  WriteString("GP is: ");
-  writeInt(gp);
-  WriteString("\n");
 
   global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
   for (uint32_t i = 0; i < 256; i++)

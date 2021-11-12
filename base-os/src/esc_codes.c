@@ -28,7 +28,6 @@ uint32_t esc_codes(const TTextCharacter *buffer, TMemorySize writesize) {
             }
             break;                    
         }
-        default: printf("error");
-        break;
+        default: break;
     }
 }
