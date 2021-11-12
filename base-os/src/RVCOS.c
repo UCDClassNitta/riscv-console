@@ -1,5 +1,6 @@
 #include "RVCOS.h"
 #include "queues.h"
+#include "esc_codes.h"
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
@@ -87,18 +88,18 @@ void idleFunction()
 
 uint32_t getNextAvailableTCBIndex()
 {
-  WriteString("next available: ");
+  //WriteString("next available: ");
   for (uint32_t i = 0; i < 255; i++)
   {
-    WriteInt(i);
-    WriteString(" ");
+    //WriteInt(i);
+    //WriteString(" ");
     if (!global_tcb_arr[i])
     { // if the curr slot is empty
-      WriteString("\n");
+      //WriteString("\n");
       return i;
     }
   }
-  WriteString("all full\n");
+  //WriteString("all full\n");
   return -1; // no available slots
 }
 
@@ -130,10 +131,10 @@ TStatus RVCInitialize(uint32_t *gp)
   }
   main_gp = gp;
 
-  WriteString("try to init\n");
+  //WriteString("try to init\n");
   global_tcb_arr = malloc(sizeof(TCB *) * 256); // TODO: remove 256 cap
-  WriteInt(global_tcb_arr);
-  WriteString("\n");
+  //WriteInt(global_tcb_arr);
+  //WriteString("\n");
   for (uint32_t i = 0; i < 256; i++)
   {
     global_tcb_arr[i] = NULL;
@@ -150,23 +151,23 @@ TStatus RVCInitialize(uint32_t *gp)
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
-  WriteString("Low prio pointer: ");
-  WriteInt((uint32_t)low_prio);
-  WriteString("\n");
+  //WriteString("Low prio pointer: ");
+  //WriteInt((uint32_t)low_prio);
+  //WriteString("\n");
   // Creating IDLE thread and IDLE thread TCB
   uint32_t *idle_tid = malloc(sizeof(uint32_t));
   // create handles putting it in TCB[]
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
   free(idle_tid);
-  WriteString("made idle thread");
+  //WriteString("made idle thread");
 
   // Creating MAIN thread and MAIN thread TCB manually because it's a special case
   TCB *main_thread_tcb = malloc(sizeof(TCB));
   main_thread_tcb->thread_id = MAIN_THREAD_ID;
   
-  WriteString("main id: ");
-  WriteInt(main_thread_tcb->thread_id);
-  WriteString("\n");
+  //WriteString("main id: ");
+  //WriteInt(main_thread_tcb->thread_id);
+  //WriteString("\n");
 
   main_thread_tcb->state = RVCOS_THREAD_STATE_RUNNING;
   main_thread_tcb->sp = 0x71000000;     // top of physical stack
@@ -213,8 +214,8 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
 {
   if (!tid)
   {
-    WriteInt(tid);
-    WriteString("bad tid\n");
+    //WriteInt(tid);
+    //WriteString("bad tid\n");
   }
 
   if (!entry || !tid)
@@ -232,8 +233,8 @@ TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TT
   curr_thread_tcb->param = param;
 
   *tid = getNextAvailableTCBIndex();
-  WriteString("tid is: ");
-  WriteInt(*tid);
+  //WriteString("tid is: ");
+  //WriteInt(*tid);
   if (*tid == -1)
   {
     return RVCOS_STATUS_FAILURE;
@@ -316,17 +317,120 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
   uint32_t n_pos = 0;
   uint32_t physical_write_pos = last_write_pos;
 
+  //For escape codes
+  uint32_t row_int;
+  uint32_t col_int;
+
   for (uint32_t j = 0; j < writesize; j++)
   {
-    if (buffer[j] == '\n')
-    {
+    if ((uint32_t)buffer[j] == '\x1B' && (uint32_t)buffer[j + 1] == '[') {
+      if (writesize > 5) {
+        char row[3];
+        char col[3];
+
+        //These variables will probably need to be declared in a broader scope when integrated
+        uint32_t row_int;
+        uint32_t col_int;
+
+        if ((uint32_t)buffer[j + 3] == ';') { //Row is single digit
+            strncpy(row, (buffer + j) + 2, 1);
+            row[1] = '\0';
+            row_int = atoi(row);
+
+            if ((uint32_t)buffer[j + 5] == 'H') { //Col is single digit
+                strncpy(col, (buffer + j) + 4, 1);
+                col[1] = '\0';
+                col_int = atoi(col);
+            }
+            else if ((uint32_t)buffer[j + 6] == 'H') { //Col is double digit
+                strncpy(col, (buffer + j) + 4, 2);
+                col[2] = '\0';
+                col_int = atoi(col);;
+            }
+            else {break;}
+        }
+        else if ((uint32_t)buffer[j + 4] == ';') { //Row is double digit
+            strncpy(row, (buffer + j) + 2, 2);
+            row[2] = '\0';
+            row_int = atoi(row);
+
+            if ((uint32_t)buffer[j + 6] == 'H') { //Col is single digit
+                strncpy(col, (buffer + j) + 5, 1);
+                col[1] = '\0';
+                col_int = atoi(col);
+            }
+            else if ((uint32_t)buffer[j + 7] == 'H') { //Col is double digit
+                strncpy(col, (buffer + j) + 5, 2);
+                col[2] = '\0';
+                col_int = atoi(col);
+            }
+            else {break;}
+        }
+        else {break;}                
+
+        //Final check to ensure integer values are within range
+        uint32_t row_check = (row_int >= 0 && row_int < 36) ? 1 : 0;
+        uint32_t col_check = (col_int >= 0 && col_int < 64) ? 1 : 0;
+
+        if (!row_check || !col_check) {
+            WriteString("Invalid Parameters");
+        }
+        else {
+            WriteString("Moving cursor to specified row and column");
+            //Code to move cursor to row and column
+            //BE CAREFUL of 'off by one' errors here
+            //It's assumed escape code will use 0-35 for rows and 0-63 for columns
+        }
+      }
+
+      //Sent to external esc_codes switch
+      else {
+        uint32_t code = esc_codes(buffer, writesize);
+
+        switch(code) {
+          case 1: {
+            WriteString("A: Cursor Up");
+            //code to move cursor up
+            break;
+          }
+          case 2: {
+            WriteString("B: Cursor Down");
+            //code to move cursor down
+            break;
+          }
+          case 3: {
+            WriteString("C: Cursor Right");
+            //code to move cursor right
+            break;
+          }
+          case 4: {
+            WriteString("D: Cursor Left");
+            //code to move cursor left
+            break;
+          }
+          case 5: {
+            WriteString("H: Cursor Upper Left");
+            //code to move cursor upper left
+            break;
+          }
+          case 6: {
+            WriteString("2: Erase screen, leave cursor");
+            //code to erase and leave cursor
+            break;
+          }
+          default:
+          break;
+        }
+      }
+      return stat;
+    }
+    if (buffer[j] == '\n') {
       uint32_t next_line = (physical_write_pos / 64) + 1;
       physical_write_pos = next_line * 64;
       physical_write_pos -= j; // now j is not 0 anymore, so push physical_write_pos back by j
       n_pos = j - 1;
     }
-    else if (buffer[j] == '\b')
-    {
+    else if (buffer[j] == '\b') {
       physical_write_pos = physical_write_pos - 2 > 0 ? physical_write_pos - 2 : 0; // make sure writepos is always >=0
     }
     VIDEO_MEMORY[physical_write_pos++] = buffer[j];
@@ -360,7 +464,7 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
-  WriteString("the running thread state is: ");
+  //WriteString("the running thread state is: ");
   WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
@@ -470,5 +574,3 @@ TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
 TStatus RVCMutexRelease(TMutexID mutex) {
   return 1;
 }
-
-
