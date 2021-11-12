@@ -6,8 +6,10 @@ volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xFE800);
 volatile uint32_t *main_gp = 0;
 
 TCB **global_tcb_arr = NULL;
-uint32_t curr_available_mem_pool_index = 0;
 MemoryPoolController *global_mem_pool_arr = NULL; // TODO change the 10
+MUTEX **global_mutex_arr;
+
+uint32_t curr_available_mem_pool_index = 0;
 
 PriorityQueue *low_prio;
 PriorityQueue *med_prio;
@@ -106,6 +108,21 @@ uint32_t getNextAvailableMemPoolIndex()
   writeInt(curr_available_mem_pool_index);
   curr_available_mem_pool_index++;
   return curr_available_mem_pool_index - 1;
+uint32_t getNextAvailableMUTEXIndex()
+{
+  //WriteString("next available: ");
+  for (uint32_t i = 0; i < 1024; i++) //Arbitrary 1024
+  {
+    //WriteInt(i);
+    //WriteString(" ");
+    if (!global_mutex_arr[i])
+    { // if the curr slot is empty
+      //WriteString("\n");
+      return i;
+    }
+  }
+  //WriteString("all full\n");
+  return -1; // no available slots
 }
 
 // TODO check the order here
@@ -491,8 +508,8 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state)
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
-  WriteString("the running thread state is: ");
-  writeInt(global_tcb_arr[thread]->state);
+  //WriteString("the running thread state is: ");
+  //WriteInt(global_tcb_arr[thread]->state);
   *state = global_tcb_arr[thread]->state;
   return RVCOS_STATUS_SUCCESS;
 }
@@ -753,25 +770,96 @@ TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer)
   return RVCOS_STATUS_SUCCESS;
 }
 
-/** Mutex Functions **/
+TStatus RVCMutexCreate(TMutexIDRef mutexref) {
 
-TStatus RVCMutexCreate(TMutexIDRef mutexref)
-{
+  if (!mutexref) {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  //Need to check this and return failure if it fails
+  MUTEX *curr_mutex = malloc(sizeof(MUTEX));
+  if (!curr_mutex) {
+    return RVCOS_STATUS_ERROR_INSUFFICIENT_RESOURCES;
+  }
+
+  curr_mutex->state = RVCOS_MUTEX_STATE_UNLOCKED;
+  *mutexref = getNextAvailableMUTEXIndex();
+  curr_mutex->mutex_id = *mutexref;
+  global_mutex_arr[*mutexref] = curr_mutex;
   return RVCOS_STATUS_SUCCESS;
 }
-TStatus RVCMutexDelete(TMutexID mutex)
-{
+TStatus RVCMutexDelete(TMutexID mutex) {
+  if (!global_mutex_arr[mutex]) {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mutex_arr[mutex]->owner) {
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+
+  free(global_mutex_arr[mutex]);
   return RVCOS_STATUS_SUCCESS;
 }
-TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref)
-{
-  return RVCOS_STATUS_SUCCESS;
+TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref) {
+
+  if (!global_mutex_arr[mutex]) {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (ownerref == NULL) {
+    return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
+  }
+
+  if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+    *ownerref = RVCOS_THREAD_ID_INVALID;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else {
+    *ownerref = global_mutex_arr[mutex]->owner;
+    return RVCOS_STATUS_SUCCESS;
+  }
 }
-TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout)
-{
-  return RVCOS_STATUS_SUCCESS;
+TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
+  if (!global_mutex_arr[mutex]) {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (timeout == RVCOS_TIMEOUT_IMMEDIATE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED) {
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_IMMEDIATE) {
+    global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_INFINITE && global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+    global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED;
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else if (timeout == RVCOS_TIMEOUT_INFINITE) {
+    uint32_t thread_id = global_mutex_arr[mutex]->owner; //block thread until mutex is acquired
+    global_tcb_arr[thread_id]->state == RVCOS_THREAD_STATE_WAITING;
+    
+    return RVCOS_STATUS_SUCCESS;
+  }
+  else {
+    while (timeout > 0) {
+      if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+        global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
+        return RVCOS_STATUS_SUCCESS;
+      }
+      timeout -= 1;
+    }
+    return RVCOS_STATUS_FAILURE;
+  }
 }
-TStatus RVCMutexRelease(TMutexID mutex)
-{
+TStatus RVCMutexRelease(TMutexID mutex) {
+  if (!global_mutex_arr[mutex]) {
+    return RVCOS_STATUS_ERROR_INVALID_ID;
+  }
+  if (global_mutex_arr[mutex]->owner != running_thread_id) {
+    return RVCOS_STATUS_ERROR_INVALID_STATE;
+  }
+
+  global_mutex_arr[mutex]->owner = NULL;
+  /*may cause another higher priority thread to be scheduled
+  if it acquires the newly released mutex. */
+
   return RVCOS_STATUS_SUCCESS;
 }
