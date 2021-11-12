@@ -395,13 +395,21 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         {
         case 1:
         {
-
+          RVCWriteText("\b ", 2);
+          last_write_pos = physical_write_pos - 65 > 0? physical_write_pos - 65: physical_write_pos;
+          RVCWriteText("X", 1);
           // code to move cursor up
           break;
         }
         case 2:
         {
-          RVCWriteText("\b \n", 3);
+          RVCWriteText("\b ", 2);
+          if (last_write_pos == 0){
+            VIDEO_MEMORY[0] = ' ';
+            last_write_pos = 64;
+          } else {
+            last_write_pos = (physical_write_pos+63) % MAX_VRAM_INDEX;
+          }
           RVCWriteText("X", 1);
           // code to move cursor down
           break;
@@ -429,7 +437,10 @@ TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize)
         case 6:
         {
           WriteString("2: Erase screen, leave cursor");
-          // code to erase and leave cursor
+          for (int h = 0; h < MAX_VRAM_INDEX; h++){
+            VIDEO_MEMORY[h] = '\0';
+          }
+          RVCWriteText("X", 1);
           break;
         }
         default:
