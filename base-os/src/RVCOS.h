@@ -63,15 +63,15 @@ typedef TThreadReturn (*TThreadEntry)(void *);
 
 typedef struct
 {
-  uint32_t DLeft : 1; // num after colon means how many bits this field has
-  uint32_t DUp : 1;
-  uint32_t DDown : 1;
-  uint32_t DRight : 1;
-  uint32_t DButton1 : 1;
-  uint32_t DButton2 : 1;
-  uint32_t DButton3 : 1;
-  uint32_t DButton4 : 1;   // 1 bit field
-  uint32_t DReserved : 24; // 24 bit field
+    uint32_t DLeft : 1; // num after colon means how many bits this field has
+    uint32_t DUp : 1;
+    uint32_t DDown : 1;
+    uint32_t DRight : 1;
+    uint32_t DButton1 : 1;
+    uint32_t DButton2 : 1;
+    uint32_t DButton3 : 1;
+    uint32_t DButton4 : 1;   // 1 bit field
+    uint32_t DReserved : 24; // 24 bit field
 } SControllerStatus, *SControllerStatusRef;
 
 typedef char Byte;
@@ -118,43 +118,43 @@ void threadSkeleton(uint32_t thread);
 
 typedef struct
 {
-  TThreadID thread_id;
-  TThreadState state;
-  TThreadPriority priority;
-  TThreadEntry entry;
-  TThreadReturn ret_val;
-  uint32_t mem_size;
+    TThreadID thread_id;
+    TThreadState state;
+    TThreadPriority priority;
+    TThreadEntry entry;
+    TThreadReturn ret_val;
+    uint32_t mem_size;
 
-  void *param;
-  void *sp;
+    void *param;
+    void *sp;
 
-  struct MUTEX *held_mutexes; // this is probably wrong. need a list of held mutexes idk syntax for that
+    struct MUTEX *held_mutexes; // this is probably wrong. need a list of held mutexes idk syntax for that
 
-  uint32_t sleep_tick; // decrement this if not null and state is sleeping
+    uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
 
 typedef struct
 {
-  TMutexID mutex_id;
-  TMutexIDRef mutex_ref;
-  TMutexOwner owner;
-  TMutexState state;
+    TMutexID mutex_id;
+    TMutexIDRef mutex_ref;
+    TMutexOwner owner;
+    TMutexState state;
 } MUTEX;
 
 typedef struct _MemoryChunk
 {
-  TMemorySize data_size; // in bytes
-  uint32_t isFree;
-  struct _MemoryChunk *next;
-  struct _MemoryChunk *prev;
+    TMemorySize data_size; // in bytes
+    uint32_t isFree;
+    struct _MemoryChunk *next;
+    struct _MemoryChunk *prev;
 } MemoryChunk;
 
 typedef struct
 {
-  MemoryChunk *first_chunk;
-  TMemoryPoolID pool_id;
-  TMemorySize pool_size;
-  TMemorySize bytes_left;
+    MemoryChunk *first_chunk;
+    TMemoryPoolID pool_id;
+    TMemorySize pool_size;
+    TMemorySize bytes_left;
 } MemoryPoolController;
 
 #endif

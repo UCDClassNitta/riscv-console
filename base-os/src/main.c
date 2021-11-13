@@ -81,7 +81,7 @@ void c_syscall_handler(uint32_t p1, uint32_t p2, uint32_t p3, uint32_t p4, uint3
   }
   case 5:
   {
-    RVCThreadWait(p1, p2);
+    RVCThreadWait(p1, p2, p3);
     break;
   }
   case 6:

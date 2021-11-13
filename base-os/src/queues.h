@@ -10,18 +10,17 @@
  */
 typedef struct _PriorityQueueNode
 {
-  uint32_t tcb_id;
-  struct _PriorityQueueNode *prev;
-  struct _PriorityQueueNode *next;
+    uint32_t tcb_id;
+    struct _PriorityQueueNode *prev;
+    struct _PriorityQueueNode *next;
 } PriorityQueueNode;
 
 typedef struct
 {
-  uint32_t size;
-  PriorityQueueNode *head;
-  PriorityQueueNode *tail;
+    uint32_t size;
+    PriorityQueueNode *head;
+    PriorityQueueNode *tail;
 } PriorityQueue;
-
 
 /**
  * @brief Enqueues a tcb id to the back of a queue
