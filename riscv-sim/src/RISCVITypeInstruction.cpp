@@ -199,7 +199,7 @@ std::shared_ptr< CRISCVCPU::CInstruction > CRISCVITypeInstruction::DecodeIType(u
         case 0x2:   return std::make_shared<CRISCVSLTIInstruction>(addr,raw,pc,regs);
         case 0x3:   return std::make_shared<CRISCVSLTIUInstruction>(addr,raw,pc,regs);
         case 0x4:   return std::make_shared<CRISCVXORIInstruction>(addr,raw,pc,regs);
-        case 0x5:   if(Encoded->imm11_0 & 0x20){
+        case 0x5:   if(Encoded->imm11_0 & 0x400){
                         return std::make_shared<CRISCVSRAIInstruction>(addr,raw,pc,regs);
                     }
                     else{
