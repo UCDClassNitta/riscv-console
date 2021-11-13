@@ -208,6 +208,10 @@ class CRISCVConsole{
             return DVideoMemoryBase;
         };
 
+        std::vector< uint32_t > VideoMemorySegmentBases() const{
+            return DVideoController->SegmentBases();
+        };
+
         uint32_t RegisterMemorySize(){
             return DRegisterBlock->MemorySize();
         };
