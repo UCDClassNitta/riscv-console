@@ -46,20 +46,20 @@
 #define MAX_VRAM_INDEX (36 * 64 - 1)
 #define MIN_ALLOC_SIZE 0x40
 
-typedef uint32_t TStatus, *TStatusRef;
-typedef uint32_t TTick, *TTickRef;
-typedef int32_t TThreadReturn, *TThreadReturnRef;
-typedef uint32_t TMemorySize, *TMemorySizeRef;
-typedef uint32_t TThreadID, *TThreadIDRef;
-typedef uint32_t TThreadPriority, *TThreadPriorityRef;
-typedef uint32_t TThreadState, *TThreadStateRef;
-typedef char TTextCharacter, *TTextCharacterRef;
-typedef uint32_t TMemoryPoolID, *TMemoryPoolIDRef;
-typedef uint32_t TMutexID, *TMutexIDRef, TMutexOwner, TMutexState; // State: 1 = unlocked, 0 = locked
+typedef uint32_t TStatus, * TStatusRef;
+typedef uint32_t TTick, * TTickRef;
+typedef int32_t TThreadReturn, * TThreadReturnRef;
+typedef uint32_t TMemorySize, * TMemorySizeRef;
+typedef uint32_t TThreadID, * TThreadIDRef;
+typedef uint32_t TThreadPriority, * TThreadPriorityRef;
+typedef uint32_t TThreadState, * TThreadStateRef;
+typedef char TTextCharacter, * TTextCharacterRef;
+typedef uint32_t TMemoryPoolID, * TMemoryPoolIDRef;
+typedef uint32_t TMutexID, * TMutexIDRef, TMutexOwner, TMutexState; // State: 1 = unlocked, 0 = locked
 
-typedef uint32_t (*TEntry)(uint32_t param);
+typedef uint32_t(*TEntry)(uint32_t param);
 
-typedef TThreadReturn (*TThreadEntry)(void *);
+typedef TThreadReturn(*TThreadEntry)(void*);
 
 typedef struct
 {
@@ -72,16 +72,16 @@ typedef struct
     uint32_t DButton3 : 1;
     uint32_t DButton4 : 1;   // 1 bit field
     uint32_t DReserved : 24; // 24 bit field
-} SControllerStatus, *SControllerStatusRef;
+} SControllerStatus, * SControllerStatusRef;
 
 typedef char Byte;
 
-TStatus RVCInitialize(uint32_t *gp);
+TStatus RVCInitialize(uint32_t* gp);
 
-TStatus RVCTickMS(uint32_t *tickmsref);
+TStatus RVCTickMS(uint32_t* tickmsref);
 TStatus RVCTickCount(TTickRef tickref);
 
-TStatus RVCThreadCreate(TThreadEntry entry, void *param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid);
+TStatus RVCThreadCreate(TThreadEntry entry, void* param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid);
 TStatus RVCThreadDelete(TThreadID thread);
 TStatus RVCThreadActivate(TThreadID thread);
 TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval);
@@ -93,11 +93,11 @@ TStatus RVCThreadSleep(TTick tick);
 #define RVCMemoryAllocate(size, pointer) RVCMemoryPoolAllocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (size), (pointer))
 #define RVCMemoryDeallocate(pointer) RVCMemoryPoolDeallocate(RVCOS_MEMORY_POOL_ID_SYSTEM, (pointer))
 
-TStatus RVCMemoryPoolCreate(void *base, TMemorySize size, TMemoryPoolIDRef memoryref);
+TStatus RVCMemoryPoolCreate(void* base, TMemorySize size, TMemoryPoolIDRef memoryref);
 TStatus RVCMemoryPoolDelete(TMemoryPoolID memory);
 TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft);
-TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void **pointer);
-TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void *pointer);
+TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size, void** pointer);
+TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void* pointer);
 
 TStatus RVCMutexCreate(TMutexIDRef mutexref);
 TStatus RVCMutexDelete(TMutexID mutex);
@@ -105,13 +105,13 @@ TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref);
 TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout);
 TStatus RVCMutexRelease(TMutexID mutex);
 
-TStatus RVCWriteText(const TTextCharacter *buffer, TMemorySize writesize);
+TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize);
 TStatus RVCReadController(SControllerStatusRef statusref);
 
 /**
  * Helper functions
  */
-void WriteString(const char *str);
+void WriteString(const char* str);
 void writeInt(uint32_t val);
 void idleFunction();
 void threadSkeleton(uint32_t thread);
@@ -125,10 +125,10 @@ typedef struct
     TThreadReturn ret_val;
     uint32_t mem_size;
 
-    void *param;
-    void *sp;
+    void* param;
+    void* sp;
 
-    struct MUTEX *held_mutexes; // this is probably wrong. need a list of held mutexes idk syntax for that
+    struct MUTEX* held_mutexes; // this is probably wrong. need a list of held mutexes idk syntax for that
 
     uint32_t sleep_tick; // decrement this if not null and state is sleeping
 } TCB;
@@ -145,13 +145,13 @@ typedef struct _MemoryChunk
 {
     TMemorySize data_size; // in bytes
     uint32_t isFree;
-    struct _MemoryChunk *next;
-    struct _MemoryChunk *prev;
+    struct _MemoryChunk* next;
+    struct _MemoryChunk* prev;
 } MemoryChunk;
 
 typedef struct
 {
-    MemoryChunk *first_chunk;
+    MemoryChunk* first_chunk;
     TMemoryPoolID pool_id;
     TMemorySize pool_size;
     TMemorySize bytes_left;
