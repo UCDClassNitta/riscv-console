@@ -22,11 +22,14 @@ volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
 uint32_t call_on_other_gp(void* param, TEntry entry, uint32_t* gp);
+void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp); // ? is the old sp ** or *
+uint32_t* initStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp);
 
 void threadSkeleton(uint32_t thread) {
   asm volatile("csrsi mstatus, 0x8");  // enable interrupts
 
   // call entry(param) but make sure to switch the gp right before the call
+  global_tcb_arr[running_thread_id]->state = RVCOS_THREAD_STATE_RUNNING;
   uint32_t ret_val = call_on_other_gp(global_tcb_arr[thread]->param, global_tcb_arr[thread]->entry, main_gp);
   RVCThreadTerminate(thread, ret_val);
 }
@@ -35,7 +38,7 @@ void threadSkeleton(uint32_t thread) {
  * @brief Thread Scheduler, only call this through timer interrupt OR thread terminate
  * 
  */
-void schedule() {
+void schedule(uint32_t test_new_id) {
   uint32_t old_id = running_thread_id;
   uint32_t new_id = 0;
   if (high_prio->size > 0) {
@@ -53,7 +56,12 @@ void schedule() {
   else {
     running_thread_id = 0;
   }
-  ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
+  // ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
+  WriteString("try to switch\n");
+
+  // !Problem: cannot write the new sp value into SP register, it jumps straight to interrupt handler mcause 0x0..007
+  ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[test_new_id]->sp);
+  WriteString("back\n");
 }
 
 /**
@@ -223,38 +231,50 @@ TStatus RVCThreadCreate(TThreadEntry entry, void* param, TMemorySize memsize,
     global_tcb_arr[*tid] = curr_thread_tcb;
   }
 
-  enqueue(getPQByPrioNum(prio), tid);
+  writeInt(prio);
+  WriteString(" to enq\n");
+  enqueue(getPQByPrioNum(prio), *tid);
   return RVCOS_STATUS_SUCCESS;
 }
 
 TStatus RVCThreadActivate(TThreadID thread) {
   /**
    * Init stack here
-   * save all reg
-   * ?some other steps
-   * 
+   * malloc for each threads stack base @789 on piazza
    */
 
-  char* thread_text[100];
-
   if (global_tcb_arr[thread] == NULL) {
+    WriteString("bad thread");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
-
   uint32_t state = global_tcb_arr[thread]->state;
-  if (state == RVCOS_THREAD_STATE_CREATED || state == RVCOS_THREAD_STATE_DEAD) {
+  if (!(state == RVCOS_THREAD_STATE_CREATED || state == RVCOS_THREAD_STATE_DEAD)) {
+    writeInt(state);
+    WriteString(" is bad state\n");
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
   global_tcb_arr[thread]->sp = malloc(global_tcb_arr[thread]->mem_size);
-
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_READY;
+
+  global_tcb_arr[thread]->sp = initStack(global_tcb_arr[thread]->sp, global_tcb_arr[thread]->entry, global_tcb_arr[thread]->param, thread);
 
   uint32_t tid;
   dequeue(getPQByPrioNum(global_tcb_arr[thread]->priority), &tid);
   //  set thread to STATUS_RUNNING
-  running_thread_id = tid;
-  // TODO  run thread from entry point
+  
+  writeInt(running_thread_id);
+  WriteString(" is old thread\n");
+  
+  writeInt(global_tcb_arr[running_thread_id]->sp);
+  WriteString(" is old sp\n");
+
+  writeInt(tid);
+  WriteString(" is the id from deq\n");
+  // TODO call the skeleton function here
+
+  schedule(global_tcb_arr[thread]->thread_id); 
+  threadSkeleton(running_thread_id);
 
   return RVCOS_STATUS_SUCCESS;
 }
@@ -758,4 +778,44 @@ TStatus RVCMutexRelease(TMutexID mutex) {
   if it acquires the newly released mutex. */
 
   return RVCOS_STATUS_SUCCESS;
+}
+
+/**
+ * @brief
+ *
+ * @param sp sp with malloced space
+ * @param function
+ * @param param
+ * @param tp
+ * @return uint32_t* the initialized sp
+ */
+uint32_t *initStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp)
+{
+  sp--;
+  *sp = (uint32_t)function; // sw      ra,48(sp)
+  sp--;
+  *sp = tp; // sw      tp,44(sp)
+  sp--;
+  *sp = 0; // sw      t0,40(sp)
+  sp--;
+  *sp = 0; // sw      t1,36(sp)
+  sp--;
+  *sp = 0; // sw      t2,32(sp)
+  sp--;
+  *sp = 0; // sw      s0,28(sp)
+  sp--;
+  *sp = 0; // sw      s1,24(sp)
+  sp--;
+  *sp = param; // sw      a0,20(sp)
+  sp--;
+  *sp = 0; // sw      a1,16(sp)
+  sp--;
+  *sp = 0; // sw      a2,12(sp)
+  sp--;
+  *sp = 0; // sw      a3,8(sp)
+  sp--;
+  *sp = 0; // sw      a4,4(sp)
+  sp--;
+  *sp = 0; // sw      a5,0(sp)
+  return sp;
 }

@@ -26,9 +26,9 @@ typedef struct
  * @brief Enqueues a tcb id to the back of a queue
  *
  * @param target_prio queue we want to put
- * @param tcb_id_ref the tcb id
+ * @param tcb_id the tcb id
  */
-void enqueue(PriorityQueue *target_prio, uint32_t *tcb_id_ref);
+void enqueue(PriorityQueue *target_prio, uint32_t tcb_id);
 
 /**
  * @brief Removes the head element of a queue and pass it back by tcb_id_ref
