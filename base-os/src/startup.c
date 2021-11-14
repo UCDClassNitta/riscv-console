@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include "RVCOS.h"
 
 extern uint8_t _erodata[];
 extern uint8_t _data[];
@@ -63,6 +64,7 @@ extern volatile uint32_t controller_status;
 
 //Need to save MEPC and global pointer before calling this! In interrupts.s
 void c_interrupt_handler(void){ // TODO: Add Parameters if needed, param values are in a0, a1, ...
+    // this is called every 2 secs
     uint64_t NewCompare = (((uint64_t)MTIMECMP_HIGH)<<32) | MTIMECMP_LOW;
     NewCompare += 100;
     MTIMECMP_HIGH = NewCompare>>32;

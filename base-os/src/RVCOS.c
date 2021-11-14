@@ -22,7 +22,7 @@ volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
 
 uint32_t call_on_other_gp(void* param, TEntry entry, uint32_t* gp);
-void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp); // ? is the old sp ** or *
+void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp);
 uint32_t* initStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp);
 
 void threadSkeleton(uint32_t thread) {
@@ -59,8 +59,12 @@ void schedule(uint32_t test_new_id) {
   // ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
   WriteString("try to switch\n");
 
-  // !Problem: cannot write the new sp value into SP register, it jumps straight to interrupt handler mcause 0x0..007
-  ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[test_new_id]->sp);
+  
+  // ! The high prio does get called now, but it's stuck in some sort of loop
+  // ! Change the scheduling algo above
+  asm volatile ("csrci mstatus, 0x8"); // disable interrupts
+  ContextSwitch(&(global_tcb_arr[old_id]->sp), global_tcb_arr[test_new_id]->sp);
+  asm volatile ("csrsi mstatus, 0x8"); // enable interrupts
   WriteString("back\n");
 }
 
