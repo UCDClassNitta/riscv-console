@@ -320,7 +320,8 @@ TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval) {
 
   // TODO: context switch back 
   writeString("context switch to main\n");
-
+  ContextSwitch(&(global_tcb_arr[running_thread_id]->sp), global_tcb_arr[MAIN_THREAD_ID]->sp);
+  running_thread_id = MAIN_THREAD_ID;
 
   // call scheduler here
   return RVCOS_STATUS_SUCCESS;
