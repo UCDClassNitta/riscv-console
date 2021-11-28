@@ -25,8 +25,12 @@ _interrupt_handler:
 # Save MEPC and global pointer before calling c_int_handler, restore afterwards
 hardware_interrupt:
     csrr    ra,mscratch
-    addi	sp,sp,-40
-    sw	    ra,36(sp)
+    addi	  sp,sp,-48
+    csrr    s1,mepc
+    sw      s1,44(sp)
+    mv      a5, s1
+    sw      gp,40(sp)
+    sw	    ra,36(sp) ## sp[36/4] = ra
     sw	    t0,32(sp)
     sw	    t1,28(sp)
     sw	    t2,24(sp)
@@ -37,6 +41,9 @@ hardware_interrupt:
     sw	    a4,4(sp)
     sw	    a5,0(sp)
     call    c_interrupt_handler
+    lw      s1, 44(sp)
+    #csrw    mepc, s1   ## change this somehow so it doesn't go in infinite loop
+    lw      gp,40(sp)
     lw	    ra,36(sp)
     lw	    t0,32(sp)
     lw	    t1,28(sp)

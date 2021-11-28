@@ -1,4 +1,5 @@
 #include "RVCOS.h"
+
 #include "esc_codes.h"
 #include "queues.h"
 
@@ -7,7 +8,7 @@ volatile uint32_t* main_gp = 0;
 
 TCB** global_tcb_arr = NULL;
 MemoryPoolController* global_mem_pool_arr = NULL;  // TODO change the 10
-MUTEX** global_mutex_arr;
+MUTEX** global_mutex_arr; // each mutex is const size, consider using only 1 pointer
 
 uint32_t curr_available_mem_pool_index = 0;
 uint32_t curr_TCB_max_size = 256;
@@ -20,52 +21,64 @@ PriorityQueue* wait_q;
 
 volatile uint32_t last_write_pos = 0;
 volatile uint32_t running_thread_id = 1;
+// volatile uint32_t next_thread_to_run = -1;
 
 uint32_t call_on_other_gp(void* param, TEntry entry, uint32_t* gp);
-void ContextSwitch(volatile uint32_t **oldsp, volatile uint32_t *newsp);
-uint32_t* initStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp);
+void ContextSwitch(volatile uint32_t** oldsp, volatile uint32_t* newsp);
+uint32_t* initStack(uint32_t* sp, TEntry function, uint32_t param, uint32_t tp);
 
-void threadSkeleton(uint32_t thread) {
+void threadSkeleton() { 
   asm volatile("csrsi mstatus, 0x8");  // enable interrupts
 
   // call entry(param) but make sure to switch the gp right before the call
+  writeString("calling on GP: ");
+  writeInt(main_gp);
+  writeString("\nthe thread is: ");
+  writeInt(running_thread_id); // the param isn't right
   global_tcb_arr[running_thread_id]->state = RVCOS_THREAD_STATE_RUNNING;
-  uint32_t ret_val = call_on_other_gp(global_tcb_arr[thread]->param, global_tcb_arr[thread]->entry, main_gp);
-  RVCThreadTerminate(thread, ret_val);
+  uint32_t ret_val = call_on_other_gp(global_tcb_arr[running_thread_id]->param,
+                                      global_tcb_arr[running_thread_id]->entry, main_gp);
+
+  RVCThreadTerminate(running_thread_id, ret_val);
 }
 
 /**
- * @brief Thread Scheduler, only call this through timer interrupt OR thread terminate
- * 
+ * @brief Thread Scheduler, only call this through timer interrupt OR thread
+ * terminate 
+ * ! Remove the parameter
  */
-void schedule(uint32_t test_new_id) {
+void schedule() {
   uint32_t old_id = running_thread_id;
-  uint32_t new_id = 0;
+  uint32_t new_id = -1;
+  // writeInt(high_prio->size);
+  // writeString("\n");
   if (high_prio->size > 0) {
     dequeue(high_prio, &new_id);
+    writeString("high deq: ");
+    writeInt(new_id);
+    writeString("\n");
     running_thread_id = new_id;
-  }
-  else if (med_prio->size > 0) {
+  } else if (med_prio->size > 0) {
+    writeString("med deq: ");
     dequeue(med_prio, &new_id);
     running_thread_id = new_id;
-  }
-  else if (low_prio->size > 0) {
+  } else if (low_prio->size > 0) {
+    writeString("low deq: ");
     dequeue(low_prio, &new_id);
     running_thread_id = new_id;
-  }
-  else {
+  } else {
+    writeString("no deq\n");
     running_thread_id = 0;
   }
-  // ContextSwitch(global_tcb_arr[old_id]->sp, global_tcb_arr[new_id]->sp);
-  WriteString("try to switch\n");
 
-  
+  writeString("try to switch, the new id is: ");
+  writeInt(new_id);
+  writeString("\n");
+
   // ! The high prio does get called now, but it's stuck in some sort of loop
   // ! Change the scheduling algo above
-  asm volatile ("csrci mstatus, 0x8"); // disable interrupts
-  ContextSwitch(&(global_tcb_arr[old_id]->sp), global_tcb_arr[test_new_id]->sp);
-  asm volatile ("csrsi mstatus, 0x8"); // enable interrupts
-  WriteString("back\n");
+  ContextSwitch(&(global_tcb_arr[old_id]->sp), global_tcb_arr[new_id]->sp);
+  writeString("back\n");
 }
 
 /**
@@ -73,18 +86,18 @@ void schedule(uint32_t test_new_id) {
  *
  * @param str string to write
  */
-void WriteString(const char* str) {
+void writeString(const char* str) {
   const char* Ptr = str;
   while (*Ptr) {
     Ptr++;
-  } 
+  }
   RVCWriteText(str, Ptr - str);
 }
 
 void writeInt(uint32_t val) {
   char* val_text[33];
   itoa(val, val_text, 10);
-  WriteString(val_text);
+  writeString(val_text);
 }
 
 void idleFunction() {
@@ -120,17 +133,17 @@ uint32_t getNextAvailableMUTEXIndex() {
 
 PriorityQueue* getPQByPrioNum(uint32_t prio_num) {
   switch (prio_num) {
-  case 3:
-    return high_prio;
-    break;
-  case 2:
-    return med_prio;
-    break;
-  case 1:
-    return low_prio;
-    break;
-  case 0:
-    return idle_prio;
+    case 3:
+      return high_prio;
+      break;
+    case 2:
+      return med_prio;
+      break;
+    case 1:
+      return low_prio;
+      break;
+    case 0:
+      return idle_prio;
   }
 }
 
@@ -150,7 +163,7 @@ TStatus RVCInitialize(uint32_t* gp) {
   }
   main_gp = gp;
 
-  global_tcb_arr = malloc(sizeof(TCB*) * 256);  // TODO: remove 256 cap
+  global_tcb_arr = malloc(sizeof(TCB*) * curr_TCB_max_size);
   for (uint32_t i = 0; i < 256; i++) {
     global_tcb_arr[i] = NULL;
   }  // manual calloc
@@ -163,6 +176,8 @@ TStatus RVCInitialize(uint32_t* gp) {
   low_prio->head = med_prio->head = high_prio->head = idle_prio->head = NULL;
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
+
+  writeInt(high_prio->size);
 
   uint32_t* idle_tid = malloc(sizeof(uint32_t));
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
@@ -210,8 +225,7 @@ TStatus RVCThreadDelete(TThreadID thread) {
  * @return TStatus
  */
 
-TStatus RVCThreadCreate(TThreadEntry entry, void* param, TMemorySize memsize,
-  TThreadPriority prio, TThreadIDRef tid) {
+TStatus RVCThreadCreate(TThreadEntry entry, void* param, TMemorySize memsize, TThreadPriority prio, TThreadIDRef tid) {
   if (!entry || !tid) {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
@@ -226,18 +240,25 @@ TStatus RVCThreadCreate(TThreadEntry entry, void* param, TMemorySize memsize,
   curr_thread_tcb->param = param;
 
   *tid = getNextAvailableTCBIndex();
+  
   if (*tid == -1) {
     resizeTCBArray();
     *tid = getNextAvailableTCBIndex();
-  }
-  else {
+  } else {
     curr_thread_tcb->thread_id = *tid;
     global_tcb_arr[*tid] = curr_thread_tcb;
   }
 
-  writeInt(prio);
-  WriteString(" to enq\n");
+  // writeInt(prio);
+  // writeString(" to enq\n");
   enqueue(getPQByPrioNum(prio), *tid);
+
+  writeString("initial entry: ");
+  writeInt(curr_thread_tcb->entry);
+  writeString("\n");
+  writeInt(global_tcb_arr[*tid]->entry);
+  writeString("\n");
+
   return RVCOS_STATUS_SUCCESS;
 }
 
@@ -248,37 +269,30 @@ TStatus RVCThreadActivate(TThreadID thread) {
    */
 
   if (global_tcb_arr[thread] == NULL) {
-    WriteString("bad thread");
+    writeString("bad thread");
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
   uint32_t state = global_tcb_arr[thread]->state;
   if (!(state == RVCOS_THREAD_STATE_CREATED || state == RVCOS_THREAD_STATE_DEAD)) {
     writeInt(state);
-    WriteString(" is bad state\n");
+    writeString(" is bad state\n");
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 
   global_tcb_arr[thread]->sp = malloc(global_tcb_arr[thread]->mem_size);
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_READY;
 
-  global_tcb_arr[thread]->sp = initStack(global_tcb_arr[thread]->sp, global_tcb_arr[thread]->entry, global_tcb_arr[thread]->param, thread);
+  global_tcb_arr[thread]->sp =
+      initStack(global_tcb_arr[thread]->sp, threadSkeleton,
+                global_tcb_arr[thread]->param, thread); 
 
-  uint32_t tid;
-  dequeue(getPQByPrioNum(global_tcb_arr[thread]->priority), &tid);
-  //  set thread to STATUS_RUNNING
-  
   writeInt(running_thread_id);
-  WriteString(" is old thread\n");
-  
+  writeString(" is old thread\n");
+
   writeInt(global_tcb_arr[running_thread_id]->sp);
-  WriteString(" is old sp\n");
+  writeString(" is old sp\n");
 
-  writeInt(tid);
-  WriteString(" is the id from deq\n");
-  // TODO call the skeleton function here
-
-  schedule(global_tcb_arr[thread]->thread_id); 
-  threadSkeleton(running_thread_id);
+  // schedule(); // * Testing only
 
   return RVCOS_STATUS_SUCCESS;
 }
@@ -296,7 +310,7 @@ TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval) {
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_DEAD;
   returnval = global_tcb_arr[thread]->ret_val;
 
-  // call scheduler here 
+  // call scheduler here
   return RVCOS_STATUS_SUCCESS;
 }
 
@@ -336,18 +350,15 @@ TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize) {
             strncpy(col, (buffer + j) + 6, 1);
             col[1] = '\0';
             col_int = atoi(col);
-          }
-          else if ((uint32_t)buffer[j + 8] == 'H') {  // Col is double digit
+          } else if ((uint32_t)buffer[j + 8] == 'H') {  // Col is double digit
             strncpy(col, (buffer + j) + 6, 2);
             col[2] = '\0';
             col_int = atoi(col);
             ;
-          }
-          else {
+          } else {
             break;
           }
-        }
-        else if ((uint32_t)buffer[j + 6] == ';') {  // Row is double digit
+        } else if ((uint32_t)buffer[j + 6] == ';') {  // Row is double digit
           strncpy(row, (buffer + j) + 4, 2);
           row[2] = '\0';
           row_int = atoi(row);
@@ -356,13 +367,11 @@ TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize) {
             strncpy(col, (buffer + j) + 7, 1);
             col[1] = '\0';
             col_int = atoi(col);
-          }
-          else if ((uint32_t)buffer[j + 9] == 'H') {  // Col is double digit
+          } else if ((uint32_t)buffer[j + 9] == 'H') {  // Col is double digit
             strncpy(col, (buffer + j) + 7, 2);
             col[2] = '\0';
             col_int = atoi(col);
-          }
-          else {
+          } else {
             break;
           }
         }
@@ -372,10 +381,9 @@ TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize) {
         uint32_t col_check = (col_int >= 0 && col_int < 64) ? 1 : 0;
 
         if (!row_check || !col_check) {
-          WriteString("Invalid Parameters");
-        }
-        else {
-          WriteString("Moving cursor to specified row and column");
+          writeString("Invalid Parameters");
+        } else {
+          writeString("Moving cursor to specified row and column");
           // Code to move cursor to row and column
           // BE CAREFUL of 'off by one' errors here
           // It's assumed escape code will use 0-35 for rows and 0-63
@@ -388,54 +396,53 @@ TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize) {
         uint32_t code = esc_codes(buffer, writesize);
 
         switch (code) {
-        case 1: {
-          RVCWriteText("\b ", 2);
-          last_write_pos = physical_write_pos - 65 > 0
-            ? physical_write_pos - 65
-            : physical_write_pos;
-          RVCWriteText("X", 1);
-          // code to move cursor up
-          break;
-        }
-        case 2: {
-          RVCWriteText("\b ", 2);
-          if (last_write_pos == 0) {
-            VIDEO_MEMORY[0] = ' ';
-            last_write_pos = 64;
+          case 1: {
+            RVCWriteText("\b ", 2);
+            last_write_pos = physical_write_pos - 65 > 0
+                                 ? physical_write_pos - 65
+                                 : physical_write_pos;
+            RVCWriteText("X", 1);
+            // code to move cursor up
+            break;
           }
-          else {
-            last_write_pos = (physical_write_pos + 63) % MAX_VRAM_INDEX;
+          case 2: {
+            RVCWriteText("\b ", 2);
+            if (last_write_pos == 0) {
+              VIDEO_MEMORY[0] = ' ';
+              last_write_pos = 64;
+            } else {
+              last_write_pos = (physical_write_pos + 63) % MAX_VRAM_INDEX;
+            }
+            RVCWriteText("X", 1);
+            // code to move cursor down
+            break;
           }
-          RVCWriteText("X", 1);
-          // code to move cursor down
-          break;
-        }
-        case 3: {
-          RVCWriteText("\b ", 2);
-          RVCWriteText("X", 1);
-          // code to move cursor right
-          break;
-        }
-        case 4: {
-          RVCWriteText("\b \b\b", 4);
-          RVCWriteText("X", 1);
-          // code to move cursor left
-          break;
-        }
-        case 5: {
-          // code to move cursor upper left
-          break;
-        }
-        case 6: {
-          WriteString("2: Erase screen, leave cursor");
-          for (int h = 0; h < MAX_VRAM_INDEX; h++) {
-            VIDEO_MEMORY[h] = '\0';
+          case 3: {
+            RVCWriteText("\b ", 2);
+            RVCWriteText("X", 1);
+            // code to move cursor right
+            break;
           }
-          RVCWriteText("X", 1);
-          break;
-        }
-        default:
-          break;
+          case 4: {
+            RVCWriteText("\b \b\b", 4);
+            RVCWriteText("X", 1);
+            // code to move cursor left
+            break;
+          }
+          case 5: {
+            // code to move cursor upper left
+            break;
+          }
+          case 6: {
+            writeString("2: Erase screen, leave cursor");
+            for (int h = 0; h < MAX_VRAM_INDEX; h++) {
+              VIDEO_MEMORY[h] = '\0';
+            }
+            RVCWriteText("X", 1);
+            break;
+          }
+          default:
+            break;
         }
       }
       return RVCOS_STATUS_SUCCESS;
@@ -446,11 +453,10 @@ TStatus RVCWriteText(const TTextCharacter* buffer, TMemorySize writesize) {
       physical_write_pos -= j;  // now j is not 0 anymore, so push
                                 // physical_write_pos back by j
       n_pos = j - 1;
-    }
-    else if (buffer[j] == '\b') {
+    } else if (buffer[j] == '\b') {
       physical_write_pos = physical_write_pos - 2 > 0
-        ? physical_write_pos - 2
-        : 0;  // make sure writepos is always >=0
+                               ? physical_write_pos - 2
+                               : 0;  // make sure writepos is always >=0
     }
     VIDEO_MEMORY[physical_write_pos++] = buffer[j];
   }
@@ -482,7 +488,7 @@ TStatus RVCThreadState(TThreadID thread, TThreadStateRef state) {
 }
 
 TStatus RVCThreadWait(TThreadID thread, TThreadReturnRef returnref,
-  TTick timeout) {
+                      TTick timeout) {
   if (!global_tcb_arr[thread]) {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
@@ -500,8 +506,7 @@ TStatus RVCTickMS(uint32_t* tickmsref) {
     uint32_t time = TIME_REG * 1000;
     *tickmsref = time;
     return RVCOS_STATUS_SUCCESS;
-  }
-  else {
+  } else {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 
@@ -514,8 +519,7 @@ TStatus RVCTickCount(TTickRef tickref) {
     uint32_t time = TIME_REG;
     *tickref = time;
     return RVCOS_STATUS_SUCCESS;
-  }
-  else {
+  } else {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
 }
@@ -540,8 +544,16 @@ TStatus RVCReadController(SControllerStatusRef statusref) {
   return RVCOS_STATUS_SUCCESS;
 }
 
+/**
+ * @brief Creates a memory pool from a allocated section of memory
+ *
+ * @param base pointer to the already allocated memory
+ * @param size size of the allocated memory
+ * @param memoryref the "out" param to give back a newly generated pool id
+ * @return TStatus
+ */
 TStatus RVCMemoryPoolCreate(void* base, TMemorySize size,
-  TMemoryPoolIDRef memoryref) {
+                            TMemoryPoolIDRef memoryref) {
   if (base == NULL || size < 2 * MIN_ALLOC_SIZE || memoryref == NULL) {
     return RVCOS_STATUS_ERROR_INVALID_PARAMETER;
   }
@@ -550,7 +562,7 @@ TStatus RVCMemoryPoolCreate(void* base, TMemorySize size,
   MemoryPoolController pool;
 
   // base->||controller||chunk|data||
-  pool.first_chunk = base + sizeof(MemoryPoolController);  
+  pool.first_chunk = base + sizeof(MemoryPoolController);
   pool.pool_id = *memoryref;
   pool.pool_size = size;
   pool.bytes_left = size;
@@ -571,10 +583,9 @@ TStatus RVCMemoryPoolDelete(TMemoryPoolID memory) {
   }
   if (global_mem_pool_arr[memory].first_chunk == NULL) {
     free(global_mem_pool_arr[memory].first_chunk -
-      sizeof(MemoryPoolController));
+         sizeof(MemoryPoolController));
     return RVCOS_STATUS_SUCCESS;
-  }
-  else {
+  } else {
     return RVCOS_STATUS_ERROR_INVALID_STATE;
   }
 }
@@ -600,7 +611,7 @@ TStatus RVCMemoryPoolQuery(TMemoryPoolID memory, TMemorySizeRef bytesleft) {
  * memory == 0
  */
 TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size,
-  void** pointer) {
+                              void** pointer) {
   if (memory < 0) {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
@@ -609,8 +620,10 @@ TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size,
   }
 
   if (memory == RVCOS_MEMORY_POOL_ID_SYSTEM && global_mem_pool_arr == NULL) {
-    uint32_t max_chunk_count = (size / MIN_ALLOC_SIZE) > 2 ? (size / MIN_ALLOC_SIZE) : 2;
-    *pointer = malloc(size + sizeof(MemoryPoolController) + sizeof(MemoryChunk) * max_chunk_count);
+    uint32_t max_chunk_count =
+        (size / MIN_ALLOC_SIZE) > 2 ? (size / MIN_ALLOC_SIZE) : 2;
+    *pointer = malloc(size + sizeof(MemoryPoolController) +
+                      sizeof(MemoryChunk) * max_chunk_count);
     global_mem_pool_arr = malloc(10 * sizeof(MemoryPoolController*));
 
     return RVCOS_STATUS_SUCCESS;
@@ -628,19 +641,21 @@ TStatus RVCMemoryPoolAllocate(TMemoryPoolID memory, TMemorySize size,
     if (curr_chunk->isFree && curr_chunk->data_size >= actual_alloc_size) {
       // mark current as an occupied chunk
       curr_chunk->isFree = 0;
-      *pointer = curr_chunk + sizeof(MemoryChunk);  // move offset to actual mem location
+      *pointer = curr_chunk +
+                 sizeof(MemoryChunk);  // move offset to actual mem location
 
       // now make the free chunk
       // ! chueck if it's in bounds
-      MemoryChunk* free_chunk = curr_chunk + sizeof(MemoryChunk) + actual_alloc_size;
+      MemoryChunk* free_chunk =
+          curr_chunk + sizeof(MemoryChunk) + actual_alloc_size;
 
       free_chunk->isFree = 1;
       free_chunk->prev = curr_chunk;
       free_chunk->next = curr_chunk->next;
 
       // TODO: check if this expression is correct
-      free_chunk->data_size = curr_chunk->data_size - sizeof(MemoryChunk) - actual_alloc_size;  
-      
+      free_chunk->data_size =
+          curr_chunk->data_size - sizeof(MemoryChunk) - actual_alloc_size;
 
       curr_chunk->next->prev = free_chunk;
       pool.bytes_left -= sizeof(MemoryChunk) + actual_alloc_size;
@@ -672,12 +687,11 @@ TStatus RVCMemoryPoolDeallocate(TMemoryPoolID memory, void* pointer) {
   MemoryChunk* chunk_to_return = pointer - sizeof(MemoryChunk);
 
   if (chunk_to_return->prev == NULL) {
+    // TODO handle special case: the pool only has one chunk
 
-
-  }
-  else {
+  } else {
     chunk_to_return->prev->data_size +=
-      chunk_to_return->data_size + sizeof(MemoryChunk);
+        chunk_to_return->data_size + sizeof(MemoryChunk);
     chunk_to_return->prev->next = chunk_to_return->next;
     chunk_to_return->next->prev = chunk_to_return->prev;
   }
@@ -726,8 +740,7 @@ TStatus RVCMutexQuery(TMutexID mutex, TThreadIDRef ownerref) {
   if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
     *ownerref = RVCOS_THREAD_ID_INVALID;
     return RVCOS_STATUS_SUCCESS;
-  }
-  else {
+  } else {
     *ownerref = global_mutex_arr[mutex]->owner;
     return RVCOS_STATUS_SUCCESS;
   }
@@ -738,26 +751,22 @@ TStatus RVCMutexAcquire(TMutexID mutex, TTick timeout) {
     return RVCOS_STATUS_ERROR_INVALID_ID;
   }
   if (timeout == RVCOS_TIMEOUT_IMMEDIATE &&
-    global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED) {
+      global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED) {
     return RVCOS_STATUS_SUCCESS;
-  }
-  else if (timeout == RVCOS_TIMEOUT_IMMEDIATE) {
+  } else if (timeout == RVCOS_TIMEOUT_IMMEDIATE) {
     global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
     return RVCOS_STATUS_SUCCESS;
-  }
-  else if (timeout == RVCOS_TIMEOUT_INFINITE &&
-    global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
+  } else if (timeout == RVCOS_TIMEOUT_INFINITE &&
+             global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
     global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_LOCKED;
     return RVCOS_STATUS_SUCCESS;
-  }
-  else if (timeout == RVCOS_TIMEOUT_INFINITE) {
+  } else if (timeout == RVCOS_TIMEOUT_INFINITE) {
     uint32_t thread_id =
-      global_mutex_arr[mutex]->owner;  // block thread until mutex is acquired
+        global_mutex_arr[mutex]->owner;  // block thread until mutex is acquired
     global_tcb_arr[thread_id]->state == RVCOS_THREAD_STATE_WAITING;
 
     return RVCOS_STATUS_SUCCESS;
-  }
-  else {
+  } else {
     while (timeout > 0) {
       if (global_mutex_arr[mutex]->state == RVCOS_MUTEX_STATE_UNLOCKED) {
         global_mutex_arr[mutex]->state = RVCOS_MUTEX_STATE_LOCKED;
@@ -793,33 +802,33 @@ TStatus RVCMutexRelease(TMutexID mutex) {
  * @param tp
  * @return uint32_t* the initialized sp
  */
-uint32_t *initStack(uint32_t *sp, TEntry function, uint32_t param, uint32_t tp)
-{
+uint32_t* initStack(uint32_t* sp, TEntry function, uint32_t param,
+                    uint32_t tp) {
   sp--;
-  *sp = (uint32_t)function; // sw      ra,48(sp)
+  *sp = (uint32_t)function;  // sw      ra,48(sp)
   sp--;
-  *sp = tp; // sw      tp,44(sp)
+  *sp = tp;  // sw      tp,44(sp)
   sp--;
-  *sp = 0; // sw      t0,40(sp)
+  *sp = 0;  // sw      t0,40(sp)
   sp--;
-  *sp = 0; // sw      t1,36(sp)
+  *sp = 0;  // sw      t1,36(sp)
   sp--;
-  *sp = 0; // sw      t2,32(sp)
+  *sp = 0;  // sw      t2,32(sp)
   sp--;
-  *sp = 0; // sw      s0,28(sp)
+  *sp = 0;  // sw      s0,28(sp)
   sp--;
-  *sp = 0; // sw      s1,24(sp)
+  *sp = 0;  // sw      s1,24(sp)
   sp--;
-  *sp = param; // sw      a0,20(sp)
+  *sp = param;  // sw      a0,20(sp)
   sp--;
-  *sp = 0; // sw      a1,16(sp)
+  *sp = 0;  // sw      a1,16(sp)
   sp--;
-  *sp = 0; // sw      a2,12(sp)
+  *sp = 0;  // sw      a2,12(sp)
   sp--;
-  *sp = 0; // sw      a3,8(sp)
+  *sp = 0;  // sw      a3,8(sp)
   sp--;
-  *sp = 0; // sw      a4,4(sp)
+  *sp = 0;  // sw      a4,4(sp)
   sp--;
-  *sp = 0; // sw      a5,0(sp)
+  *sp = 0;  // sw      a5,0(sp)
   return sp;
 }

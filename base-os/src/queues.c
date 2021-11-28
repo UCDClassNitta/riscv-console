@@ -33,14 +33,12 @@ void enqueue(PriorityQueue *target_prio, uint32_t tcb_id) {
  * @param target_prio queue we want to remove from
  * @param tcb_id_ref the "out" param
  */
-void dequeue(PriorityQueue *target_prio, uint32_t *tcb_id_ref) {
+void dequeue(PriorityQueue *target_prio, uint32_t *tcb_id_ref) { 
   PriorityQueueNode *head_node = target_prio->head;
   if (head_node == NULL) {
-    WriteString("bad head\n");
     return;
   }
   if (head_node->next == NULL) {
-    WriteString("bad head next\n");
     target_prio->head = target_prio->tail = NULL;
   } else {
     head_node->next->prev = NULL;

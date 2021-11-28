@@ -111,10 +111,11 @@ TStatus RVCReadController(SControllerStatusRef statusref);
 /**
  * Helper functions
  */
-void WriteString(const char* str);
+void writeString(const char* str);
 void writeInt(uint32_t val);
 void idleFunction();
-void threadSkeleton(uint32_t thread);
+void threadSkeleton();
+void schedule();
 
 typedef struct
 {
