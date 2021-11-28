@@ -39,3 +39,4 @@ bin/
 
 # Have to modify runsim.sh to run on Windows, so disabling it
 runsim.sh
+discussion-10-22/.DS_Store
