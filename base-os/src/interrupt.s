@@ -42,7 +42,7 @@ hardware_interrupt:
     sw	    a5,0(sp)
     call    c_interrupt_handler
     lw      s1, 44(sp)
-    #csrw    mepc, s1   ## change this somehow so it doesn't go in infinite loop
+    #csrw    mepc, s1   ## change mepc somehow so it doesn't go in infinite loop
     lw      gp,40(sp)
     lw	    ra,36(sp)
     lw	    t0,32(sp)

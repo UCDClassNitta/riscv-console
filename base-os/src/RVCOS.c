@@ -5,6 +5,7 @@
 
 volatile char* VIDEO_MEMORY = (volatile char*)(0x50000000 + 0xFE800);
 volatile uint32_t* main_gp = 0;
+volatile uint32_t PQ_ready = 0;
 
 TCB** global_tcb_arr = NULL;
 MemoryPoolController* global_mem_pool_arr = NULL;  // TODO change the 10
@@ -32,13 +33,16 @@ void threadSkeleton() {
 
   // call entry(param) but make sure to switch the gp right before the call
   writeString("calling on GP: ");
-  writeInt(main_gp);
-  writeString("\nthe thread is: ");
+  writeInt(main_gp); //? always OS GP?
+  writeString("\n");
+  writeString("the thread is: ");
   writeInt(running_thread_id); // the param isn't right
+  writeString("\n");
+
   global_tcb_arr[running_thread_id]->state = RVCOS_THREAD_STATE_RUNNING;
   uint32_t ret_val = call_on_other_gp(global_tcb_arr[running_thread_id]->param,
                                       global_tcb_arr[running_thread_id]->entry, main_gp);
-
+  writeString("came back\n");// The thread did finish
   RVCThreadTerminate(running_thread_id, ret_val);
 }
 
@@ -71,13 +75,16 @@ void schedule() {
     running_thread_id = 0;
   }
 
-  writeString("try to switch, the new id is: ");
-  writeInt(new_id);
-  writeString("\n");
+  
 
   // ! The high prio does get called now, but it's stuck in some sort of loop
   // ! Change the scheduling algo above
-  ContextSwitch(&(global_tcb_arr[old_id]->sp), global_tcb_arr[new_id]->sp);
+  if (new_id >= 0){
+    writeString("try to switch, the new id is: ");
+    writeInt(new_id);
+    writeString("\n");
+    ContextSwitch(&(global_tcb_arr[old_id]->sp), global_tcb_arr[new_id]->sp);
+  }
   writeString("back\n");
 }
 
@@ -177,7 +184,7 @@ TStatus RVCInitialize(uint32_t* gp) {
   low_prio->tail = med_prio->tail = high_prio->tail = idle_prio->tail = NULL;
   low_prio->size = med_prio->size = high_prio->size = idle_prio->size = 0;
 
-  writeInt(high_prio->size);
+  PQ_ready = 1;
 
   uint32_t* idle_tid = malloc(sizeof(uint32_t));
   RVCThreadCreate(idleFunction, NULL, 1024, RVCOS_THREAD_PRIORITY_IDLE, idle_tid);
@@ -309,6 +316,11 @@ TStatus RVCThreadTerminate(TThreadID thread, TThreadReturn returnval) {
 
   global_tcb_arr[thread]->state = RVCOS_THREAD_STATE_DEAD;
   returnval = global_tcb_arr[thread]->ret_val;
+
+
+  // TODO: context switch back 
+  writeString("context switch to main\n");
+
 
   // call scheduler here
   return RVCOS_STATUS_SUCCESS;
@@ -831,4 +843,12 @@ uint32_t* initStack(uint32_t* sp, TEntry function, uint32_t param,
   sp--;
   *sp = 0;  // sw      a5,0(sp)
   return sp;
+}
+/**
+ * @brief Prevents the interrupt handler from calling scheduler when PQ aren't ready
+ * 
+ * @return uint32_t 
+ */
+uint32_t getPQReady(){
+  return PQ_ready;
 }

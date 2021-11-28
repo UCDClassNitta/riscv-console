@@ -35,7 +35,7 @@ void enqueue(PriorityQueue *target_prio, uint32_t tcb_id) {
  */
 void dequeue(PriorityQueue *target_prio, uint32_t *tcb_id_ref) { 
   PriorityQueueNode *head_node = target_prio->head;
-  if (head_node == NULL) {
+  if (head_node == NULL || target_prio == NULL) {
     return;
   }
   if (head_node->next == NULL) {

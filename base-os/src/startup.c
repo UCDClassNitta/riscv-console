@@ -76,13 +76,15 @@ void c_interrupt_handler(int p1, int p2, int p3, int p4, int p5) {
   NewCompare += 100;
   MTIMECMP_HIGH = NewCompare >> 32;
   MTIMECMP_LOW = NewCompare;
-  global++;  // ++???
+  global++;  // why ++???
   controller_status = CONTROLLER;
 
   csr_disable_interrupts();
 
-  //schedule();
-
+  if (getPQReady()){
+    schedule();
+  }
+  
   csr_enable_interrupts();
 }
 

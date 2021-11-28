@@ -116,6 +116,7 @@ void writeInt(uint32_t val);
 void idleFunction();
 void threadSkeleton();
 void schedule();
+uint32_t getPQReady();
 
 typedef struct
 {
