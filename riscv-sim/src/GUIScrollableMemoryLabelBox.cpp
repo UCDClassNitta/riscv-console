@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cctype>
 
-const uint CGUIScrollableMemoryLabelBox::DBytesPerLine = 16;
+const uint32_t CGUIScrollableMemoryLabelBox::DBytesPerLine = 16;
 
 CGUIScrollableMemoryLabelBox::CGUIScrollableMemoryLabelBox(std::shared_ptr< CMemoryDevice > device, const std::unordered_map< uint32_t, uint32_t > &regions, size_t initsize) : CGUIScrollableLabelBox(initsize){
     DMemoryDevice = device;
