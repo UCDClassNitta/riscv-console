@@ -37,7 +37,7 @@ Once the repository has been cloned, change directories into the riscv-console a
 ```
 ./rvconsole.sh
 ```
-The script will build the base RISC-V Docker image riscv_base that has the RISC-V build tool chain. This will take an exceptional amount of time, potentially on the order of hours. This build should only have to be done once. Once the base image is built the RISC-V development environment Docker image `riscv_console_dev`. The second image the builds upon the base should build quickly. Once the image is built the script will launch a container name `riscv_console_run`. This will mount the current riscv-console directory into the `/code` directory of the container allowing for source files to be edited on the host machine as well as within the container. Once the container is launched you should see a prompt like:
+The script will pull the base RISC-V Docker image `cjnitta/riscv_base` that has the RISC-V build tool chain. This will take some time as the image is several GB in size. This should only have to be done once. Once the base image has been pulled the RISC-V development environment Docker image `riscv_console_dev` will be built. The second image builds upon the base and should build quickly. Once the image is built the script will launch a container name `riscv_console_run`. This will mount the current riscv-console directory into the `/code` directory of the container allowing for source files to be edited on the host machine as well as within the container. Once the container is launched you should see a prompt like:
 ```
 root@fedcba9876543210:/code#
 ```

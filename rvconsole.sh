@@ -4,16 +4,16 @@ if [[ -f /.dockerenv ]]; then
     exit 0
 fi
 
-# Check that base image exists
-IMAGE_BASE="riscv_base"
-IMAGE_BASE_ID="$(docker images -q $IMAGE_BASE)"
-
-if [[ $IMAGE_BASE_ID == "" ]]; then
-    echo "$IMAGE_BASE does not exist, building:"
-    BUILD_CMD="docker build -t $IMAGE_BASE -f Dockerfile.base ."
-    echo "  $BUILD_CMD"
-    $BUILD_CMD
-fi
+# Check that base image exists (Removed changed to cjnitta/riscv_base)
+#IMAGE_BASE="riscv_base"
+#IMAGE_BASE_ID="$(docker images -q $IMAGE_BASE)"
+#
+#if [[ $IMAGE_BASE_ID == "" ]]; then
+#    echo "$IMAGE_BASE does not exist, building:"
+#    BUILD_CMD="docker build -t $IMAGE_BASE -f Dockerfile.base ."
+#    echo "  $BUILD_CMD"
+#    $BUILD_CMD
+#fi
 
 # Check that dev image exists
 IMAGE_DEV="riscv_console_dev"

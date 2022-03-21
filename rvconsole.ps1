@@ -1,11 +1,11 @@
-# Check that base image exists
-$IMAGE_BASE="riscv_base"
-$IMAGE_BASE_ID = docker images -q $IMAGE_BASE
-if(!$IMAGE_BASE_ID){
-    Write-Output "$IMAGE_BASE does not exist, building:"
-    Write-Output "  docker build -t $IMAGE_BASE -f Dockerfile.base ."
-    docker build -t $IMAGE_BASE -f Dockerfile.base .
-}
+# Check that base image exists (Removed changed to cjnitta/riscv_base)
+#$IMAGE_BASE="riscv_base"
+#$IMAGE_BASE_ID = docker images -q $IMAGE_BASE
+#if(!$IMAGE_BASE_ID){
+#    Write-Output "$IMAGE_BASE does not exist, building:"
+#    Write-Output "  docker build -t $IMAGE_BASE -f Dockerfile.base ."
+#    docker build -t $IMAGE_BASE -f Dockerfile.base .
+#}
 
 # Check that dev image exists
 $IMAGE_DEV = "riscv_console_dev"

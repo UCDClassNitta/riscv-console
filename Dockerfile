@@ -1,4 +1,4 @@
-FROM riscv_base
+FROM cjnitta/riscv_base
 
 RUN apt-get update && apt-get install sudo libgtk-3-dev dbus-x11 -y
 
