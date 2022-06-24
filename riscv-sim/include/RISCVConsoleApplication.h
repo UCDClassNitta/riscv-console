@@ -4,6 +4,7 @@
 #include "GUIFactory.h"
 #include "GUIScrollableLabelBox.h"
 #include "GUIScrollableMemoryLabelBox.h"
+#include "GUIScrollableTextViewLineBox.h"
 #include "GraphicFactory.h"
 #include "RISCVConsole.h"
 #include "RISCVConsoleApplicationConfig.h"
@@ -57,9 +58,9 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         std::shared_ptr<CGUIToggleButton> DDebugRecordButton;
         
         std::shared_ptr<CGUIComboBox> DDebugInstructionComboBox;
-        std::shared_ptr<CGUIScrollableLabelBox> DDebugInstructions;
+        std::shared_ptr<CGUIScrollableLineBox> DDebugInstructions;
 
-        std::shared_ptr<CGUIScrollableLabelBox> DDebugCSRegisters;
+        std::shared_ptr<CGUIScrollableLineBox> DDebugCSRegisters;
 
         std::shared_ptr<CGUIScrollableMemoryLabelBox> DDebugMemory;
         std::shared_ptr<CGUIButton> DDebugMemoryFirmwareButton;
@@ -112,8 +113,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool ClearButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool RecordButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         static bool InstructionComboBoxChangedEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
-        static bool InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
-        static bool InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, TGUICalldata data);
+        static bool InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
+        static bool InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data);
         static void BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data);
 
         void Activate();
@@ -140,8 +141,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool ClearButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool RecordButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
         bool InstructionComboBoxChangedEvent(std::shared_ptr<CGUIWidget> widget);
-        bool InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line);
-        bool InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLabelBox> widget);
+        bool InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line);
+        bool InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget);
         void BreakpointEvent();
 
         void CreateConsoleWidgets();

@@ -310,18 +310,104 @@ class CGUIMenuItemGTK3 : public virtual CGUIMenuItem, public CGUIContainerGTK3{
         void SetSubMenu(std::shared_ptr<CGUIWidget> widget) override;
 };
 
+class CGUITextTagGTK3 : public CGUITextTag{
+    friend class CGUITextBufferGTK3;
+    protected:
+        GtkTextTag *DTextTag;
+        static void TransformValue(GValue *value, const std::string &str_value);
+    public:
+        CGUITextTagGTK3(GtkTextTag *texttag);
+        virtual ~CGUITextTagGTK3(){};
+
+        int GetPriority() override;
+        void SetPriority(int prio) override;
+};
+
+class CGUITextIterGTK3 : public CGUITextIter{
+    friend class CGUITextBufferGTK3;
+    protected:
+        GtkTextIter DIter;
+    public:
+        CGUITextIterGTK3();
+        virtual ~CGUITextIterGTK3(){};
+
+        bool MoveBackwardLines(int count) override;
+        bool MoveForwardLines(int count) override; 
+        bool MoveBackwardChars(int count) override;
+        bool MoveForwardChars(int count) override;
+};
+
+class CGUITextBufferGTK3 : public CGUITextBuffer{
+    protected:
+        GtkTextBuffer *DTextBuffer;
+    public:
+        CGUITextBufferGTK3(GtkTextBuffer *textbuffer);
+        virtual ~CGUITextBufferGTK3();
+
+        void SetText(const std::string &text) override;
+        void Insert(std::shared_ptr<CGUITextIter> start, const std::string &text) override;
+        void Delete(std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end) override;
+        std::shared_ptr<CGUITextTag> CreateTag(const std::vector< std::pair<std::string, std::string> > &properties) override;
+        void ApplyTag(std::shared_ptr<CGUITextTag> tag, std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end) override;
+        void RemoveTag(std::shared_ptr<CGUITextTag> tag, std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end) override;
+        std::shared_ptr<CGUITextIter> GetLineIter(int linenum) override;
+        std::shared_ptr<CGUITextIter> GetStartIter() override;
+        std::shared_ptr<CGUITextIter> GetEndIter() override;
+        std::string GetText(std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end) override;
+        int GetLineCount() override;
+};
+
+class CGUITextViewGTK3 : public virtual CGUITextView, public CGUIContainerGTK3{
+    protected:
+        std::shared_ptr<CGUITextBufferGTK3> DBuffer;
+    public: 
+        CGUITextViewGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUITextViewGTK3();
+
+        void PlaceCursorOnscreen() override;
+        void SetEditable(bool edit) override;
+        void SetCursorVisible(bool visibility) override;
+        void SetMonospace(bool monospace) override;
+        void SetWrapMode(EWrapModeType wrap) override;
+        std::shared_ptr<CGUITextBuffer> GetBuffer() override;
+        int GetRequiredCharactersWidth(int chars) override;
+        int GetRequiredLinesHeight(int lines) override;
+        int GetLineNumberAtY(int y) override;
+};
+
 class CGUIScrollBarGTK3 : public virtual CGUIScrollBar, public CGUIWidgetGTK3{
     public:
         CGUIScrollBarGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUIScrollBarGTK3();
         
         double GetValue() override;
+        double GetLower() override;
+        double GetUpper() override;
+        double GetStepIncrement() override;
+        double GetPageIncrement() override;
+        double GetPageSize() override;
         void SetValue(double val) override;
         void SetLower(double lower) override;
-        void SetUpper(double upper)  override;
+        void SetUpper(double upper) override;
         void SetStepIncrement(double inc) override;
         void SetPageIncrement(double inc) override;
         void SetPageSize(double size) override;
+};
+
+class CGUIScrollWindowGTK3 : public virtual CGUIScrollWindow, public CGUIContainerGTK3{
+    protected:
+        static GtkPolicyType TranslatePolicy(EScrollPolicyType policy);
+        std::shared_ptr<CGUIScrollBarGTK3> DHorizontalScrollBar;
+        std::shared_ptr<CGUIScrollBarGTK3> DVerticalScrollBar;
+    public:
+        CGUIScrollWindowGTK3(GtkWidget *widget, bool reference = false);
+        virtual ~CGUIScrollWindowGTK3();
+
+        void SetScrollPolicy(EScrollPolicyType hpolicy, EScrollPolicyType vpolicy) override;
+        void SetMinContentWidth(int width) override;
+        void SetMinContentHeight(int height) override;
+        std::shared_ptr<CGUIScrollBar> GetHorizontalScrollBar() override;
+        std::shared_ptr<CGUIScrollBar> GetVerticalScrollBar() override;
 };
 
 class CGUIWindowGTK3 : public virtual CGUIWindow, public CGUIContainerGTK3{

@@ -1,6 +1,8 @@
 
 #include "GUIFactoryGTK3.h"
 #include "GraphicFactoryCairo.h"
+#include <algorithm>
+#include <cctype>
 #include <glib.h>
 #include <glib/gi18n.h>
 
@@ -239,8 +241,16 @@ std::shared_ptr<CGUIMenuItem> CGUIFactory::NewMenuItem(const std::string &label)
     return std::make_shared<CGUIMenuItemGTK3>(gtk_menu_item_new_with_label(label.c_str()));
 }
 
+std::shared_ptr<CGUITextView> CGUIFactory::NewTextView(){
+    return std::make_shared<CGUITextViewGTK3>(gtk_text_view_new());
+}
+
 std::shared_ptr<CGUIScrollBar> CGUIFactory::NewScrollBar(CGUIScrollBar::EOrientation orientation){
     return std::make_shared<CGUIScrollBarGTK3>(gtk_scrollbar_new(orientation == CGUIScrollBar::EOrientation::Horizontal ? GTK_ORIENTATION_HORIZONTAL : GTK_ORIENTATION_VERTICAL, NULL));
+}
+
+std::shared_ptr<CGUIScrollWindow> CGUIFactory::NewScrollWindow(){
+    return std::make_shared<CGUIScrollWindowGTK3>(gtk_scrolled_window_new(NULL, NULL));
 }
 
 std::shared_ptr<CGUIFileFilter> CGUIFactory::NewFileFilter(){
@@ -1220,6 +1230,242 @@ void CGUIMenuItemGTK3::SetSubMenu(std::shared_ptr<CGUIWidget> widget){
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(DWidget), WidgetToAdd->Widget());
 }
 
+
+CGUITextTagGTK3::CGUITextTagGTK3(GtkTextTag *texttag){
+    DTextTag = texttag;
+}
+
+void CGUITextTagGTK3::TransformValue(GValue *value, const std::string &str_value){
+    try{
+        // https://stackoverflow.com/questions/313970/how-to-convert-an-instance-of-stdstring-to-lower-case
+        auto LowerCase = str_value;
+        std::transform(LowerCase.begin(), LowerCase.end(), LowerCase.begin(), [](unsigned char c){ return std::tolower(c); });
+        switch(G_VALUE_TYPE(value)){
+            case G_TYPE_BOOLEAN:    printf("%s @ %d\n",__FILE__,__LINE__);
+                                    if(LowerCase == "true"){
+                                        g_value_set_boolean(value,true);
+                                    }
+                                    else if(LowerCase == "false"){
+                                        g_value_set_boolean(value,false);
+                                    }
+                                    break;
+            case G_TYPE_CHAR:       g_value_set_schar(value,std::stoi(str_value));
+                                    break;
+            case G_TYPE_INT:        g_value_set_int(value,std::stoi(str_value));
+                                    break;
+            case G_TYPE_LONG:       g_value_set_long(value,std::stol(str_value));
+                                    break;
+            case G_TYPE_INT64:      g_value_set_int64(value,std::stoll(str_value));
+                                    break;
+            case G_TYPE_UCHAR:      g_value_set_uchar(value,std::stoul(str_value));
+                                    break;
+            case G_TYPE_UINT:       g_value_set_uint(value,std::stoul(str_value));
+                                    break;
+            case G_TYPE_ULONG:      g_value_set_ulong(value,std::stoul(str_value));
+                                    break;
+            case G_TYPE_UINT64:     g_value_set_uint64(value,std::stoull(str_value));
+                                    break;
+            case G_TYPE_FLOAT:      g_value_set_float(value,std::stod(str_value));
+                                    break;
+            case G_TYPE_DOUBLE:     g_value_set_double(value,std::stod(str_value));
+                                    break;
+            case G_TYPE_STRING:     g_value_set_string(value,str_value.c_str());
+            default:                break;
+        }
+    }
+    catch(const std::exception &e){
+
+    }
+}
+
+int CGUITextTagGTK3::GetPriority(){
+    return gtk_text_tag_get_priority(DTextTag);
+}
+
+void CGUITextTagGTK3::SetPriority(int prio){
+    return gtk_text_tag_set_priority(DTextTag, prio);
+}
+
+CGUITextIterGTK3::CGUITextIterGTK3(){
+
+}
+
+bool CGUITextIterGTK3::MoveBackwardLines(int count){
+    return gtk_text_iter_backward_lines(&DIter, count);
+}
+
+bool CGUITextIterGTK3::MoveForwardLines(int count){
+    return gtk_text_iter_forward_lines(&DIter, count);
+}
+
+bool CGUITextIterGTK3::MoveBackwardChars(int count){
+    return gtk_text_iter_backward_chars(&DIter, count);
+}
+
+bool CGUITextIterGTK3::MoveForwardChars(int count){
+    return gtk_text_iter_forward_chars(&DIter, count);
+}
+
+CGUITextBufferGTK3::CGUITextBufferGTK3(GtkTextBuffer *textbuffer){
+    DTextBuffer = textbuffer;
+}
+
+CGUITextBufferGTK3::~CGUITextBufferGTK3(){
+    
+}
+
+void CGUITextBufferGTK3::SetText(const std::string &text){
+    gtk_text_buffer_set_text(DTextBuffer, text.c_str(), -1);
+}
+
+void CGUITextBufferGTK3::Insert(std::shared_ptr<CGUITextIter> start, const std::string &text){
+    auto IterStart = std::dynamic_pointer_cast<CGUITextIterGTK3>(start);
+    gtk_text_buffer_insert(DTextBuffer, &IterStart->DIter, text.c_str(), text.length());
+}
+
+void CGUITextBufferGTK3::Delete(std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end){
+    auto IterStart = std::dynamic_pointer_cast<CGUITextIterGTK3>(start);
+    auto IterEnd = std::dynamic_pointer_cast<CGUITextIterGTK3>(end);
+    gtk_text_buffer_delete(DTextBuffer, &IterStart->DIter, &IterEnd->DIter);
+}
+
+std::shared_ptr<CGUITextTag> CGUITextBufferGTK3::CreateTag(const std::vector< std::pair<std::string, std::string> > &properties){
+    GtkTextTag *NewTextTag = gtk_text_buffer_create_tag(DTextBuffer, NULL, NULL, NULL);
+    for(auto &NameValue : properties){
+        GValue TempValue = G_VALUE_INIT;
+        g_object_get_property(G_OBJECT(NewTextTag), NameValue.first.c_str(), &TempValue);
+        CGUITextTagGTK3::TransformValue(&TempValue, NameValue.second);
+        g_object_set_property(G_OBJECT(NewTextTag), NameValue.first.c_str(), &TempValue);
+    }
+    return std::make_shared<CGUITextTagGTK3>(NewTextTag);
+}
+
+void CGUITextBufferGTK3::ApplyTag(std::shared_ptr<CGUITextTag> tag, std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end){
+    auto TextTag = std::dynamic_pointer_cast<CGUITextTagGTK3>(tag);
+    auto IterStart = std::dynamic_pointer_cast<CGUITextIterGTK3>(start);
+    auto IterEnd = std::dynamic_pointer_cast<CGUITextIterGTK3>(end);
+    gtk_text_buffer_apply_tag(DTextBuffer, TextTag->DTextTag, &IterStart->DIter, &IterEnd->DIter);
+}
+
+void CGUITextBufferGTK3::RemoveTag(std::shared_ptr<CGUITextTag> tag, std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end){
+    auto TextTag = std::dynamic_pointer_cast<CGUITextTagGTK3>(tag);
+    auto IterStart = std::dynamic_pointer_cast<CGUITextIterGTK3>(start);
+    auto IterEnd = std::dynamic_pointer_cast<CGUITextIterGTK3>(end);
+    gtk_text_buffer_remove_tag(DTextBuffer, TextTag->DTextTag, &IterStart->DIter, &IterEnd->DIter);
+}
+
+std::shared_ptr<CGUITextIter> CGUITextBufferGTK3::GetLineIter(int linenum){
+    auto NewIter = std::make_shared<CGUITextIterGTK3>();
+    
+    gtk_text_buffer_get_iter_at_line(DTextBuffer, &NewIter->DIter, linenum);
+    return NewIter;
+}
+
+std::shared_ptr<CGUITextIter> CGUITextBufferGTK3::GetStartIter(){
+    auto NewIter = std::make_shared<CGUITextIterGTK3>();
+    
+    gtk_text_buffer_get_start_iter(DTextBuffer,&NewIter->DIter);
+    return NewIter;
+}
+
+std::shared_ptr<CGUITextIter> CGUITextBufferGTK3::GetEndIter(){
+    auto NewIter = std::make_shared<CGUITextIterGTK3>();
+    
+    gtk_text_buffer_get_end_iter(DTextBuffer,&NewIter->DIter);
+    return NewIter;
+}
+
+std::string CGUITextBufferGTK3::GetText(std::shared_ptr<CGUITextIter> start, std::shared_ptr<CGUITextIter> end){
+    auto IterStart = std::dynamic_pointer_cast<CGUITextIterGTK3>(start);
+    auto IterEnd = std::dynamic_pointer_cast<CGUITextIterGTK3>(end);
+    auto TextPtr = gtk_text_buffer_get_text(DTextBuffer,&IterStart->DIter,&IterEnd->DIter,true);
+    std::string ReturnString = TextPtr;
+    free(TextPtr);
+    return ReturnString;
+}
+
+int CGUITextBufferGTK3::GetLineCount(){
+    return gtk_text_buffer_get_line_count(DTextBuffer);
+}
+
+CGUITextViewGTK3::CGUITextViewGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget,reference){
+
+}
+
+CGUITextViewGTK3::~CGUITextViewGTK3(){
+
+}
+
+void CGUITextViewGTK3::PlaceCursorOnscreen(){
+    gtk_text_view_place_cursor_onscreen(GTK_TEXT_VIEW(DWidget));
+}
+
+void CGUITextViewGTK3::SetEditable(bool edit){
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(DWidget), edit);
+}
+
+void CGUITextViewGTK3::SetCursorVisible(bool visibility){
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(DWidget), visibility);
+}
+
+void CGUITextViewGTK3::SetMonospace(bool monospace){
+    gtk_text_view_set_monospace(GTK_TEXT_VIEW(DWidget), monospace);
+}
+
+void CGUITextViewGTK3::SetWrapMode(EWrapModeType wrap){
+    GtkWrapMode WrapMode = GTK_WRAP_NONE;
+    switch(wrap){
+        case CGUITextView::EWrapModeType::None:             WrapMode = GTK_WRAP_NONE;
+                                                            break;
+        case CGUITextView::EWrapModeType::Character:        WrapMode = GTK_WRAP_CHAR;
+                                                            break;
+        case CGUITextView::EWrapModeType::Word:             WrapMode = GTK_WRAP_WORD;
+                                                            break;
+        case CGUITextView::EWrapModeType::WordCharacter:    WrapMode = GTK_WRAP_WORD_CHAR;
+                                                            break;
+        default:                                            break;
+    }
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(DWidget), WrapMode);
+}
+
+
+std::shared_ptr<CGUITextBuffer> CGUITextViewGTK3::GetBuffer(){
+    if(!DBuffer){
+        DBuffer = std::make_shared<CGUITextBufferGTK3>(gtk_text_view_get_buffer(GTK_TEXT_VIEW(DWidget)));
+    }
+    return DBuffer;
+}
+
+int CGUITextViewGTK3::GetRequiredCharactersWidth(int chars){
+    GtkTextAttributes *TextAttributes = gtk_text_view_get_default_attributes(GTK_TEXT_VIEW(DWidget));
+    PangoLayout *CharacterCell = gtk_widget_create_pango_layout(DWidget, "X");
+    PangoRectangle LogicalRect;
+    pango_layout_get_pixel_extents(CharacterCell, NULL, &LogicalRect);
+    int WidgetWidth;
+    WidgetWidth = chars <= 0 ? -1 : LogicalRect.width * chars + TextAttributes->left_margin +  TextAttributes->right_margin;
+    g_object_unref(CharacterCell);
+    gtk_text_attributes_unref(TextAttributes);
+    return WidgetWidth;
+}
+
+int CGUITextViewGTK3::GetRequiredLinesHeight(int lines){
+    GtkTextAttributes *TextAttributes = gtk_text_view_get_default_attributes(GTK_TEXT_VIEW(DWidget));
+    PangoLayout *CharacterCell = gtk_widget_create_pango_layout(DWidget, "X");
+    PangoRectangle LogicalRect;
+    pango_layout_get_pixel_extents(CharacterCell, NULL, &LogicalRect);
+    int WidgetHeight;
+    WidgetHeight = lines <= 0 ? -1 : (LogicalRect.height + TextAttributes->pixels_above_lines + TextAttributes->pixels_below_lines) * lines;
+    g_object_unref(CharacterCell);
+    gtk_text_attributes_unref(TextAttributes);
+    return WidgetHeight;
+}
+
+int CGUITextViewGTK3::GetLineNumberAtY(int y){
+    GtkTextIter TempIter;
+    gtk_text_view_get_line_at_y(GTK_TEXT_VIEW(DWidget), &TempIter, y, NULL);
+    return gtk_text_iter_get_line(&TempIter);
+}
+
 CGUIScrollBarGTK3::CGUIScrollBarGTK3(GtkWidget *widget, bool reference) : CGUIWidgetGTK3(widget,reference){
 
 }
@@ -1232,13 +1478,38 @@ double CGUIScrollBarGTK3::GetValue(){
     return gtk_range_get_value(GTK_RANGE(DWidget));
 }
 
+double CGUIScrollBarGTK3::GetLower(){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    return gtk_adjustment_get_lower(Adjustment);
+}
+
+double CGUIScrollBarGTK3::GetUpper(){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    return gtk_adjustment_get_upper(Adjustment);
+}
+
+double CGUIScrollBarGTK3::GetStepIncrement(){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    return gtk_adjustment_get_step_increment(Adjustment);
+}
+
+double CGUIScrollBarGTK3::GetPageIncrement(){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    return gtk_adjustment_get_page_increment(Adjustment);
+}
+
+double CGUIScrollBarGTK3::GetPageSize(){
+    auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
+    return gtk_adjustment_get_page_size(Adjustment);
+}
+
 void CGUIScrollBarGTK3::SetValue(double val){
     gtk_range_set_value(GTK_RANGE(DWidget),val);
 }
 
 void CGUIScrollBarGTK3::SetLower(double lower){
     auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
-    gtk_adjustment_set_upper(Adjustment, lower);
+    gtk_adjustment_set_lower(Adjustment, lower);
 }
 
 void CGUIScrollBarGTK3::SetUpper(double upper){
@@ -1259,6 +1530,46 @@ void CGUIScrollBarGTK3::SetPageIncrement(double inc){
 void CGUIScrollBarGTK3::SetPageSize(double size){
     auto Adjustment = gtk_range_get_adjustment(GTK_RANGE(DWidget));
     gtk_adjustment_set_page_size(Adjustment, size);
+}
+
+
+CGUIScrollWindowGTK3::CGUIScrollWindowGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
+    DHorizontalScrollBar = std::make_shared<CGUIScrollBarGTK3>(gtk_scrolled_window_get_hscrollbar(GTK_SCROLLED_WINDOW(widget)));
+    DVerticalScrollBar = std::make_shared<CGUIScrollBarGTK3>(gtk_scrolled_window_get_vscrollbar(GTK_SCROLLED_WINDOW(widget)));
+}
+
+CGUIScrollWindowGTK3::~CGUIScrollWindowGTK3(){
+
+}
+
+GtkPolicyType CGUIScrollWindowGTK3::TranslatePolicy(EScrollPolicyType policy){
+    switch(policy){
+        case CGUIScrollWindow::EScrollPolicyType::Always:       return GTK_POLICY_ALWAYS;
+        case CGUIScrollWindow::EScrollPolicyType::Automatic:    return GTK_POLICY_AUTOMATIC;
+        case CGUIScrollWindow::EScrollPolicyType::Never:        return GTK_POLICY_NEVER;
+        case CGUIScrollWindow::EScrollPolicyType::External:     return GTK_POLICY_EXTERNAL;
+    }
+    return GTK_POLICY_ALWAYS;
+}
+
+void CGUIScrollWindowGTK3::SetScrollPolicy(EScrollPolicyType hpolicy, EScrollPolicyType vpolicy){
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(DWidget), TranslatePolicy(hpolicy),TranslatePolicy(vpolicy));
+}
+
+void CGUIScrollWindowGTK3::SetMinContentWidth(int width){
+    gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(DWidget), width);
+}
+
+void CGUIScrollWindowGTK3::SetMinContentHeight(int height){
+    gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(DWidget), height);
+}
+
+std::shared_ptr<CGUIScrollBar> CGUIScrollWindowGTK3::GetHorizontalScrollBar(){
+    return DHorizontalScrollBar;
+}
+
+std::shared_ptr<CGUIScrollBar> CGUIScrollWindowGTK3::GetVerticalScrollBar(){
+    return DVerticalScrollBar;
 }
 
 CGUIWindowGTK3::CGUIWindowGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){

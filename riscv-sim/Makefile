@@ -41,6 +41,7 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/GUIFactoryGTK3.o                 \
     $(OBJ_DIR)/GUIScrollableLabelBox.o          \
     $(OBJ_DIR)/GUIScrollableMemoryLabelBox.o    \
+    $(OBJ_DIR)/GUIScrollableTextViewLineBox.o   \
     $(OBJ_DIR)/RISCVConsoleApplication.o        \
     $(OBJ_DIR)/RISCVConsoleApplicationConfig.o  \
     $(OBJ_DIR)/PeriodicTimeout.o                \

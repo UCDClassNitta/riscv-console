@@ -177,9 +177,6 @@ void CGUIScrollableLabelBox::SetLineCount(size_t count){
         if(0 < DWidthCharacters){
             Label->SetWidthCharacters(DWidthCharacters);
         }
-        if(0 < DMaxWidthCharacters){
-            Label->SetMaxWidthCharacters(DWidthCharacters);
-        }
         EventBox->Add(Label);
         EventBox->SetButtonPressEventCallback(this,WidgetButtonEventCallback);
         EventBox->SetButtonReleaseEventCallback(this,WidgetButtonEventCallback);
@@ -226,15 +223,6 @@ void CGUIScrollableLabelBox::UpdateBufferedLine(size_t index, const std::string 
     }
 }
 
-void CGUIScrollableLabelBox::AppendBufferedLine(const std::string &line){
-    auto CurrentSize = DBufferedLines.size();
-    if((DBaseLine <= CurrentSize)&&(CurrentSize < DBaseLine + DLabels.size())){
-        DLabels[CurrentSize - DBaseLine]->SetText(line);
-    }
-    DBufferedLines.push_back(line);
-    DScrollbar->SetUpper(DBufferedLines.size());
-}
-
 void CGUIScrollableLabelBox::HighlightBufferedLine(size_t index){
     auto OldHighlighedLine = DHightlightedBufferedLine;
     DHightlightedBufferedLine = index;
@@ -264,24 +252,17 @@ void CGUIScrollableLabelBox::SetWidthCharacters(int chars){
     }
 }
 
-void CGUIScrollableLabelBox::SetMaxWidthCharacters(int chars){
-    DMaxWidthCharacters = chars;
-    for(auto &Label : DLabels){
-        Label->SetMaxWidthCharacters(DMaxWidthCharacters);
-    }
-}
-
-void CGUIScrollableLabelBox::SetButtonPressEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxButtonEventCallback callback){
+void CGUIScrollableLabelBox::SetButtonPressEventCallback(TGUICalldata calldata, TGUIScrollableLineBoxButtonEventCallback callback){
     DButtonPressCalldata = calldata;
     DButtonPressCallback = callback;
 }
 
-void CGUIScrollableLabelBox::SetButtonReleaseEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxButtonEventCallback callback){
+void CGUIScrollableLabelBox::SetButtonReleaseEventCallback(TGUICalldata calldata, TGUIScrollableLineBoxButtonEventCallback callback){
     DButtonReleaseCalldata = calldata;
     DButtonReleaseCallback = callback;
 }
 
-void CGUIScrollableLabelBox::SetScrollEventCallback(TGUICalldata calldata, TGUIScrollableLabelBoxScrollEventCallback callback){
+void CGUIScrollableLabelBox::SetScrollEventCallback(TGUICalldata calldata, TGUIScrollableLineBoxScrollEventCallback callback){
     DScrollCalldata = calldata;
     DScrollCallback = callback;
 }

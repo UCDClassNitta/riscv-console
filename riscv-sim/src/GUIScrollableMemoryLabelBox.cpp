@@ -170,19 +170,11 @@ void CGUIScrollableMemoryLabelBox::UpdateBufferedLine(size_t index, const std::s
     
 }
 
-void CGUIScrollableMemoryLabelBox::AppendBufferedLine(const std::string &line){
-    
-}
-
 void CGUIScrollableMemoryLabelBox::SetWidthCharacters(int chars){
     int MinWidth = DBytesPerLine * 4 + 11;
     if(chars >= MinWidth){
         CGUIScrollableLabelBox::SetWidthCharacters(chars);
     }
-    
-}
-
-void CGUIScrollableMemoryLabelBox::SetMaxWidthCharacters(int chars){
     
 }
 

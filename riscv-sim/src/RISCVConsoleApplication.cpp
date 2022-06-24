@@ -138,12 +138,12 @@ bool CRISCVConsoleApplication::InstructionComboBoxChangedEventCallback(std::shar
     return App->InstructionComboBoxChangedEvent(widget);
 }
 
-bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
+bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->InstructionBoxButtonEvent(widget,event,line);
 }
 
-bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLabelBox> widget, TGUICalldata data){
+bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->InstructionBoxScrollEvent(widget);
 }
@@ -246,7 +246,7 @@ bool CRISCVConsoleApplication::MainWindowConfigureEvent(std::shared_ptr<CGUIWidg
 }
 
 bool CRISCVConsoleApplication::DrawingAreaDraw(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc){
-    if(DConsoleVideo->AllocatedHeight() == DRISCVConsole->ScreenHeight()){
+    if(DConsoleVideo->AllocatedHeight() == int(DRISCVConsole->ScreenHeight())){
         rc->DrawSurface(DDoubleBufferSurface, 0, 0, -1, -1, 0, 0);
     }
     else{
@@ -459,6 +459,9 @@ bool CRISCVConsoleApplication::StepButtonClickEvent(std::shared_ptr<CGUIWidget> 
     }
     DRISCVConsole->Step();
     RefreshDebugRegisters();
+    if(!DFollowingInstruction){
+        DFollowingInstruction = (DDebugInstructions->GetBaseLine() <= DDebugInstructions->GetHighlightedBufferedLine()) && (DDebugInstructions->GetHighlightedBufferedLine() < DDebugInstructions->GetBaseLine() + DDebugInstructions->GetLineCount());
+    }
     return true;
 }
 
@@ -497,14 +500,14 @@ bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidg
 
 bool CRISCVConsoleApplication::InstructionComboBoxChangedEvent(std::shared_ptr<CGUIWidget> widget){
     auto ItemNumber = DDebugInstructionComboBox->GetActiveItem();
-    if(ItemNumber < DRISCVConsole->InstructionLabelIndices().size()){
+    if(ItemNumber < int(DRISCVConsole->InstructionLabelIndices().size())){
         DDebugInstructions->SetBaseLine(DRISCVConsole->InstructionLabelIndices()[ItemNumber]);
     }
     
     return true;
 }
 
-bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLabelBox> widget, SGUIButtonEvent &event, size_t line){
+bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line){
     if(event.DType.IsDoubleButtonPress()){
         uint32_t Address;
         bool Breakpoint;
@@ -524,7 +527,7 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
     return true;
 }
 
-bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLabelBox> widget){
+bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget){
     DFollowingInstruction = (widget->GetBaseLine() <= widget->GetHighlightedBufferedLine()) && (widget->GetHighlightedBufferedLine() < widget->GetBaseLine() + widget->GetLineCount());
     return true;
 }
@@ -811,7 +814,7 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
-    DDebugInstructions = std::make_shared<CGUIScrollableLabelBox>();
+    DDebugInstructions = std::make_shared<CGUIScrollableTextViewLineBox>();//std::make_shared<CGUIScrollableLabelBox>();
     // Assume @01234567: abcdef zero,zero,-2147483648
     DDebugInstructions->SetWidthCharacters(38);
     DDebugInstructions->SetLineCount(GetInstructionLineCount());
@@ -857,7 +860,7 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
 
 bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){
     auto Line = DDebugInstructions->GetBufferedLine(line);
-    if(Line.length() < 10){
+    if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')){
         return false;
     }
     breakpoint = Line[0] == '@';

@@ -16,7 +16,12 @@
 #include "GUIGrid.h"
 #include "GUIMenuItem.h"
 #include "GUIMenuBar.h"
+#include "GUITextTag.h"
+#include "GUITextIter.h"
+#include "GUITextBuffer.h"
+#include "GUITextView.h"
 #include "GUIScrollBar.h"
+#include "GUIScrollWindow.h"
 #include "GUIWindow.h"
 #include "GUIFileChooserDialog.h"
 #include "GUIDrawingArea.h"
@@ -40,7 +45,9 @@ class CGUIFactory{
         static std::shared_ptr<CGUIMenu> NewMenu();
         static std::shared_ptr<CGUIMenuBar> NewMenuBar();
         static std::shared_ptr<CGUIMenuItem> NewMenuItem(const std::string &label);
+        static std::shared_ptr<CGUITextView> NewTextView();
         static std::shared_ptr<CGUIScrollBar> NewScrollBar(CGUIScrollBar::EOrientation orientation);
+        static std::shared_ptr<CGUIScrollWindow> NewScrollWindow();
         static std::shared_ptr<CGUIFileFilter> NewFileFilter();
         static std::shared_ptr<CGUIFileChooserDialog> NewFileChooserDialog(const std::string &title, bool openfile, std::shared_ptr<CGUIWindow> parent);
 };

@@ -39,10 +39,8 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
         virtual void SetBufferedLines(const std::vector< std::string > &lines) override;
 
         virtual void UpdateBufferedLine(size_t index, const std::string &line) override;
-        virtual void AppendBufferedLine(const std::string &line) override;
 
         virtual void SetWidthCharacters(int chars) override;
-        virtual void SetMaxWidthCharacters(int chars) override;
 
         virtual void Refresh();
 

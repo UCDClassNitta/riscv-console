@@ -9,6 +9,11 @@ class CGUIScrollBar : public virtual CGUIWidget{
         virtual ~CGUIScrollBar(){};
         
         virtual double GetValue() = 0;
+        virtual double GetLower() = 0;
+        virtual double GetUpper() = 0;
+        virtual double GetStepIncrement() = 0;
+        virtual double GetPageIncrement() = 0;
+        virtual double GetPageSize() = 0;
         virtual void SetValue(double val) = 0;
         virtual void SetLower(double lower) = 0;
         virtual void SetUpper(double upper) = 0;
