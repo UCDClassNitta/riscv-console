@@ -149,6 +149,9 @@ class CGUIWidgetGTK3 : public virtual CGUIWidget, public std::enable_shared_from
         virtual void Invalidate() override;
         
         virtual void SetCursor(std::shared_ptr< CGUICursor > cursor) override;
+
+        virtual void SetTooltipText(const std::string &tip) override;
+        virtual void SetTooltipMarkup(const std::string &markup) override;
         
         virtual std::shared_ptr<CGraphicSurface> CreateSimilarSurface(int width, int height) override;
         virtual std::shared_ptr<CGraphicResourceContext> CreateResourceContext() override;
@@ -274,8 +277,10 @@ class CGUIGridGTK3 : public virtual CGUIGrid, public CGUIContainerGTK3{
         
         virtual unsigned int GetRowSpacing() const override;
         virtual void SetRowSpacing(unsigned int spacing) override;
+        virtual void RemoveRow(int row) override;
         virtual unsigned int GetColumnSpacing() const override;
         virtual void SetColumnSpacing(unsigned int spacing) override;
+        virtual void RemoveColumn(int col) override;
         void Attach(std::shared_ptr<CGUIWidget> widget, int left, int top, int width, int height) override;
 };
 
@@ -422,6 +427,7 @@ class CGUIWindowGTK3 : public virtual CGUIWindow, public CGUIContainerGTK3{
         void Resize(int width, int height) override;
         void SetTitle(const std::string &title) override;
         void Close() override;
+        std::shared_ptr<CGraphicSurface> RenderToSurface() override;
 };
 
 class CGUIFileFilterGTK3 : public virtual CGUIFileFilter{

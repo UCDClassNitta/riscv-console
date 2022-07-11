@@ -6,6 +6,8 @@ CGUIScrollableLabelBox::CGUIScrollableLabelBox(size_t initsize){
     DContainingGrid = CGUIFactory::NewGrid();
     DScrollbar = CGUIFactory::NewScrollBar(CGUIScrollBar::EOrientation::Vertical);
     DContainingGrid->Attach(DScrollbar,1,0,1,1);
+    DContainingGrid->SetHorizontalExpand(true);
+    DContainingGrid->SetVerticalExpand(true);
     DBaseLine = 0;
     DHightlightedBufferedLine = 0;
     DFontFamily = "monospace";
@@ -25,9 +27,11 @@ CGUIScrollableLabelBox::CGUIScrollableLabelBox(size_t initsize){
     DScrollbar->SetUpper(1);
     DScrollbar->SetStepIncrement(1);
     DScrollbar->SetPageIncrement(1);
+    DScrollbar->SetVerticalExpand(true);
     SetLineCount(initsize);
     DScrollbar->SetValueChangedEventCallback(this,ScrollBarChangedEventCallback);
     DContainingFrame->Add(DContainingGrid);
+    //DContainingFrame->SetDrawEventCallback(this,WidgetDrawEvent);
 }
 
 CGUIScrollableLabelBox::~CGUIScrollableLabelBox(){
@@ -128,6 +132,22 @@ bool CGUIScrollableLabelBox::WidgetScrollEvent(std::shared_ptr<CGUIWidget> widge
     return true;
 }
 
+bool CGUIScrollableLabelBox::WidgetDrawEvent(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc, TGUICalldata data){
+    CGUIScrollableLabelBox *ScrollableBox = static_cast<CGUIScrollableLabelBox *>(data);
+
+    auto BoxHeight = ScrollableBox->DContainingGrid->AllocatedHeight();
+    if(ScrollableBox->DLabels.size()){
+        auto LabelHeight = ScrollableBox->DLabels[0]->AllocatedHeight();
+        auto NewLineCount = BoxHeight / LabelHeight;
+        if(NewLineCount != ScrollableBox->GetLineCount()){
+            printf("AH %d LH %d \n",BoxHeight,ScrollableBox->DLabels.size() ? ScrollableBox->DLabels[0]->AllocatedHeight() : -1);
+            ScrollableBox->SetLineCount(NewLineCount);
+        }
+    }
+    
+    return false;
+}
+
 void CGUIScrollableLabelBox::RefreshLabels(){
     for(size_t Index = 0; Index < DLabels.size(); Index++){
         if(DBaseLine + Index < DBufferedLines.size()){
@@ -142,8 +162,19 @@ void CGUIScrollableLabelBox::RefreshLabels(){
 }
 
 std::shared_ptr<CGUIWidget> CGUIScrollableLabelBox::ContainingWidget() const{
-    //return DContainingGrid;
     return DContainingFrame;
+}
+
+void CGUIScrollableLabelBox::SetVerticalExpand(bool exp){
+    DContainingFrame->SetVerticalExpand(exp);
+}
+
+void CGUIScrollableLabelBox::SetHorizontalExpand(bool exp){
+    DContainingFrame->SetHorizontalExpand(exp);
+}
+
+void CGUIScrollableLabelBox::SetCursor(std::shared_ptr<CGUICursor> cursor){
+    DContainingFrame->SetCursor(cursor);
 }
 
 size_t CGUIScrollableLabelBox::GetBaseLine() const{
@@ -164,19 +195,21 @@ void CGUIScrollableLabelBox::SetLineCount(size_t count){
     if(!count){
         return;
     }
+    
     while(count < DLabels.size()){
         DContainingGrid->Remove(DLabelEventBoxes.back());
         DLabelEventBoxes.pop_back();
         DLabels.pop_back();
     }
     while(DLabels.size() < count){
-        auto Label = CGUIFactory::NewLabel("");
+        auto Label = CGUIFactory::NewLabel("X");
         auto EventBox = CGUIFactory::NewEventBox();
         Label->SetFontFamily(DFontFamily);
         Label->SetJustification(SGUIJustificationType::Left);
         if(0 < DWidthCharacters){
             Label->SetWidthCharacters(DWidthCharacters);
         }
+        Label->SetHorizontalExpand(true);
         EventBox->Add(Label);
         EventBox->SetButtonPressEventCallback(this,WidgetButtonEventCallback);
         EventBox->SetButtonReleaseEventCallback(this,WidgetButtonEventCallback);

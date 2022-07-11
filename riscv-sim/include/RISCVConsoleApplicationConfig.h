@@ -9,7 +9,7 @@
 class CRISCVConsoleApplicationConfiguration{
     public:
         enum class EParameter{  UpKey,DownKey,LeftKey,RightKey,Button1Key,Button2Key,Button3Key,Button4Key,
-                                ZoomInKey,ZoomOutKey,
+                                ZoomInKey,ZoomOutKey,SnapshotKey,
                                 WidgetSpacing,InstructionLines,MemoryLines,
                                 ScreenTimer,TimerUS,CPUFrequency
                             };

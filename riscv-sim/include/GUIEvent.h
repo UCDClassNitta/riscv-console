@@ -177,7 +177,7 @@ struct SGUIScrollEvent{
     double DDeltaY;
 };
 
-enum class EGUIEvent{Expose, Motion, ButtonPress, ButtonRelease, KeyPress, KeyRelease, Scroll};
+enum class EGUIEvent{Expose, Motion, ButtonPress, ButtonRelease, KeyPress, KeyRelease, Scroll, Configure, Property};
 
 using TGUIApplicationCallback = void (*)(TGUICalldata data);
 using TGUITimeoutCallback = bool (*)(TGUICalldata data);

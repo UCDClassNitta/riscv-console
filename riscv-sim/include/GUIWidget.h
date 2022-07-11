@@ -22,6 +22,9 @@ class CGUIWidget{
         virtual void Invalidate() = 0;
         
         virtual void SetCursor(std::shared_ptr< CGUICursor > cursor) = 0;
+
+        virtual void SetTooltipText(const std::string &tip) = 0;
+        virtual void SetTooltipMarkup(const std::string &markup) = 0;
         
         virtual std::shared_ptr<CGraphicSurface> CreateSimilarSurface(int width, int height) = 0;
         virtual std::shared_ptr<CGraphicResourceContext> CreateResourceContext() = 0;

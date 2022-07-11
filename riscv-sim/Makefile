@@ -78,6 +78,7 @@ AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/FileDataContainer.o              \
     $(OBJ_DIR)/FileDataSink.o                   \
     $(OBJ_DIR)/FileDataSource.o                 \
+    $(OBJ_DIR)/LineDataSource.o                 \
     $(OBJ_DIR)/Path.o                           \
     $(OBJ_DIR)/MemoryControllerDevice.o         \
     $(OBJ_DIR)/MemoryDevice.o                   \

@@ -56,16 +56,19 @@ class CRISCVConsole{
         std::unordered_map< uint32_t, size_t > DFirmwareAddressesToIndices;
         std::vector< std::string > DFirmwareInstructionLabels;
         std::vector< size_t > DFirmwareInstructionLabelIndices;
+        std::vector< uint32_t > DFirmwareInstructionLabelAddresses;
 
         std::vector< std::string > DCartridgeInstructionStrings;
         std::unordered_map< uint32_t, size_t > DCartridgeAddressesToIndices;
         std::vector< std::string > DCartridgeInstructionLabels;
         std::vector< size_t > DCartridgeInstructionLabelIndices;
+        std::vector< uint32_t > DCartridgeInstructionLabelAddresses;
 
         std::vector< std::string > DInstructionStrings;
         std::unordered_map< uint32_t, size_t > DInstructionAddressesToIndices;
         std::vector< std::string > DInstructionLabels;
         std::vector< size_t > DInstructionLabelIndices;
+        std::vector< uint32_t > DInstructionLabelAddresses;
 
         std::set< uint32_t > DBreakpoints;
         CRISCVConsoleBreakpointCalldata DBreakpointCalldata;
@@ -89,9 +92,10 @@ class CRISCVConsole{
         bool SystemStep();
         void ResetComponents();
 
-        void ConstructInstructionStrings(CElfLoad &elffile, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations, std::vector< std::string > &labels, std::vector< size_t > &labelindices);
-        void ConstructFirmwareStrings(CElfLoad &elffile);
-        void ConstructCartridgeStrings(CElfLoad &elffile);
+        void LoadElfSourceFiles(CElfLoad &elffile, std::shared_ptr<CDataContainer> elfcontainer, std::vector< std::vector< std::string > > &filelines);
+        void ConstructInstructionStrings(CElfLoad &elffile, std::shared_ptr<CDataContainer> elfcontainer, std::vector< std::string > &strings, std::unordered_map< uint32_t, size_t > &translations, std::vector< std::string > &labels, std::vector< size_t > &labelindices, std::vector< uint32_t > &labeladdresses);
+        void ConstructFirmwareStrings(CElfLoad &elffile, std::shared_ptr<CDataContainer> elfcontainer);
+        void ConstructCartridgeStrings(CElfLoad &elffile, std::shared_ptr<CDataContainer> elfcontainer);
         void MarkBreakpointStrings();
 
     public:
@@ -176,6 +180,10 @@ class CRISCVConsole{
             return DInstructionLabelIndices;
         }
         
+        const std::vector< uint32_t > &InstructionLabelAddresses() const{
+            return DInstructionLabelAddresses;
+        };
+
         uint32_t MainMemorySize(){
             return DMainMemorySize;
         };

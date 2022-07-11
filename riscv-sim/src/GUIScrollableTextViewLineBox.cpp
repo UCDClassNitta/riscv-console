@@ -100,6 +100,19 @@ std::shared_ptr<CGUIWidget> CGUIScrollableTextViewLineBox::ContainingWidget() co
     return DContainingFrame;
 }
 
+void CGUIScrollableTextViewLineBox::SetVerticalExpand(bool exp){
+    DContainingFrame->SetVerticalExpand(exp);
+}
+
+void CGUIScrollableTextViewLineBox::SetHorizontalExpand(bool exp){
+    DContainingFrame->SetHorizontalExpand(exp);
+}
+
+void CGUIScrollableTextViewLineBox::SetCursor(std::shared_ptr<CGUICursor> cursor){
+    DTextView->SetCursor(cursor);
+    DContainingFrame->SetCursor(cursor);
+}
+
 size_t CGUIScrollableTextViewLineBox::GetBaseLine() const{
     auto VerticalScrollBar = DScrollWindow->GetVerticalScrollBar();
     return DTextView->GetLineNumberAtY(VerticalScrollBar->GetValue());

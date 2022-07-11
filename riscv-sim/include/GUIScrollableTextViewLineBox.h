@@ -49,6 +49,10 @@ class CGUIScrollableTextViewLineBox : public virtual CGUIScrollableLineBox, publ
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const override;
 
+        virtual void SetVerticalExpand(bool exp) override;
+        virtual void SetHorizontalExpand(bool exp) override;
+        virtual void SetCursor(std::shared_ptr<CGUICursor> cursor) override; 
+
         virtual size_t GetBaseLine() const override;
         virtual void SetBaseLine(size_t line) override;
         virtual size_t GetLineCount() const override;

@@ -15,6 +15,10 @@ class CGUIScrollableLineBox{
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const = 0;
 
+        virtual void SetVerticalExpand(bool exp) = 0;
+        virtual void SetHorizontalExpand(bool exp) = 0;
+        virtual void SetCursor(std::shared_ptr<CGUICursor> cursor) = 0;
+
         virtual size_t GetBaseLine() const = 0;
         virtual void SetBaseLine(size_t line) = 0;
         virtual size_t GetLineCount() const = 0;

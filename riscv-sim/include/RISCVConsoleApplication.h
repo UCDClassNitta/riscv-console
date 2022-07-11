@@ -10,6 +10,7 @@
 #include "RISCVConsoleApplicationConfig.h"
 #include "AutoRecorder.h"
 #include <unordered_map>
+#include <set>
 
 class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConsoleApplication>{
     struct SPrivateConstructionType{};
@@ -21,6 +22,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool DDeleted = false;
         bool DDebugMode = false;
         bool DFollowingInstruction = false;
+        bool DIgnoreComboBoxChange = false;
 
         std::shared_ptr<CGUIWindow> DMainWindow;
         std::shared_ptr<CGUIBox> DConsoleDebugBox;
@@ -50,6 +52,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         std::vector< std::shared_ptr< CGUILabel > > DGeneralRegisterValueLabels;
         std::shared_ptr< CGUILabel > DProgramCounterNameLabel;
         std::shared_ptr< CGUILabel > DProgramCounterValueLabel;
+        std::shared_ptr< CGUIEventBox > DProgramCounterNameEventBox;
+        std::shared_ptr< CGUIEventBox > DProgramCounterValueEventBox;
 
         std::shared_ptr<CGUIBox> DDebugControlBox;
         std::shared_ptr<CGUIToggleButton> DDebugRunButton;
@@ -81,6 +85,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         std::unordered_map<std::shared_ptr<CGUIToggleButton>, CRISCVConsole::EDirection> DDirectionButtonMapping;
         std::unordered_map<std::shared_ptr<CGUIToggleButton>, CRISCVConsole::EButtonNumber> DButtonNumberButtonMapping;
         std::unordered_map<uint32_t, bool> DKeyZoomMapping;
+        std::set<uint32_t> DKeySnapshotMapping;
 
         std::shared_ptr<CAutoRecorder> DInputRecorder;
         std::shared_ptr<CRISCVConsole> DRISCVConsole;
@@ -106,6 +111,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool CommandButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool ResetButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool PowerButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
+        static bool ProgramCounterButtonEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool DebugMemoryButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data);
         static bool DebugMemoryStackButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
         static bool RunButtonToggledEventCallback(std::shared_ptr<CGUIWidget> widget, TGUICalldata data);
@@ -133,6 +139,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool CommandButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool ResetButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool PowerButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
+        bool ProgramCounterButtonEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         void UpdateConsoleButtonChange(std::shared_ptr<CGUIToggleButton> button);
         bool DebugMemoryButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event);
         bool DebugMemoryStackButtonToggledEvent(std::shared_ptr<CGUIWidget> widget);
@@ -160,6 +167,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
 
         void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
         void SetKeyZoomMapping(const std::string &keys, bool zoomin);
+        void SetSnapshotMapping(const std::string &keys);
         uint32_t GetScreenTimeoutMS();
         uint32_t GetWidgetSpacing();
         uint32_t GetInstructionLineCount();
@@ -167,7 +175,10 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         uint32_t GetTimerUS();
         uint32_t GetCPUFrequency();
 
+        std::string CreateRegisterTooltip(size_t index);
+        std::string FindLabelFromAddress(uint32_t addr);
         void RefreshDebugRegisters();
+        void RefreshDebugInstructionComboBox();
 
         void ParseArguments(int &argc, char *argv[]);
 

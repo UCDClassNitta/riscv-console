@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
+#include <ctime>
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::DApplicationPointer;
 
@@ -103,6 +105,11 @@ bool CRISCVConsoleApplication::PowerButtonToggledEventCallback(std::shared_ptr<C
     return App->PowerButtonToggledEvent(widget);
 }
 
+bool CRISCVConsoleApplication::ProgramCounterButtonEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->ProgramCounterButtonEvent(widget, event);
+}
+
 bool CRISCVConsoleApplication::DebugMemoryButtonClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->DebugMemoryButtonClickEvent(widget,event);
@@ -173,6 +180,7 @@ void CRISCVConsoleApplication::Activate(){
 
     DMainWindow->Add(DConsoleDebugBox ? DConsoleDebugBox : DConsoleBox);
     DMainWindow->ShowAll();
+    DMainWindow->SetConfigureEventCallback(this,MainWindowConfigureEventCallback);
     
     DApplication->SetTimer(1,this,TimeoutCallback);
 }
@@ -237,12 +245,34 @@ bool CRISCVConsoleApplication::MainWindowKeyReleaseEvent(std::shared_ptr<CGUIWid
                 }
             }
         }
+        else if(DKeySnapshotMapping.find(event.DValue.DValue) != DKeySnapshotMapping.end()){
+            auto CurrentTime = std::chrono::system_clock::now();
+            auto TimeT = std::chrono::system_clock::to_time_t(CurrentTime);
+            auto LocalTime = ::localtime(&TimeT);
+            auto SaveSurface = DMainWindow->RenderToSurface();
+            auto Filename = std::string("snapshot-") + std::to_string(LocalTime->tm_year + 1900);
+            Filename += LocalTime->tm_mon < 10 ? "-0" : "-";
+            Filename += std::to_string(LocalTime->tm_mon + 1);
+            Filename += LocalTime->tm_mday < 10 ? "-0" : "-";
+            Filename += std::to_string(LocalTime->tm_mday);
+            Filename += LocalTime->tm_hour < 10 ? "-0" : "-";
+            Filename += std::to_string(LocalTime->tm_hour);
+            Filename += LocalTime->tm_min < 10 ? "0" : "";
+            Filename += std::to_string(LocalTime->tm_min);
+            Filename += LocalTime->tm_sec < 10 ? "0" : "";
+            Filename += std::to_string(LocalTime->tm_sec);
+            Filename += ".png";
+            auto OutputSink = std::make_shared<CFileDataSink>(Filename);
+            
+            CGraphicFactory::StoreSurface(OutputSink,SaveSurface);
+        }
     }
     return true;
 }
 
 bool CRISCVConsoleApplication::MainWindowConfigureEvent(std::shared_ptr<CGUIWidget> widget, SGUIConfigureEvent &event){
-    return true;
+
+    return false;
 }
 
 bool CRISCVConsoleApplication::DrawingAreaDraw(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc){
@@ -276,10 +306,16 @@ bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidg
                     DDebugInstructions->SetBufferedLines(DRISCVConsole->InstructionStrings());
                     DDebugInstructionComboBox->ClearItems();
                     for(auto &Label : DRISCVConsole->InstructionLabels()){
-                        DDebugInstructionComboBox->AppendItem(Label);
+                        if(!Label.empty() && Label[0] == '/'){
+                            DDebugInstructionComboBox->AppendItem(Label);
+                        }
+                        else{
+                            DDebugInstructionComboBox->AppendItem(std::string("  ") + Label);
+                        }
                     }
                     DFollowingInstruction = true;
                     RefreshDebugRegisters();
+                    RefreshDebugInstructionComboBox();
                 }
             }
         }
@@ -369,6 +405,18 @@ bool CRISCVConsoleApplication::PowerButtonToggledEvent(std::shared_ptr<CGUIWidge
     return true;
 }
 
+bool CRISCVConsoleApplication::ProgramCounterButtonEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
+    if(event.DType.IsDoubleButtonPress()){
+        auto LineIndex = DRISCVConsole->InstructionAddressesToIndices(DRISCVConsole->CPU()->ProgramCounter());
+        
+        if((LineIndex < DDebugInstructions->GetBufferedLineCount())&&((DDebugInstructions->GetBaseLine() > LineIndex)||(DDebugInstructions->GetBaseLine() + DDebugInstructions->GetLineCount()/2 <= LineIndex))){
+            DDebugInstructions->SetBaseLine(LineIndex < DDebugInstructions->GetLineCount()/2 ? 0 : LineIndex - (DDebugInstructions->GetLineCount()/2 - 1));
+        }
+
+    }
+    return true;
+}
+
 void CRISCVConsoleApplication::UpdateConsoleButtonChange(std::shared_ptr<CGUIToggleButton> button){
     auto DirectionSearch = DDirectionButtonMapping.find(button);
     uint64_t Cycle;
@@ -444,9 +492,11 @@ bool CRISCVConsoleApplication::RunButtonToggledEvent(std::shared_ptr<CGUIWidget>
             DPowerButton->SetActive(true);
         }
         DRISCVConsole->Run();
+        DDebugRunButton->SetTooltipText("Stop Running");
     }
     else{
         DRISCVConsole->Stop();
+        DDebugRunButton->SetTooltipText("Start Running");
         RefreshDebugRegisters();
     }
     
@@ -490,15 +540,20 @@ bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidg
             DInputRecorder->OutputJSONFile(Filename);
             RefreshDebugRegisters();
         }
+        DDebugRecordButton->SetTooltipText("Record user input");
     }
     else{
         DInputRecorder->ResetRecord();
+        DDebugRecordButton->SetTooltipText("Stop input recording");
     }
     
     return true;
 }
 
 bool CRISCVConsoleApplication::InstructionComboBoxChangedEvent(std::shared_ptr<CGUIWidget> widget){
+    if(DIgnoreComboBoxChange){
+        return true;
+    }
     auto ItemNumber = DDebugInstructionComboBox->GetActiveItem();
     if(ItemNumber < int(DRISCVConsole->InstructionLabelIndices().size())){
         DDebugInstructions->SetBaseLine(DRISCVConsole->InstructionLabelIndices()[ItemNumber]);
@@ -529,6 +584,8 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
 
 bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget){
     DFollowingInstruction = (widget->GetBaseLine() <= widget->GetHighlightedBufferedLine()) && (widget->GetHighlightedBufferedLine() < widget->GetBaseLine() + widget->GetLineCount());
+
+RefreshDebugInstructionComboBox();
     return true;
 }
 
@@ -628,6 +685,8 @@ void CRISCVConsoleApplication::CreateControllerWidgets(){
     SetKeyZoomMapping(DConfiguration.GetStringParameter(CRISCVConsoleApplicationConfiguration::EParameter::ZoomInKey),true);
     SetKeyZoomMapping(DConfiguration.GetStringParameter(CRISCVConsoleApplicationConfiguration::EParameter::ZoomOutKey),false);
     
+    SetSnapshotMapping(DConfiguration.GetStringParameter(CRISCVConsoleApplicationConfiguration::EParameter::SnapshotKey));
+
     DCommandButton->SetLabel("CMD");
     DCommandButton->SetButtonPressEventCallback(this,CommandButtonClickEventCallback);
 
@@ -688,6 +747,8 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     CSRLabel->SetJustification(SGUIJustificationType::Left);
     InstCSRGrid->Attach(InstLabel,0,0,1,1);
     InstCSRGrid->Attach(DDebugInstructionComboBox,1,0,1,1);
+    DDebugInstructions->SetHorizontalExpand(true);
+    DDebugInstructions->SetVerticalExpand(true);
     InstCSRGrid->Attach(DDebugInstructions->ContainingWidget(),0,1,2,1);
     
     InstCSRGrid->Attach(DDebugControlBox,2,1,1,1);
@@ -695,7 +756,7 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     InstCSRGrid->Attach(DDebugCSRegisters->ContainingWidget(),3,1,1,1);
     InstCSRGrid->SetColumnSpacing(GetWidgetSpacing());
     InstCSRGrid->SetRowSpacing(GetWidgetSpacing());
-    DDebugBox->PackStart(InstCSRGrid,false,false,GetWidgetSpacing());
+    DDebugBox->PackStart(InstCSRGrid,true,true,GetWidgetSpacing());
     CreateDebugMemoryWidgets();
     auto MemoryGrid = CGUIFactory::NewGrid();
     auto MemoryLabel = CGUIFactory::NewLabel("Memory");
@@ -714,32 +775,40 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     MemoryGrid->Attach(DDebugMemoryDataButton,5,0,1,1);
     MemoryGrid->Attach(DDebugMemoryStackButton,6,0,1,1);
     MemoryGrid->Attach(DDebugMemory->ContainingWidget(),0,1,8,1);
+    DDebugMemory->SetHorizontalExpand(true);
+    DDebugMemory->SetVerticalExpand(false);
     MemoryGrid->SetRowSpacing(GetWidgetSpacing());
     MemoryGrid->SetColumnSpacing(GetWidgetSpacing());
     DDebugBox->PackStart(MemoryGrid,false,false,GetWidgetSpacing());
 
     DDebugMemoryFirmwareButton->SetLabel("FW");
     DDebugMemoryFirmwareButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
+    DDebugMemoryFirmwareButton->SetTooltipText("Firmware base address");
     DDebugMemoryButtonMapping[DDebugMemoryFirmwareButton] = DRISCVConsole->FirmwareMemoryBase();
     DDebugMemoryCartridgeButton->SetLabel("CTR");
     DDebugMemoryCartridgeButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
+    DDebugMemoryCartridgeButton->SetTooltipText("Cartridge base address");
     DDebugMemoryButtonMapping[DDebugMemoryCartridgeButton] = DRISCVConsole->CartridgeMemoryBase();
     DDebugMemoryRegistersButton->SetLabel("CS");
     DDebugMemoryRegistersButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
+    DDebugMemoryRegistersButton->SetTooltipText("Chipset base address");
     DDebugMemoryButtonMapping[DDebugMemoryRegistersButton] = DRISCVConsole->RegisterMemoryBase();
     DDebugMemoryVideoButton->SetLabel("VID");
     DDebugMemoryVideoButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
+    DDebugMemoryVideoButton->SetTooltipText("Video controller");
     DDebugMemoryButtonMapping[DDebugMemoryVideoButton] = DRISCVConsole->VideoMemoryBase();
     DDebugMemorySubSectionMapping[DRISCVConsole->VideoMemoryBase()] = DRISCVConsole->VideoMemorySegmentBases();
     DDebugMemorySubSectionIndex[DRISCVConsole->VideoMemoryBase()] = 0;
     DDebugMemoryDataButton->SetLabel("GP");
     DDebugMemoryDataButton->SetButtonPressEventCallback(this,DebugMemoryButtonClickEventCallback);
+    DDebugMemoryDataButton->SetTooltipText("Global Pointer");
     DDebugMemoryStackButton->SetLabel("SP");
     DDebugMemoryStackButton->SetToggledEventCallback(this,DebugMemoryStackButtonToggledEventCallback);
+    DDebugMemoryStackButton->SetTooltipText("Stack Pointer");
     DLastMemoryBaseAddress = 0;
 
     DConsoleDebugBox->PackStart(DConsoleBox,false,false,GetWidgetSpacing());
-    DConsoleDebugBox->PackStart(DDebugBox,false,false,GetWidgetSpacing());
+    DConsoleDebugBox->PackStart(DDebugBox,true,true,GetWidgetSpacing());
     RefreshDebugRegisters();
 }
 
@@ -778,11 +847,18 @@ void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
     DProgramCounterNameLabel->SetHorizontalExpand(true);
     DProgramCounterNameLabel->SetFontFamily("monospace");
     DProgramCounterNameLabel->SetWidthCharacters(MaxChar);
-    DRegisterGrid->Attach(DProgramCounterNameLabel,0,QuarterCount+1,1,1);
+    DProgramCounterNameEventBox = CGUIFactory::NewEventBox();
+    DProgramCounterNameEventBox->Add(DProgramCounterNameLabel);
+    DProgramCounterNameEventBox->SetButtonPressEventCallback(this,ProgramCounterButtonEventCallback);
+    
+    DRegisterGrid->Attach(DProgramCounterNameEventBox,0,QuarterCount+1,1,1);
     DProgramCounterValueLabel = CGUIFactory::NewLabel("XXXXXXXX");
     DProgramCounterValueLabel->SetFontFamily("monospace");
     DProgramCounterValueLabel->SetWidthCharacters(8);
-    DRegisterGrid->Attach(DProgramCounterValueLabel,1,QuarterCount+1,1,1);
+    DProgramCounterValueEventBox = CGUIFactory::NewEventBox();
+    DProgramCounterValueEventBox->Add(DProgramCounterValueLabel);
+    DProgramCounterValueEventBox->SetButtonPressEventCallback(this,ProgramCounterButtonEventCallback);
+    DRegisterGrid->Attach(DProgramCounterValueEventBox,1,QuarterCount+1,1,1);
 
     DRegisterGrid->SetHorizontalExpand(false);
 }
@@ -796,15 +872,19 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
     DDebugRecordButton = CGUIFactory::NewToggleButton();
     DDebugRunButton->SetLabel("Run");
     DDebugRunButton->SetToggledEventCallback(this, RunButtonToggledEventCallback);
+    DDebugRunButton->SetTooltipText("Start Running");
 
     DDebugStepButton->SetLabel("Step");
     DDebugStepButton->SetButtonPressEventCallback(this,StepButtonClickEventCallback);
+    DDebugStepButton->SetTooltipText("Step one instruction");
 
     DDebugClearButton->SetLabel("Clear");
     DDebugClearButton->SetButtonPressEventCallback(this,ClearButtonClickEventCallback);
+    DDebugClearButton->SetTooltipText("Clear breakpoints");
 
     DDebugRecordButton->SetLabel("Record");
     DDebugRecordButton->SetToggledEventCallback(this, RecordButtonToggledEventCallback);
+    DDebugRecordButton->SetTooltipText("Record user input");
 
     DDebugControlBox->PackStart(DDebugRunButton,false,false,GetWidgetSpacing());
     DDebugControlBox->PackStart(DDebugStepButton,false,false,GetWidgetSpacing());
@@ -828,9 +908,9 @@ void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugCSRWidgets(){
-    DDebugCSRegisters = std::make_shared<CGUIScrollableLabelBox>();
-    // Assume mcounteren: 01234567
-    DDebugCSRegisters->SetWidthCharacters(20);
+    DDebugCSRegisters = std::make_shared<CGUIScrollableTextViewLineBox>();//std::make_shared<CGUIScrollableLabelBox>();
+    // Assume mcounteren: 01234567 add buffer
+    DDebugCSRegisters->SetWidthCharacters(22);
     std::vector< std::string > InitialCSR;
     size_t MaxLen = 0;
     for(auto CSRAddr : DRISCVConsole->CPU()->ControlStatusRegisterKeys()){
@@ -860,7 +940,7 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
 
 bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){
     auto Line = DDebugInstructions->GetBufferedLine(line);
-    if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')){
+    if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')||(Line[9] != ':')){
         return false;
     }
     breakpoint = Line[0] == '@';
@@ -902,6 +982,24 @@ void CRISCVConsoleApplication::SetKeyZoomMapping(const std::string &keys, bool z
         }
         else{
             DKeyZoomMapping[(uint32_t)Letter] = zoomin;
+        }
+    }
+}
+
+void CRISCVConsoleApplication::SetSnapshotMapping(const std::string &keys){
+    for(auto Letter : keys){
+        if(('a' <= Letter)&&('z' >= Letter)){
+            auto Delta = Letter - 'a';
+            DKeySnapshotMapping.insert(SGUIKeyType::KeyA + Delta);
+            DKeySnapshotMapping.insert(SGUIKeyType::Keya + Delta);
+        }
+        else if(('A' <= Letter)&&('Z' >= Letter)){
+            auto Delta = Letter - 'A';
+            DKeySnapshotMapping.insert(SGUIKeyType::KeyA + Delta);
+            DKeySnapshotMapping.insert(SGUIKeyType::Keya + Delta);
+        }
+        else{
+            DKeySnapshotMapping.insert((uint32_t)Letter);
         }
     }
 }
@@ -969,12 +1067,63 @@ uint32_t CRISCVConsoleApplication::GetCPUFrequency(){
     return CPUFreq;
 }
 
+std::string CRISCVConsoleApplication::CreateRegisterTooltip(size_t index){
+    if((4 <= index)&&(index < CRISCVCPU::RegisterCount())){
+        auto RegisterValue = DRISCVConsole->CPU()->Register(index);
+        auto SignedValue = int32_t(RegisterValue);
+        std::string ReturnString = std::to_string(SignedValue);
+        if((DRISCVConsole->MainMemoryBase() <= RegisterValue)&&(RegisterValue < DRISCVConsole->MainMemoryBase() + DRISCVConsole->MainMemorySize())){
+            // Dereference location as likely a pointer
+            auto Dereferenced = DRISCVConsole->Memory()->LoadUINT32(RegisterValue);
+            auto SignedDereferenced = int32_t(Dereferenced);
+            ReturnString = std::string("*(") + FormatHex32Bit(RegisterValue) + ") = " + FormatHex32Bit(Dereferenced) + " (" + std::to_string(SignedDereferenced) + ")";
+        }
+        return "<tt>" + ReturnString + "</tt>";
+    }
+    if((1 == index)||(CRISCVCPU::RegisterCount() == index)){
+        auto RegisterValue = 1 == index ? DRISCVConsole->CPU()->Register(index) : DRISCVConsole->CPU()->ProgramCounter();
+        return "<tt>" + FindLabelFromAddress(RegisterValue) + "</tt>";
+    }
+    return std::string();
+}
+
+std::string CRISCVConsoleApplication::FindLabelFromAddress(uint32_t addr){
+    auto BestLabel = DRISCVConsole->InstructionLabelAddresses().size();
+    for(size_t ItemNumber = 0; ItemNumber < DRISCVConsole->InstructionLabelAddresses().size(); ItemNumber++){
+        if(DRISCVConsole->InstructionLabelAddresses()[ItemNumber] <= addr){
+            BestLabel = ItemNumber;
+        }
+    }
+    if(BestLabel < DRISCVConsole->InstructionLabelAddresses().size()){
+        auto Offset = addr - DRISCVConsole->InstructionLabelAddresses()[BestLabel];
+        std::stringstream ReturnStream;
+        ReturnStream<< DRISCVConsole->InstructionLabels()[BestLabel];
+        if(Offset){
+            auto Width = 2;
+            uint32_t Mask = 0xFF;
+            while((Offset & Mask) != Offset){
+                Mask <<= 8;
+                Mask |= 0xFF;
+                Width += 2;   
+            }
+            ReturnStream<<" + x";
+            ReturnStream<< std::setfill('0') << std::setw(Width) << std::hex << Offset;
+        }
+        return ReturnStream.str();
+    }
+    return std::string();
+}
+
 void CRISCVConsoleApplication::RefreshDebugRegisters(){
     for(size_t Index = 0; Index < CRISCVCPU::RegisterCount(); Index++){
-        DGeneralRegisterValueLabels[Index]->SetText(FormatHex32Bit(DRISCVConsole->CPU()->Register(Index)));
+        auto RegisterValue = DRISCVConsole->CPU()->Register(Index);
+        DGeneralRegisterValueLabels[Index]->SetText(FormatHex32Bit(RegisterValue));
+        //DGeneralRegisterValueLabels[Index]->SetTooltipMarkup(std::string("<span bgcolor=\"white\" color=\"black\" font_family=\"monospace\">") + std::to_string(RegisterValue) + "</span>");
+        DGeneralRegisterValueLabels[Index]->SetTooltipMarkup(CreateRegisterTooltip(Index));
     }
     auto PC = DRISCVConsole->CPU()->ProgramCounter();
     DProgramCounterValueLabel->SetText(FormatHex32Bit(PC));
+    DProgramCounterValueLabel->SetTooltipMarkup(CreateRegisterTooltip(CRISCVCPU::RegisterCount()));
     size_t LineIndex = 0;
     for(auto CSRAddr : DRISCVConsole->CPU()->ControlStatusRegisterKeys()){
         auto NewLine = DDebugCSRegisters->GetBufferedLine(LineIndex);
@@ -994,6 +1143,23 @@ void CRISCVConsoleApplication::RefreshDebugRegisters(){
             DDebugInstructions->SetBaseLine(LineIndex < DDebugInstructions->GetLineCount()/2 ? 0 : LineIndex - (DDebugInstructions->GetLineCount()/2 - 1));
         }
     }
+}
+
+void CRISCVConsoleApplication::RefreshDebugInstructionComboBox(){
+    size_t BaseLine = DDebugInstructions->GetBaseLine() + DDebugInstructions->GetLineCount() / 2;
+    size_t BestIndex = 0;
+    if((DDebugInstructions->GetBaseLine() <= DDebugInstructions->GetHighlightedBufferedLine())&&(DDebugInstructions->GetHighlightedBufferedLine() < DDebugInstructions->GetBaseLine() + DDebugInstructions->GetLineCount())){
+        BaseLine = DDebugInstructions->GetHighlightedBufferedLine();
+    }
+    for(size_t Index = 0; Index < DRISCVConsole->InstructionLabelIndices().size(); Index++){
+        if(DRISCVConsole->InstructionLabelIndices()[Index] <= BaseLine){
+            BestIndex = Index;
+        }
+    }
+    DIgnoreComboBoxChange = true;
+    DDebugInstructionComboBox->SetActiveItem(int(BestIndex));
+    DIgnoreComboBoxChange = false;
+    
 }
 
 void CRISCVConsoleApplication::ParseArguments(int &argc, char *argv[]){

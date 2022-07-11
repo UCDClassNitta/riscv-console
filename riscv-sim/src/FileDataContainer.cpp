@@ -9,6 +9,7 @@
 
 CDirectoryDataContainerIterator::CDirectoryDataContainerIterator(const std::string &path, const SPrivateConstructorKey &key) : CDataContainerIterator(){
     DDirectory = opendir(path.c_str());
+    DEntryResult = nullptr;
     if(nullptr != DDirectory){
         DEntryResult = readdir(DDirectory);
     }

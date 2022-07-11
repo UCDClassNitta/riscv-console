@@ -1,8 +1,11 @@
 
 #include "GUIFactoryGTK3.h"
 #include "GraphicFactoryCairo.h"
+#include "Path.h"
 #include <algorithm>
 #include <cctype>
+#include <stdlib.h>
+#include <sys/stat.h>
 #include <glib.h>
 #include <glib/gi18n.h>
 
@@ -353,7 +356,52 @@ void CGUIApplicationGTK3::Quit(){
 }
 
 std::shared_ptr<CGUIWindow> CGUIApplicationGTK3::NewWindow(){
-    return std::make_shared<CGUIWindowGTK3>(gtk_application_window_new(DApplication));
+    auto Window = gtk_application_window_new(DApplication);
+
+    CPath HomeDirectory(getenv("HOME"));
+    struct stat StatBuffer;
+    if(-1 == stat(HomeDirectory.Simplify(std::string(".config/gtk-3.0/gtk.css")).ToString().c_str(),&StatBuffer)){
+        std::string ToolTipCSS =    "@define-color base_color #ffffff;\n"
+                                    "@define-color tooltip_bg_color #ffffff;\n"
+                                    "@define-color tooltip_fg_color #000000;\n"
+                                    "@define-color theme_tooltip_bg_color @tooltip_bg_color;\n"
+                                    "@define-color theme_tooltip_fg_color @tooltip_fg_color;\n"
+                                    "\n"
+                                    "tooltip {\n"
+                                    "  padding: 0px 0px 0px 0px;\n"
+                                    "  margin: 0px 0px 0px 0px;\n"
+                                    "  border-width: 1px;\n"
+                                    "  border-style: none;\n"
+                                    "  border-radius: 0px;\n"
+                                    "  border-color: #ffffff;\n"
+                                    "  background-image: none;\n"
+                                    "  background-color: #ffffff;\n"
+                                    "  color: #000000;\n"
+                                    "  border: 0px;\n"
+                                    "}\n"
+                                    "\n"
+                                    "tooltip * {\n"
+                                    "  background-color: #ffffff;\n"
+                                    "  font-weight: bold;\n"
+                                    "  padding: 0px 0px 0px 0px;\n"
+                                    "  margin: 0px 0px 0px 0px;\n"
+                                    "  border-width: 0px;\n"
+                                    "  border-style: none;\n"
+                                    "  border-color: @tooltip_bg_color;\n"
+                                    "  color: #000000;\n"
+                                    "  text-shadow: 0px 0px 0px #bbbbbb, 0px 0px 0px #cccccc;\n"
+                                    "}\n";
+        auto NewProvider = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(NewProvider, ToolTipCSS.c_str(), -1, NULL);
+        auto DefaultScreen = gdk_screen_get_default();
+        gtk_style_context_add_provider_for_screen(DefaultScreen,GTK_STYLE_PROVIDER(NewProvider),GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        
+
+
+    }
+    
+
+    return std::make_shared<CGUIWindowGTK3>(Window);
 }
 
 CGUIDisplayGTK3::CGUIDisplayGTK3(GdkDisplay *display) : CGUIDisplay(){
@@ -705,6 +753,14 @@ void CGUIWidgetGTK3::SetCursor(std::shared_ptr< CGUICursor > cursor){
     gdk_window_set_cursor(gtk_widget_get_window(DWidget), Cursor->DCursor);
 }
 
+void CGUIWidgetGTK3::SetTooltipText(const std::string &tip){
+    gtk_widget_set_tooltip_text(DWidget,tip.c_str());
+}
+
+void CGUIWidgetGTK3::SetTooltipMarkup(const std::string &markup){
+    gtk_widget_set_tooltip_markup(DWidget,markup.c_str());
+}
+
 std::shared_ptr<CGraphicSurface> CGUIWidgetGTK3::CreateSimilarSurface(int width, int height){
     return std::make_shared<CGraphicSurfaceCairo>(gdk_window_create_similar_image_surface(gtk_widget_get_window(DWidget),
                                                        CAIRO_FORMAT_ARGB32,
@@ -747,6 +803,22 @@ void CGUIWidgetGTK3::EnableEvent(EGUIEvent event){
                                         break;
         case EGUIEvent::Scroll:         CurrentMask |= GDK_SCROLL_MASK;
                                         break;
+        case EGUIEvent::Configure:      //CurrentMask |= GDK_STRUCTURE_MASK;
+                                        {
+                                            auto Window = gtk_widget_get_window(DWidget);
+                                            if(Window){
+                                                gdk_window_set_events(Window, GdkEventMask(gdk_window_get_events(Window) | GDK_STRUCTURE_MASK));
+                                            }
+                                        }
+                                        break;
+        case EGUIEvent::Property:       CurrentMask |= GDK_PROPERTY_CHANGE_MASK;
+                                        {
+                                            auto Window = gtk_widget_get_window(DWidget);
+                                            if(Window){
+                                                gdk_window_set_events(Window, GdkEventMask(gdk_window_get_events(Window) | GDK_PROPERTY_CHANGE_MASK));
+                                            }
+                                        }
+                                        break;
         default:                        break;
     }
     gtk_widget_set_events(DWidget, CurrentMask);
@@ -768,6 +840,10 @@ void CGUIWidgetGTK3::DisableEvent(EGUIEvent event){
         case EGUIEvent::KeyRelease:     CurrentMask &= ~GDK_KEY_RELEASE_MASK;
                                         break;
         case EGUIEvent::Scroll:         CurrentMask &= ~GDK_SCROLL_MASK;
+                                        break;
+        case EGUIEvent::Configure:      CurrentMask &= ~GDK_STRUCTURE_MASK;
+                                        break;
+        case EGUIEvent::Property:       CurrentMask &= ~GDK_PROPERTY_CHANGE_MASK;
                                         break;
         default:                        break;
     }
@@ -1165,12 +1241,20 @@ void CGUIGridGTK3::SetRowSpacing(unsigned int spacing){
     gtk_grid_set_row_spacing(GTK_GRID(DWidget), spacing);
 }
 
+void CGUIGridGTK3::RemoveRow(int row){
+    gtk_grid_remove_row(GTK_GRID(DWidget), row);
+}
+
 unsigned int CGUIGridGTK3::GetColumnSpacing() const{
     return gtk_grid_get_column_spacing(GTK_GRID(DWidget));
 }
 
 void CGUIGridGTK3::SetColumnSpacing(unsigned int spacing){
     gtk_grid_set_column_spacing(GTK_GRID(DWidget), spacing);
+}
+
+void CGUIGridGTK3::RemoveColumn(int col){
+    gtk_grid_remove_column(GTK_GRID(DWidget), col);
 }
 
 void CGUIGridGTK3::Attach(std::shared_ptr<CGUIWidget> widget, int left, int top, int width, int height){
@@ -1241,8 +1325,7 @@ void CGUITextTagGTK3::TransformValue(GValue *value, const std::string &str_value
         auto LowerCase = str_value;
         std::transform(LowerCase.begin(), LowerCase.end(), LowerCase.begin(), [](unsigned char c){ return std::tolower(c); });
         switch(G_VALUE_TYPE(value)){
-            case G_TYPE_BOOLEAN:    printf("%s @ %d\n",__FILE__,__LINE__);
-                                    if(LowerCase == "true"){
+            case G_TYPE_BOOLEAN:    if(LowerCase == "true"){
                                         g_value_set_boolean(value,true);
                                     }
                                     else if(LowerCase == "false"){
@@ -1380,7 +1463,7 @@ std::string CGUITextBufferGTK3::GetText(std::shared_ptr<CGUITextIter> start, std
     auto IterEnd = std::dynamic_pointer_cast<CGUITextIterGTK3>(end);
     auto TextPtr = gtk_text_buffer_get_text(DTextBuffer,&IterStart->DIter,&IterEnd->DIter,true);
     std::string ReturnString = TextPtr;
-    free(TextPtr);
+    g_free(TextPtr);
     return ReturnString;
 }
 
@@ -1620,6 +1703,18 @@ void CGUIWindowGTK3::SetTitle(const std::string &title){
 
 void CGUIWindowGTK3::Close(){
     gtk_window_close(GTK_WINDOW(DWidget));
+}
+
+std::shared_ptr<CGraphicSurface> CGUIWindowGTK3::RenderToSurface(){
+    auto ReturnSurface = gdk_window_create_similar_image_surface(gtk_widget_get_window(DWidget),
+                                                       CAIRO_FORMAT_ARGB32,
+                                                       AllocatedWidth(),
+                                                       AllocatedHeight(), 0);
+    auto ContextResource = cairo_create(ReturnSurface);
+    gdk_cairo_set_source_window(ContextResource,gtk_widget_get_window(DWidget),0,0);
+    cairo_paint(ContextResource);
+    cairo_destroy(ContextResource);
+    return std::make_shared<CGraphicSurfaceCairo>(ReturnSurface);
 }
 
 CGUIFileFilterGTK3::CGUIFileFilterGTK3(GtkFileFilter *filter, bool reference){

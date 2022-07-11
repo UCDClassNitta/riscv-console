@@ -14,7 +14,7 @@ class CGUIScrollableLabelBox : public virtual CGUIScrollableLineBox, public std:
     protected:
         std::shared_ptr<CGUIGrid> DContainingGrid;
         std::shared_ptr<CGUIFrame> DContainingFrame;
-        std::vector< std::shared_ptr<CGUIEventBox > > DLabelEventBoxes;
+        std::vector< std::shared_ptr<CGUIEventBox> > DLabelEventBoxes;
         std::vector< std::shared_ptr<CGUILabel> > DLabels;
         std::shared_ptr<CGUIScrollBar> DScrollbar;
 
@@ -45,6 +45,8 @@ class CGUIScrollableLabelBox : public virtual CGUIScrollableLineBox, public std:
 
         virtual bool WidgetScrollEvent(std::shared_ptr<CGUIWidget> widget, SGUIScrollEvent &event);
 
+        static bool WidgetDrawEvent(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc, TGUICalldata data);
+
         virtual void RefreshLabels();
 
     public:
@@ -52,6 +54,10 @@ class CGUIScrollableLabelBox : public virtual CGUIScrollableLineBox, public std:
         virtual ~CGUIScrollableLabelBox();
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const override;
+
+        virtual void SetVerticalExpand(bool exp) override;
+        virtual void SetHorizontalExpand(bool exp) override;
+        virtual void SetCursor(std::shared_ptr<CGUICursor> cursor) override;
 
         virtual size_t GetBaseLine() const override;
         virtual void SetBaseLine(size_t line) override;

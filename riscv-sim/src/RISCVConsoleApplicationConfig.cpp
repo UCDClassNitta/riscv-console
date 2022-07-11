@@ -15,6 +15,7 @@ CRISCVConsoleApplicationConfiguration::CRISCVConsoleApplicationConfiguration(){
     DParameterNames["BUTTON4_KEY"] = EParameter::Button4Key;
     DParameterNames["ZOOM_IN_KEY"] = EParameter::ZoomInKey;
     DParameterNames["ZOOM_OUT_KEY"] = EParameter::ZoomOutKey;
+    DParameterNames["SNAPSHOT_KEY"] = EParameter::SnapshotKey;
     DParameterNames["WIDGET_SPACING"] = EParameter::WidgetSpacing;
     DParameterNames["INSTRUCTION_LINES"] = EParameter::InstructionLines;
     DParameterNames["MEMORY_LINES"] = EParameter::MemoryLines;
@@ -35,6 +36,8 @@ CRISCVConsoleApplicationConfiguration::CRISCVConsoleApplicationConfiguration(){
 
     DParameters[EParameter::ZoomInKey] = "+=";
     DParameters[EParameter::ZoomOutKey] = "-";
+
+    DParameters[EParameter::SnapshotKey] = "p";
 
     DParameters[EParameter::WidgetSpacing] = "5";
     DParameters[EParameter::InstructionLines] = "14";

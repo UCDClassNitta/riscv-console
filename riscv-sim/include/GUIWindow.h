@@ -14,6 +14,7 @@ class CGUIWindow : public virtual CGUIContainer{
         virtual void Resize(int width, int height) = 0;
         virtual void SetTitle(const std::string &title) = 0;
         virtual void Close() = 0;
+        virtual std::shared_ptr<CGraphicSurface> RenderToSurface() = 0;
 };
 
 #endif
