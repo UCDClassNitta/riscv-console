@@ -189,7 +189,6 @@ bool CRISCVConsoleApplication::Timeout(){
     if(DRISCVConsole->VideoTimerTick(DDoubleBufferSurface)){
         DConsoleVideo->Invalidate();
     }
-
     return true;
 }
 
@@ -555,10 +554,9 @@ bool CRISCVConsoleApplication::InstructionComboBoxChangedEvent(std::shared_ptr<C
         return true;
     }
     auto ItemNumber = DDebugInstructionComboBox->GetActiveItem();
-    if(ItemNumber < int(DRISCVConsole->InstructionLabelIndices().size())){
+    if((0 <= ItemNumber) && (ItemNumber < int(DRISCVConsole->InstructionLabelIndices().size()))){
         DDebugInstructions->SetBaseLine(DRISCVConsole->InstructionLabelIndices()[ItemNumber]);
     }
-    
     return true;
 }
 
@@ -585,7 +583,7 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
 bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget){
     DFollowingInstruction = (widget->GetBaseLine() <= widget->GetHighlightedBufferedLine()) && (widget->GetHighlightedBufferedLine() < widget->GetBaseLine() + widget->GetLineCount());
 
-RefreshDebugInstructionComboBox();
+    RefreshDebugInstructionComboBox();
     return true;
 }
 
@@ -1094,7 +1092,7 @@ std::string CRISCVConsoleApplication::FindLabelFromAddress(uint32_t addr){
             BestLabel = ItemNumber;
         }
     }
-    if(BestLabel < DRISCVConsole->InstructionLabelAddresses().size()){
+    if((0 <=    BestLabel)&&(BestLabel < DRISCVConsole->InstructionLabelAddresses().size())&&(BestLabel < DRISCVConsole->InstructionLabels().size())){
         auto Offset = addr - DRISCVConsole->InstructionLabelAddresses()[BestLabel];
         std::stringstream ReturnStream;
         ReturnStream<< DRISCVConsole->InstructionLabels()[BestLabel];
@@ -1159,7 +1157,6 @@ void CRISCVConsoleApplication::RefreshDebugInstructionComboBox(){
     DIgnoreComboBoxChange = true;
     DDebugInstructionComboBox->SetActiveItem(int(BestIndex));
     DIgnoreComboBoxChange = false;
-    
 }
 
 void CRISCVConsoleApplication::ParseArguments(int &argc, char *argv[]){
