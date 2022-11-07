@@ -182,6 +182,7 @@ void CRISCVConsole::ResetComponents(){
 void CRISCVConsole::LoadElfSourceFiles(CElfLoad &elffile, std::shared_ptr<CDataContainer> elfcontainer, std::vector< std::vector< std::string > > &filelines){
     bool FoundAll = true;
     std::unordered_map<std::string, std::string> FoundFiles;
+    const std::string LibgccPath = "/riscv-gcc/libgcc/";
 
     // See if absolute path files exist
     for(auto FilePath : elffile.LineNumberData().DFilePaths){
@@ -197,6 +198,10 @@ void CRISCVConsole::LoadElfSourceFiles(CElfLoad &elffile, std::shared_ptr<CDataC
                 FileIter->Next();
             }
             if(FoundFiles.find(FilePath) == FoundFiles.end()){
+                // Skip library paths that my not exist
+                if(FilePath.find(LibgccPath) != std::string::npos){
+                    continue;
+                }
                 FoundAll = false;
                 break;
             }
@@ -208,6 +213,10 @@ void CRISCVConsole::LoadElfSourceFiles(CElfLoad &elffile, std::shared_ptr<CDataC
         FoundFiles.clear();
         for(auto FilePath : elffile.LineNumberData().DFilePaths){
             CPath TempPath = CPath(FilePath).Containing();
+            // Skip library paths that may not exist
+            if(!FilePath.empty() && (FilePath[0] == '/') && (FilePath.find(LibgccPath) != std::string::npos)){
+                continue;
+            }
             if(FileDirectories.find(TempPath.ToString()) == FileDirectories.end()){
                 FileDirectories[TempPath.ToString()] = {};
             }
@@ -275,12 +284,14 @@ void CRISCVConsole::LoadElfSourceFiles(CElfLoad &elffile, std::shared_ptr<CDataC
     filelines.resize(elffile.LineNumberData().DFilePaths.size());
     size_t FileIndex = 0;
     for(auto FilePath : elffile.LineNumberData().DFilePaths){
+        // Skip files that weren't found
+        if(FoundFiles.find(FilePath) == FoundFiles.end()){
+            continue;
+        }
         CLineDataSource LineDataSource(elfcontainer->DataSource(FoundFiles[FilePath]));
         std::string TempLine;
-        //printf("------------------------------\n%s:\n",FoundFiles[FilePath].c_str());
         while(LineDataSource.Read(TempLine)){
             filelines[FileIndex].push_back(TempLine);
-            //printf("%s\n",TempLine.c_str());
         }
         FileIndex++;
     }
@@ -297,7 +308,6 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::shared_p
     size_t SourceFileIndex = SourceFileDisplayedLines.size();
     auto NextSourceLine = elffile.LineNumberData().DLineNumberEntries.begin();
     auto EndSourceLine = elffile.LineNumberData().DLineNumberEntries.end();
-
     for(size_t Index = 0; Index < elffile.SectionHeaderCount(); Index++){
         auto &Header = elffile.SectionHeader(Index);
         if(Header.DFlags & 0x4){
@@ -326,17 +336,33 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::shared_p
                         }
                     }
                     SourceFileIndex = NextSourceLine->DFileIndex;
-                    if(!SourceFileDisplayedLines[SourceFileIndex]){
-                        labels.push_back(elffile.LineNumberData().DFilePaths[SourceFileIndex]);
+                    if(SourceFileIndex < SourceFileDisplayedLines.size() && !SourceFileDisplayedLines[SourceFileIndex]){
+                        std::string DisplayedFilename;
+                        if(elffile.LineNumberData().DFilePaths[SourceFileIndex].length() < 64){
+                            DisplayedFilename = elffile.LineNumberData().DFilePaths[SourceFileIndex];
+                        }
+                        else{
+                            auto LastSeparator = elffile.LineNumberData().DFilePaths[SourceFileIndex].rfind("/");
+                            DisplayedFilename = "..." + elffile.LineNumberData().DFilePaths[SourceFileIndex].substr(LastSeparator);
+                        }
+                        labels.push_back(DisplayedFilename);
                         labelindices.push_back(strings.size());
                         labeladdresses.push_back(CurrentAddress);
-                        auto BorderString = std::string("/*---") + std::string(elffile.LineNumberData().DFilePaths[SourceFileIndex].length(),'-') + "---*/";
+                        
+                        auto BorderString = std::string("/*---") + std::string(DisplayedFilename.length(),'-') + "---*/";
                         strings.push_back(BorderString);
-                        strings.push_back(std::string("/*   ") + elffile.LineNumberData().DFilePaths[SourceFileIndex] + "   */");
+                        strings.push_back(std::string("/*   ") + DisplayedFilename + "   */");
                         strings.push_back(BorderString);
-                    }
+
+                        // File was not loaded
+                        if(!SourceFileLines[SourceFileIndex].size()){
+                            // Mark it to prevent reloading for each instruction
+                            SourceFileDisplayedLines[SourceFileIndex] = 1;
+                        }
+                        
+                    }                 
                     LastWasEmpty = false;
-                    while(SourceFileDisplayedLines[SourceFileIndex] < NextSourceLine->DLineNumber){
+                    while((SourceFileIndex < SourceFileDisplayedLines.size()) && (SourceFileDisplayedLines[SourceFileIndex] < NextSourceLine->DLineNumber) && (SourceFileDisplayedLines[SourceFileIndex] < SourceFileLines[SourceFileIndex].size())){
                         auto CurrentLine = SourceFileLines[SourceFileIndex][SourceFileDisplayedLines[SourceFileIndex]];
                         bool CurrentIsEmpty = CurrentLine.find_first_not_of(" \t\r\n") == std::string::npos;
                         if(!CurrentIsEmpty || !LastWasEmpty){
@@ -354,7 +380,6 @@ void CRISCVConsole::ConstructInstructionStrings(CElfLoad &elffile, std::shared_p
                     //strings.push_back(Header.DSymbols.find(CurrentAddress)->second);
                     NextSymbol++;
                 }
-                
                 translations[CurrentAddress] = strings.size();
                 std::stringstream Stream;
                 Stream<<" "<<std::setfill('0') << std::setw(8) << std::hex << CurrentAddress << ": ";
