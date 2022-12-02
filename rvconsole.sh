@@ -26,7 +26,7 @@ if [[ $IMAGE_DEV_ID == "" ]]; then
 fi
 
 # Add xhost
-xhost + 127.0.0.1
+# xhost + 127.0.0.1
 
 # Check if container exists is running or if needs to be restarted
 CONTAINER_DEV="riscv_console_run"
@@ -57,7 +57,40 @@ if [[ $CONTAINER_DEV_ID == "" ]]; then
     fi
 fi
 
+MOUNTED="$(docker inspect --format='{{(index .Mounts 0).Source}}' $CONTAINER_DEV)"
+echo "Your Docker Container is mounted to $MOUNTED"
+echo "Your current directory is $(pwd)"
+
+#https://stackoverflow.com/questions/242538/unix-shell-script-find-out-which-directory-the-script-file-resides
+#$0 is the name of the running process
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+echo "Your current shell script is running at $SCRIPT_DIR"
+
+
+if [[ $MOUNTED != $SCRIPT_DIR ]]; then
+    echo "************************************************************************************************"
+    echo " "
+    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
+    echo " "
+    echo "OPTIONS to correct the error: "
+    echo " "
+    echo "(1) Move all your files from the current location to your mounted path: $MOUNTED"
+    echo " "
+    echo "OR"
+    echo " "
+    echo "(2) Stop the container in your Docker application, remove the container, re-run ./rvconsole.sh"
+    echo " "
+    echo "************************************************************************************************"
+    #stop the container/remove the container, restart the rvconsole whereever you want
+    exit 0
+fi
+
 # Container is running, exec bash
 EXEC_CMD="docker exec -it $CONTAINER_DEV bash"
 echo $EXEC_CMD
 $EXEC_CMD
+ 
