@@ -151,7 +151,8 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr
 }
 
 bool CRISCVConsoleApplication::MemoryBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
-    return 0;
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->MemoryBoxButtonEvent(widget,event,line);
 }
 
 bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data){
@@ -581,6 +582,10 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
             }
         }
     }
+    return true;
+}
+
+bool CRISCVConsoleApplication::MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line){
     return true;
 }
 

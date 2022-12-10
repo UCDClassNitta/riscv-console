@@ -152,6 +152,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line);
         bool InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget);
         void BreakpointEvent();
+        bool MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line);
 
         void CreateConsoleWidgets();
         void CreateControllerWidgets();
