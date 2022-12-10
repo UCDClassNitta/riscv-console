@@ -103,6 +103,7 @@ void CGUIScrollableMemoryLabelBox::UpdateMemoryLine(size_t index, uint32_t addr,
 std::string CGUIScrollableMemoryLabelBox::FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes){
     std::stringstream Stream;
 
+    Stream<<' ';
     Stream<<std::setfill('0') << std::setw(8) << std::hex << addr;
     Stream<<":";
     for(uint32_t Index = 0; Index < bytes; Index++){
