@@ -150,6 +150,10 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr
     return App->InstructionBoxButtonEvent(widget,event,line);
 }
 
+bool CRISCVConsoleApplication::MemoryBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
+    return 0;
+}
+
 bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->InstructionBoxScrollEvent(widget);
@@ -934,6 +938,7 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
     };
     DDebugMemory = std::make_shared<CGUIScrollableMemoryLabelBox>(DRISCVConsole->Memory(), MemoryRegions);
     DDebugMemory->SetLineCount(GetMemoryLineCount());
+    DDebugMemory->SetButtonPressEventCallback(this,MemoryBoxButtonEventCallback);
 }
 
 bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){

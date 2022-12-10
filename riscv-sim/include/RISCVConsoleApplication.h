@@ -122,6 +122,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
         static bool InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data);
         static void BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data);
+        static bool MemoryBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
 
         void Activate();
         bool Timeout();
