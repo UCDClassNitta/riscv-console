@@ -166,6 +166,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         void CreateDebugMemoryWidgets();
 
         bool ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint);
+        bool ParseMemoryLine(size_t line, uint32_t &addr, bool &breakpoint);
 
         void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
         void SetKeyZoomMapping(const std::string &keys, bool zoomin);

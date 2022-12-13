@@ -588,8 +588,12 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
 bool CRISCVConsoleApplication::MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line){
     if(event.DType.IsDoubleButtonPress()){
         auto Line = DDebugMemory->GetBufferedLine(line);
-        Line[0] = '@';
-        DDebugMemory->UpdateBufferedLine(line, Line);
+        uint32_t Address;
+        bool Watchpoint;
+        if(ParseMemoryLine(line,Address,Watchpoint)){
+            Line[0] = Watchpoint ? ' ' : '@';
+            DDebugMemory->UpdateBufferedLine(line, Line);
+        }
     }
     return true;
 }
@@ -953,6 +957,16 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
 
 bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){
     auto Line = DDebugInstructions->GetBufferedLine(line);
+    if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')||(Line[9] != ':')){
+        return false;
+    }
+    breakpoint = Line[0] == '@';
+    addr = std::stoull(Line.substr(1,8), nullptr, 16);
+    return true;
+}
+
+bool CRISCVConsoleApplication::ParseMemoryLine(size_t line, uint32_t &addr, bool &breakpoint){
+    auto Line = DDebugMemory->GetBufferedLine(line);
     if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')||(Line[9] != ':')){
         return false;
     }
