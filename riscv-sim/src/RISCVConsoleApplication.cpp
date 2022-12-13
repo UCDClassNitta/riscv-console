@@ -586,6 +586,11 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
 }
 
 bool CRISCVConsoleApplication::MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line){
+    if(event.DType.IsDoubleButtonPress()){
+        auto Line = DDebugMemory->GetBufferedLine(line);
+        Line[0] = '@';
+        DDebugMemory->UpdateBufferedLine(line, Line);
+    }
     return true;
 }
 

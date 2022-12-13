@@ -168,7 +168,7 @@ void CGUIScrollableMemoryLabelBox::SetBufferedLines(const std::vector< std::stri
 }
 
 void CGUIScrollableMemoryLabelBox::UpdateBufferedLine(size_t index, const std::string &line){
-    
+    DLabels[index - DBaseLine]->SetText(line);
 }
 
 void CGUIScrollableMemoryLabelBox::SetWidthCharacters(int chars){
