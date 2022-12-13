@@ -148,7 +148,7 @@ size_t CGUIScrollableMemoryLabelBox::GetBufferedLineCount() const{
 std::string CGUIScrollableMemoryLabelBox::GetBufferedLine(size_t index) const{
     size_t MemoryIndex = 0;
     uint32_t CurrentAddress;
-    size_t CurrentLine = GetBaseLine();
+    size_t CurrentLine = index;
 
     if(!DAscending){
         CurrentLine = DBufferedLineCount - CurrentLine - 1;
