@@ -44,6 +44,9 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
 
         virtual void Refresh();
 
+	size_t AddressToMemoryIndex(uint32_t addr) const;
+
+	uint32_t AddressMemoryIndexToLineBytes(uint32_t addr, size_t mem_index) const;
 };
 
 #endif
