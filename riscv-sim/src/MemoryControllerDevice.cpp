@@ -32,6 +32,10 @@ void CMemoryControllerDevice::DumpData(std::ostream &out, uint32_t saddr, uint32
     }
 }
 
+void CMemoryControllerDevice::ClearWatchpoints(){
+    DWatchpoints.clear();
+}
+
 void CMemoryControllerDevice::AddWatchpoint(CMemoryRange mem_range){
     DWatchpoints.insert(mem_range);
 }

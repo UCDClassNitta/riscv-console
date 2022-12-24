@@ -1,4 +1,5 @@
 #include "RISCVConsoleApplication.h"
+#include "MemoryControllerDevice.h"
 #include "FileDataSink.h"
 #include "FileDataSource.h"
 #include "Path.h"
@@ -527,6 +528,9 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
         Line[0] = ' ';
         DDebugInstructions->UpdateBufferedLine(LineIndex, Line);
     }
+
+    std::static_pointer_cast<CMemoryControllerDevice>(DRISCVConsole->Memory())->ClearWatchpoints();
+
     DRISCVConsole->ClearBreakpoints();
     return true;
 }

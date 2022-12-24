@@ -45,6 +45,7 @@ class CMemoryControllerDevice : public CMemoryDevice{
         virtual const uint8_t *LoadData(uint32_t addr, uint32_t size);
         virtual void StoreData(uint32_t addr, const uint8_t *src, uint32_t size);
 
+        void ClearWatchpoints();
         void AddWatchpoint(CMemoryRange mem_range);
         void RemoveWatchpoint(CMemoryRange mem_range);
 };
