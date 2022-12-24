@@ -1,6 +1,7 @@
 #include "RISCVConsole.h"
 #include "MemoryControllerDevice.h"
 #include "RAMMemoryDevice.h"
+#include "MemoryRange.h"
 #include "RISCVBlockInstructionCache.h"
 #include "GraphicFactory.h"
 #include "Path.h"
@@ -675,6 +676,24 @@ void CRISCVConsole::RemoveBreakpoint(uint32_t addr){
     auto CurrentState = DSystemCommand.load();
     SystemStop();
     DBreakpoints.erase(addr);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
+void CRISCVConsole::AddWatchpoint(CMemoryRange mem_range){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    std::static_pointer_cast<CMemoryControllerDevice>(DMemoryController)->AddWatchpoint(mem_range);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
+void CRISCVConsole::RemoveWatchpoint(CMemoryRange mem_range){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    std::static_pointer_cast<CMemoryControllerDevice>(DMemoryController)->RemoveWatchpoint(mem_range);
     if(CurrentState == to_underlying(EThreadState::Run)){
         SystemRun();
     }

@@ -593,6 +593,14 @@ bool CRISCVConsoleApplication::MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollab
         if(ParseMemoryLine(line,Address,Watchpoint)){
             Line[0] = Watchpoint ? ' ' : '@';
             DDebugMemory->UpdateBufferedLine(line, Line);
+
+            uint32_t Bytes = DDebugMemory->AddressMemoryIndexToLineBytes(Address, DDebugMemory->AddressToMemoryIndex(Address));
+
+            if(Watchpoint){
+	        DRISCVConsole->RemoveWatchpoint({Address, Bytes});
+            } else {
+                DRISCVConsole->AddWatchpoint({Address, Bytes});
+	    }
         }
     }
     return true;

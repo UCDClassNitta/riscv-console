@@ -2,6 +2,8 @@
 #define MEMORYCONTROLLERDEVICE_H
 
 #include "MemoryDevice.h"
+#include "MemoryRange.h"
+#include <set>
 
 class CMemoryControllerDevice : public CMemoryDevice{
     protected:
@@ -12,6 +14,7 @@ class CMemoryControllerDevice : public CMemoryDevice{
 
         std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size);
 
+	std::set< CMemoryRange > DWatchpoints;
     public:
         CMemoryControllerDevice(uint32_t bits);
         virtual ~CMemoryControllerDevice(){};
@@ -41,6 +44,9 @@ class CMemoryControllerDevice : public CMemoryDevice{
 
         virtual const uint8_t *LoadData(uint32_t addr, uint32_t size);
         virtual void StoreData(uint32_t addr, const uint8_t *src, uint32_t size);
+
+        void AddWatchpoint(CMemoryRange mem_range);
+        void RemoveWatchpoint(CMemoryRange mem_range);
 };
 
 #endif

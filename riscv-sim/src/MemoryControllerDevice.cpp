@@ -1,4 +1,5 @@
 #include "MemoryControllerDevice.h"
+#include "MemoryRange.h"
 #include <cstdio>
 
 static const uint32_t CMemoryControllerDeviceIndexBits = 4;
@@ -29,6 +30,14 @@ void CMemoryControllerDevice::DumpData(std::ostream &out, uint32_t saddr, uint32
             SubDevice->DumpData(out,saddr,eaddr);
         }
     }
+}
+
+void CMemoryControllerDevice::AddWatchpoint(CMemoryRange mem_range){
+    DWatchpoints.insert(mem_range);
+}
+
+void CMemoryControllerDevice::RemoveWatchpoint(CMemoryRange mem_range){
+    DWatchpoints.erase(mem_range);
 }
 
 bool CMemoryControllerDevice::AttachDevice(std::shared_ptr< CMemoryDevice > device, uint32_t addr){

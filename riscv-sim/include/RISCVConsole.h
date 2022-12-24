@@ -5,6 +5,7 @@
 #include "RISCVConsoleChipset.h"
 #include "ElfLoad.h"
 #include "MemoryDevice.h"
+#include "MemoryRange.h"
 #include "FlashMemoryDevice.h"
 #include "VideoController.h"
 #include "DataSource.h"
@@ -147,6 +148,10 @@ class CRISCVConsole{
         uint64_t InsertCartridge(std::shared_ptr< CDataSource > elfsrc);
 
         uint64_t RemoveCartridge();
+
+        void AddWatchpoint(CMemoryRange range);
+
+        void RemoveWatchpoint(CMemoryRange range);
 
         void AddBreakpoint(uint32_t addr);
 
