@@ -1,4 +1,6 @@
 #include "GUIScrollableMemoryLabelBox.h"
+#include "MemoryControllerDevice.h"
+#include "MemoryRange.h"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -117,7 +119,11 @@ void CGUIScrollableMemoryLabelBox::UpdateMemoryLine(size_t index, uint32_t addr,
 std::string CGUIScrollableMemoryLabelBox::FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes) const{
     std::stringstream Stream;
 
-    Stream<<' ';
+    if (std::static_pointer_cast<CMemoryControllerDevice>(DMemoryDevice)->FindWatchpoint({addr, bytes})){
+        Stream<<'@';
+    } else {
+        Stream<<' ';
+    }
     Stream<<std::setfill('0') << std::setw(8) << std::hex << addr;
     Stream<<":";
     for(uint32_t Index = 0; Index < bytes; Index++){
