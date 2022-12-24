@@ -530,6 +530,7 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
     }
 
     std::static_pointer_cast<CMemoryControllerDevice>(DRISCVConsole->Memory())->ClearWatchpoints();
+    DDebugMemory->Refresh();
 
     DRISCVConsole->ClearBreakpoints();
     return true;
