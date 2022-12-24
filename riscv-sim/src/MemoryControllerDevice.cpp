@@ -44,6 +44,10 @@ void CMemoryControllerDevice::RemoveWatchpoint(CMemoryRange mem_range){
     DWatchpoints.erase(mem_range);
 }
 
+bool CMemoryControllerDevice::FindWatchpoint(CMemoryRange mem_range) const{
+    return DWatchpoints.end() != DWatchpoints.find(mem_range);
+}
+
 bool CMemoryControllerDevice::AttachDevice(std::shared_ptr< CMemoryDevice > device, uint32_t addr){
     uint32_t Offset = addr - DBaseAddress;
     if(DMemorySize && DMemorySize <= Offset){

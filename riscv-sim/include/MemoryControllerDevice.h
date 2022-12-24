@@ -48,6 +48,7 @@ class CMemoryControllerDevice : public CMemoryDevice{
         void ClearWatchpoints();
         void AddWatchpoint(CMemoryRange mem_range);
         void RemoveWatchpoint(CMemoryRange mem_range);
+        bool FindWatchpoint(CMemoryRange mem_range) const;
 };
 
 #endif
