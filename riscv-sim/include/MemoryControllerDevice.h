@@ -49,6 +49,10 @@ class CMemoryControllerDevice : public CMemoryDevice{
         void AddWatchpoint(CMemoryRange mem_range);
         void RemoveWatchpoint(CMemoryRange mem_range);
         bool FindWatchpoint(CMemoryRange mem_range) const;
+
+	const std::set< CMemoryRange > &Watchpoints() const{
+	    return DWatchpoints;
+	};
 };
 
 #endif
