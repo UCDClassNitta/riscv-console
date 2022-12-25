@@ -200,3 +200,7 @@ void CGUIScrollableMemoryLabelBox::SetWidthCharacters(int chars){
 void CGUIScrollableMemoryLabelBox::Refresh(){
     RefreshLabels();
 }
+
+void CGUIScrollableMemoryLabelBox::SetBaseAddress(uint32_t addr){
+    SetBaseAddress(addr, true);
+}

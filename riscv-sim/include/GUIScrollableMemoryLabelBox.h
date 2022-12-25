@@ -29,6 +29,7 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
 
         virtual uint32_t GetBaseAddress();
         virtual void SetBaseAddress(uint32_t addr, bool ascending);
+	void SetBaseAddress(uint32_t watchpoint_address);
 
         virtual bool GetAddressAscending() const;
 

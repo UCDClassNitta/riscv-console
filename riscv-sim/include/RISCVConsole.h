@@ -165,6 +165,8 @@ class CRISCVConsole{
 
         void RemoveBreakpoint(uint32_t addr);
 
+        uint32_t GetWatchPointAddress();
+
         void SetWatchpointCallback(CRISCVConsoleWatchpointCalldata calldata, CRISCVConsoleWatchpointCallback callback);
 
         void SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback);

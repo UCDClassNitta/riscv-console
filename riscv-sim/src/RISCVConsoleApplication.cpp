@@ -630,6 +630,7 @@ void CRISCVConsoleApplication::BreakpointEvent(){
 }
 
 void CRISCVConsoleApplication::WatchpointEvent(){
+    DDebugMemory->SetBaseAddress(DRISCVConsole->GetWatchPointAddress());
 }
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){

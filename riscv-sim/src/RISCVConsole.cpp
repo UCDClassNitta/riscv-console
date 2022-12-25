@@ -731,3 +731,7 @@ void CRISCVConsole::ClearBreakpoints(){
         SystemRun();
     }
 }
+
+uint32_t CRISCVConsole::GetWatchPointAddress(){
+    return WatchpointAddress;
+}
