@@ -75,6 +75,8 @@ class CRISCVConsole{
         CRISCVConsoleBreakpointCalldata DBreakpointCalldata;
         CRISCVConsoleBreakpointCallback DBreakpointCallback;
 
+	bool WatchpointHit;
+	uint32_t WatchpointAddress;
 
         static const uint32_t DMainMemorySize;
         static const uint32_t DMainMemoryBase;

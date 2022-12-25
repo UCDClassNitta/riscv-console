@@ -15,8 +15,11 @@ class CMemoryControllerDevice : public CMemoryDevice{
         std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size, bool debug_load=false);
 
 	std::set< CMemoryRange > DWatchpoints;
+
+	uint32_t *WatchpointAddress;
+	bool *WatchpointHit;
     public:
-        CMemoryControllerDevice(uint32_t bits);
+        CMemoryControllerDevice(uint32_t bits, uint32_t *watchpoint_address, bool *watchpoint_hit);
         virtual ~CMemoryControllerDevice(){};
         virtual void DumpData(std::ostream &out, uint32_t saddr=0, uint32_t eaddr=0);
         virtual bool AttachDevice(std::shared_ptr< CMemoryDevice > device, uint32_t addr);

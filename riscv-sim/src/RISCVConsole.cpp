@@ -40,7 +40,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DRefreshScreenBuffer.store(false);
     DVideoController = std::make_shared< CVideoController >();
 
-    DMemoryController = std::make_shared< CMemoryControllerDevice >(32);    
+    DMemoryController = std::make_shared< CMemoryControllerDevice >(32, &WatchpointAddress, &WatchpointHit);
     DMainMemory = std::make_shared< CRAMMemoryDevice >(DMainMemorySize);
     DMemoryController->AttachDevice(DMainMemory,DMainMemoryBase);
     DFirmwareFlash = std::make_shared< CFlashMemoryDevice >(DFirmwareMemorySize);
@@ -63,6 +63,8 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
     DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
     DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
+
+    WatchpointHit = false;
 }
 
 CRISCVConsole::~CRISCVConsole(){
@@ -97,8 +99,9 @@ void CRISCVConsole::SystemThreadExecute(){
     bool HitBreakpoint = false;
     DSystemAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
-        if(SystemStep()){
+        if(SystemStep() || WatchpointHit){
             HitBreakpoint = true;
+            WatchpointHit = false;
             break;
         }
     }
