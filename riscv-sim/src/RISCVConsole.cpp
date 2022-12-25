@@ -101,7 +101,6 @@ void CRISCVConsole::SystemThreadExecute(){
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
         if(SystemStep() || WatchpointHit){
             HitBreakpoint = true;
-            WatchpointHit = false;
             break;
         }
     }
@@ -555,6 +554,10 @@ bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurfac
                 if(DBreakpointCallback){
                     DBreakpointCallback(DBreakpointCalldata);
                 }
+		if(WatchpointHit && DWatchpointCallback){
+		    DWatchpointCallback(DWatchpointCalldata);
+		    WatchpointHit = false;
+		}
             }
         }
         if(DRefreshScreenBuffer.exchange(false)){
@@ -598,6 +601,7 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
         DCPUCache->FlushRange(DFirmwareMemoryBase, DFirmwareMemorySize);
         ResetComponents();
         ConstructFirmwareStrings(ElfFile,elfsrc->Container());
+	WatchpointHit = false;
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again
             SystemRun();
@@ -629,6 +633,7 @@ uint64_t CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
         DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
         DChipset->InsertCartridge(ElfFile.Entry());
         ConstructCartridgeStrings(ElfFile,elfsrc->Container());
+	WatchpointHit = false;
         auto EventCycle = DCPU->RetiredInstructionCount();
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
@@ -705,6 +710,11 @@ void CRISCVConsole::RemoveWatchpoint(CMemoryRange mem_range){
 void CRISCVConsole::SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback){
     DBreakpointCalldata = calldata;
     DBreakpointCallback = callback;
+}
+
+void CRISCVConsole::SetWatchpointCallback(CRISCVConsoleWatchpointCalldata calldata, CRISCVConsoleWatchpointCallback callback){
+    DWatchpointCalldata = calldata;
+    DWatchpointCallback = callback;
 }
 
 void CRISCVConsole::ClearBreakpoints(){

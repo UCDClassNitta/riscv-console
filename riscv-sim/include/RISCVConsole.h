@@ -18,6 +18,9 @@
 using CRISCVConsoleBreakpointCalldata = void *;
 using CRISCVConsoleBreakpointCallback = void (*)(CRISCVConsoleBreakpointCalldata);
 
+using CRISCVConsoleWatchpointCalldata = void *;
+using CRISCVConsoleWatchpointCallback = void (*)(CRISCVConsoleWatchpointCalldata);
+
 class CRISCVConsole{
     public:
         enum class EDirection : uint32_t {Left = 0x1, Up = 0x2, Down = 0x4, Right = 0x8};
@@ -77,6 +80,9 @@ class CRISCVConsole{
 
 	bool WatchpointHit;
 	uint32_t WatchpointAddress;
+
+	CRISCVConsoleWatchpointCalldata DWatchpointCalldata;
+	CRISCVConsoleWatchpointCallback DWatchpointCallback;
 
         static const uint32_t DMainMemorySize;
         static const uint32_t DMainMemoryBase;
@@ -158,6 +164,8 @@ class CRISCVConsole{
         void AddBreakpoint(uint32_t addr);
 
         void RemoveBreakpoint(uint32_t addr);
+
+        void SetWatchpointCallback(CRISCVConsoleWatchpointCalldata calldata, CRISCVConsoleWatchpointCallback callback);
 
         void SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback);
 

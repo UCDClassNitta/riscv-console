@@ -166,10 +166,16 @@ void CRISCVConsoleApplication::BreakpointEventCallback(CRISCVConsoleBreakpointCa
     App->BreakpointEvent();
 }
 
+void CRISCVConsoleApplication::WatchpointEventCallback(CRISCVConsoleBreakpointCalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    App->WatchpointEvent();
+}
+
 void CRISCVConsoleApplication::Activate(){
     DRISCVConsole->SetDebugMode(DDebugMode);
     if(DDebugMode){
         DRISCVConsole->SetBreakcpointCallback(this,BreakpointEventCallback);
+        DRISCVConsole->SetWatchpointCallback(this,WatchpointEventCallback);
     }
     DMainWindow = DApplication->NewWindow();
     DMainWindow->SetDeleteEventCallback(this, MainWindowDeleteEventCallback);
@@ -621,6 +627,9 @@ bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScr
 void CRISCVConsoleApplication::BreakpointEvent(){
     DFollowingInstruction = true;
     DDebugRunButton->SetActive(false);
+}
+
+void CRISCVConsoleApplication::WatchpointEvent(){
 }
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){
