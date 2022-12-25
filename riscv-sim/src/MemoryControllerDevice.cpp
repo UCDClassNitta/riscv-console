@@ -14,7 +14,7 @@ CMemoryControllerDevice::CMemoryControllerDevice(uint32_t bits){
     DSubDevices.resize(CMemoryControllerDeviceIndices);
 }
 
-std::shared_ptr<CMemoryDevice> CMemoryControllerDevice::AccessAddress(uint32_t addr, uint32_t size){
+std::shared_ptr<CMemoryDevice> CMemoryControllerDevice::AccessAddress(uint32_t addr, uint32_t size, bool debug_load){
     uint32_t Offset = addr - DBaseAddress;
     uint32_t Index = (Offset>>DShiftBits) & CMemoryControllerDeviceIndexMask;
     
@@ -121,9 +121,9 @@ void CMemoryControllerDevice::StoreUINT64(uint32_t addr, uint64_t val){
 }
 
 const uint8_t *CMemoryControllerDevice::LoadData(uint32_t addr, uint32_t size){
-    return AccessAddress(addr, size)->LoadData(addr, size);
+  return AccessAddress(addr, size, true)->LoadData(addr, size);
 }
 
 void CMemoryControllerDevice::StoreData(uint32_t addr, const uint8_t *src, uint32_t size){
-    AccessAddress(addr, size)->StoreData(addr, src, size);
+  AccessAddress(addr, size, true)->StoreData(addr, src, size);
 }

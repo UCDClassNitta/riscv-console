@@ -12,7 +12,7 @@ class CMemoryControllerDevice : public CMemoryDevice{
         uint32_t DShiftBits;
         std::vector< std::shared_ptr<CMemoryDevice> > DSubDevices;
 
-        std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size);
+        std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size, bool debug_load=false);
 
 	std::set< CMemoryRange > DWatchpoints;
     public:
