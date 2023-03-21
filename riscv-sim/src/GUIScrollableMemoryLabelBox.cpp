@@ -172,7 +172,6 @@ std::string CGUIScrollableMemoryLabelBox::GetBufferedLine(size_t index) const{
 
     if(!DAscending){
         CurrentLine = DBufferedLineCount - CurrentLine - 1;
-        CurrentLine = CurrentLine < GetLineCount() ? 0 : CurrentLine - GetLineCount();
     }
 
     LineIndexToBaseAddressMemoryIndex(CurrentLine,CurrentAddress,MemoryIndex);
