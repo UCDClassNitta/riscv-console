@@ -1,4 +1,5 @@
 #include "RISCVConsoleApplication.h"
+#include "MemoryControllerDevice.h"
 #include "FileDataSink.h"
 #include "FileDataSource.h"
 #include "Path.h"
@@ -150,6 +151,11 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEventCallback(std::shared_ptr
     return App->InstructionBoxButtonEvent(widget,event,line);
 }
 
+bool CRISCVConsoleApplication::MemoryBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->MemoryBoxButtonEvent(widget,event,line);
+}
+
 bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     return App->InstructionBoxScrollEvent(widget);
@@ -160,10 +166,16 @@ void CRISCVConsoleApplication::BreakpointEventCallback(CRISCVConsoleBreakpointCa
     App->BreakpointEvent();
 }
 
+void CRISCVConsoleApplication::WatchpointEventCallback(CRISCVConsoleBreakpointCalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    App->WatchpointEvent();
+}
+
 void CRISCVConsoleApplication::Activate(){
     DRISCVConsole->SetDebugMode(DDebugMode);
     if(DDebugMode){
         DRISCVConsole->SetBreakcpointCallback(this,BreakpointEventCallback);
+        DRISCVConsole->SetWatchpointCallback(this,WatchpointEventCallback);
     }
     DMainWindow = DApplication->NewWindow();
     DMainWindow->SetDeleteEventCallback(this, MainWindowDeleteEventCallback);
@@ -522,6 +534,10 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
         Line[0] = ' ';
         DDebugInstructions->UpdateBufferedLine(LineIndex, Line);
     }
+
+    std::static_pointer_cast<CMemoryControllerDevice>(DRISCVConsole->Memory())->ClearWatchpoints();
+    DDebugMemory->Refresh();
+
     DRISCVConsole->ClearBreakpoints();
     return true;
 }
@@ -580,6 +596,27 @@ bool CRISCVConsoleApplication::InstructionBoxButtonEvent(std::shared_ptr<CGUIScr
     return true;
 }
 
+bool CRISCVConsoleApplication::MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line){
+    if(event.DType.IsDoubleButtonPress()){
+        auto Line = DDebugMemory->GetBufferedLine(line);
+        uint32_t Address;
+        bool Watchpoint;
+        if(ParseMemoryLine(line,Address,Watchpoint)){
+            Line[0] = Watchpoint ? ' ' : '@';
+            DDebugMemory->UpdateBufferedLine(line, Line);
+
+            uint32_t Bytes = DDebugMemory->AddressMemoryIndexToLineBytes(Address, DDebugMemory->AddressToMemoryIndex(Address));
+
+            if(Watchpoint){
+	        DRISCVConsole->RemoveWatchpoint({Address, Bytes});
+            } else {
+                DRISCVConsole->AddWatchpoint({Address, Bytes});
+	    }
+        }
+    }
+    return true;
+}
+
 bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget){
     DFollowingInstruction = (widget->GetBaseLine() <= widget->GetHighlightedBufferedLine()) && (widget->GetHighlightedBufferedLine() < widget->GetBaseLine() + widget->GetLineCount());
 
@@ -590,6 +627,10 @@ bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScr
 void CRISCVConsoleApplication::BreakpointEvent(){
     DFollowingInstruction = true;
     DDebugRunButton->SetActive(false);
+}
+
+void CRISCVConsoleApplication::WatchpointEvent(){
+    DDebugMemory->SetBaseAddress(DRISCVConsole->GetWatchPointAddress());
 }
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){
@@ -934,10 +975,21 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
     };
     DDebugMemory = std::make_shared<CGUIScrollableMemoryLabelBox>(DRISCVConsole->Memory(), MemoryRegions);
     DDebugMemory->SetLineCount(GetMemoryLineCount());
+    DDebugMemory->SetButtonPressEventCallback(this,MemoryBoxButtonEventCallback);
 }
 
 bool CRISCVConsoleApplication::ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint){
     auto Line = DDebugInstructions->GetBufferedLine(line);
+    if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')||(Line[9] != ':')){
+        return false;
+    }
+    breakpoint = Line[0] == '@';
+    addr = std::stoull(Line.substr(1,8), nullptr, 16);
+    return true;
+}
+
+bool CRISCVConsoleApplication::ParseMemoryLine(size_t line, uint32_t &addr, bool &breakpoint){
+    auto Line = DDebugMemory->GetBufferedLine(line);
     if((Line.length() < 10)||(Line[0] != '@' && Line[0] != ' ')||(Line[9] != ':')){
         return false;
     }

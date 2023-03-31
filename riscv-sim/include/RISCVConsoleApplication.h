@@ -122,6 +122,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static bool InstructionBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
         static bool InstructionBoxScrollEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, TGUICalldata data);
         static void BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data);
+        static void WatchpointEventCallback(CRISCVConsoleWatchpointCalldata data);
+        static bool MemoryBoxButtonEventCallback(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line, TGUICalldata data);
 
         void Activate();
         bool Timeout();
@@ -151,6 +153,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         bool InstructionBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line);
         bool InstructionBoxScrollEvent(std::shared_ptr<CGUIScrollableLineBox> widget);
         void BreakpointEvent();
+        void WatchpointEvent();
+        bool MemoryBoxButtonEvent(std::shared_ptr<CGUIScrollableLineBox> widget, SGUIButtonEvent &event, size_t line);
 
         void CreateConsoleWidgets();
         void CreateControllerWidgets();
@@ -164,6 +168,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         void CreateDebugMemoryWidgets();
 
         bool ParseInstructionLine(size_t line, uint32_t &addr, bool &breakpoint);
+        bool ParseMemoryLine(size_t line, uint32_t &addr, bool &breakpoint);
 
         void SetKeyControllerMapping(const std::string &label, std::shared_ptr<CGUIToggleButton> button);
         void SetKeyZoomMapping(const std::string &keys, bool zoomin);

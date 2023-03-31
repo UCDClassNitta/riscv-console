@@ -21,7 +21,7 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
         virtual void UpdateBaseLine();
         virtual void RefreshLabels() override;
         virtual void UpdateMemoryLine(size_t index, uint32_t addr, uint32_t bytes);
-        static std::string FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes);
+        std::string FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes) const;
 
     public:
         CGUIScrollableMemoryLabelBox(std::shared_ptr< CMemoryDevice > device, const std::unordered_map< uint32_t, uint32_t > &regions, size_t initsize=8);
@@ -29,6 +29,7 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
 
         virtual uint32_t GetBaseAddress();
         virtual void SetBaseAddress(uint32_t addr, bool ascending);
+	void SetBaseAddress(uint32_t watchpoint_address);
 
         virtual bool GetAddressAscending() const;
 
@@ -44,6 +45,9 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
 
         virtual void Refresh();
 
+	size_t AddressToMemoryIndex(uint32_t addr) const;
+
+	uint32_t AddressMemoryIndexToLineBytes(uint32_t addr, size_t mem_index) const;
 };
 
 #endif

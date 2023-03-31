@@ -5,6 +5,7 @@
 #include "RISCVConsoleChipset.h"
 #include "ElfLoad.h"
 #include "MemoryDevice.h"
+#include "MemoryRange.h"
 #include "FlashMemoryDevice.h"
 #include "VideoController.h"
 #include "DataSource.h"
@@ -16,6 +17,9 @@
 
 using CRISCVConsoleBreakpointCalldata = void *;
 using CRISCVConsoleBreakpointCallback = void (*)(CRISCVConsoleBreakpointCalldata);
+
+using CRISCVConsoleWatchpointCalldata = void *;
+using CRISCVConsoleWatchpointCallback = void (*)(CRISCVConsoleWatchpointCalldata);
 
 class CRISCVConsole{
     public:
@@ -74,6 +78,11 @@ class CRISCVConsole{
         CRISCVConsoleBreakpointCalldata DBreakpointCalldata;
         CRISCVConsoleBreakpointCallback DBreakpointCallback;
 
+	bool WatchpointHit;
+	uint32_t WatchpointAddress;
+
+	CRISCVConsoleWatchpointCalldata DWatchpointCalldata;
+	CRISCVConsoleWatchpointCallback DWatchpointCallback;
 
         static const uint32_t DMainMemorySize;
         static const uint32_t DMainMemoryBase;
@@ -148,9 +157,17 @@ class CRISCVConsole{
 
         uint64_t RemoveCartridge();
 
+        void AddWatchpoint(CMemoryRange range);
+
+        void RemoveWatchpoint(CMemoryRange range);
+
         void AddBreakpoint(uint32_t addr);
 
         void RemoveBreakpoint(uint32_t addr);
+
+        uint32_t GetWatchPointAddress();
+
+        void SetWatchpointCallback(CRISCVConsoleWatchpointCalldata calldata, CRISCVConsoleWatchpointCallback callback);
 
         void SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback);
 

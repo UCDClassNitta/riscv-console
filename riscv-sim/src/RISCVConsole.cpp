@@ -1,6 +1,7 @@
 #include "RISCVConsole.h"
 #include "MemoryControllerDevice.h"
 #include "RAMMemoryDevice.h"
+#include "MemoryRange.h"
 #include "RISCVBlockInstructionCache.h"
 #include "GraphicFactory.h"
 #include "Path.h"
@@ -39,7 +40,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DRefreshScreenBuffer.store(false);
     DVideoController = std::make_shared< CVideoController >();
 
-    DMemoryController = std::make_shared< CMemoryControllerDevice >(32);    
+    DMemoryController = std::make_shared< CMemoryControllerDevice >(32, &WatchpointAddress, &WatchpointHit);
     DMainMemory = std::make_shared< CRAMMemoryDevice >(DMainMemorySize);
     DMemoryController->AttachDevice(DMainMemory,DMainMemoryBase);
     DFirmwareFlash = std::make_shared< CFlashMemoryDevice >(DFirmwareMemorySize);
@@ -62,6 +63,8 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DCPUAcknowledge.store(to_underlying(EThreadState::Stop));
     DTimerAcknowledge.store(to_underlying(EThreadState::Stop));
     DSystemAcknowledge.store(to_underlying(EThreadState::Stop));
+
+    WatchpointHit = false;
 }
 
 CRISCVConsole::~CRISCVConsole(){
@@ -96,7 +99,7 @@ void CRISCVConsole::SystemThreadExecute(){
     bool HitBreakpoint = false;
     DSystemAcknowledge.store(to_underlying(EThreadState::Run));
     while(DSystemCommand.load() == to_underlying(EThreadState::Run)){
-        if(SystemStep()){
+        if(SystemStep() || WatchpointHit){
             HitBreakpoint = true;
             break;
         }
@@ -551,6 +554,10 @@ bool CRISCVConsole::VideoTimerTick(std::shared_ptr<CGraphicSurface> screensurfac
                 if(DBreakpointCallback){
                     DBreakpointCallback(DBreakpointCalldata);
                 }
+		if(WatchpointHit && DWatchpointCallback){
+		    DWatchpointCallback(DWatchpointCalldata);
+		    WatchpointHit = false;
+		}
             }
         }
         if(DRefreshScreenBuffer.exchange(false)){
@@ -594,6 +601,7 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
         DCPUCache->FlushRange(DFirmwareMemoryBase, DFirmwareMemorySize);
         ResetComponents();
         ConstructFirmwareStrings(ElfFile,elfsrc->Container());
+	WatchpointHit = false;
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again
             SystemRun();
@@ -625,6 +633,7 @@ uint64_t CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
         DCPUCache->FlushRange(DCartridgeMemoryBase, DCartridgeMemorySize);
         DChipset->InsertCartridge(ElfFile.Entry());
         ConstructCartridgeStrings(ElfFile,elfsrc->Container());
+	WatchpointHit = false;
         auto EventCycle = DCPU->RetiredInstructionCount();
         if(CurrentState == to_underlying(EThreadState::Run)){
             // System was running, start it up again, mark cartridge entry
@@ -680,9 +689,32 @@ void CRISCVConsole::RemoveBreakpoint(uint32_t addr){
     }
 }
 
+void CRISCVConsole::AddWatchpoint(CMemoryRange mem_range){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    std::static_pointer_cast<CMemoryControllerDevice>(DMemoryController)->AddWatchpoint(mem_range);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
+void CRISCVConsole::RemoveWatchpoint(CMemoryRange mem_range){
+    auto CurrentState = DSystemCommand.load();
+    SystemStop();
+    std::static_pointer_cast<CMemoryControllerDevice>(DMemoryController)->RemoveWatchpoint(mem_range);
+    if(CurrentState == to_underlying(EThreadState::Run)){
+        SystemRun();
+    }
+}
+
 void CRISCVConsole::SetBreakcpointCallback(CRISCVConsoleBreakpointCalldata calldata, CRISCVConsoleBreakpointCallback callback){
     DBreakpointCalldata = calldata;
     DBreakpointCallback = callback;
+}
+
+void CRISCVConsole::SetWatchpointCallback(CRISCVConsoleWatchpointCalldata calldata, CRISCVConsoleWatchpointCallback callback){
+    DWatchpointCalldata = calldata;
+    DWatchpointCallback = callback;
 }
 
 void CRISCVConsole::ClearBreakpoints(){
@@ -698,4 +730,8 @@ void CRISCVConsole::ClearBreakpoints(){
     if(CurrentState == to_underlying(EThreadState::Run)){
         SystemRun();
     }
+}
+
+uint32_t CRISCVConsole::GetWatchPointAddress(){
+    return WatchpointAddress;
 }

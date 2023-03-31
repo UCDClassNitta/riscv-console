@@ -1,4 +1,6 @@
 #include "GUIScrollableMemoryLabelBox.h"
+#include "MemoryControllerDevice.h"
+#include "MemoryRange.h"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -44,6 +46,20 @@ bool CGUIScrollableMemoryLabelBox::LineIndexToBaseAddressMemoryIndex(size_t inde
         Offset -= DMemoryLines[Index];
     }
     return false;
+}
+
+size_t CGUIScrollableMemoryLabelBox::AddressToMemoryIndex(uint32_t addr) const{
+    for(size_t Index = 0; Index < DMemoryLines.size(); Index++){
+        if(addr < DMemoryBases[Index]){
+            return Index - 1;
+        }
+    }
+    return DMemoryLines.size() - 1;
+}
+
+uint32_t CGUIScrollableMemoryLabelBox::AddressMemoryIndexToLineBytes(uint32_t addr, size_t mem_index) const{
+    uint32_t NextAddress = addr + DBytesPerLine;
+    return NextAddress > DMemoryBases[mem_index] + DMemorySizes[mem_index] ? (DMemoryBases[mem_index] + DMemorySizes[mem_index]) - addr : DBytesPerLine;
 }
 
 void CGUIScrollableMemoryLabelBox::UpdateBaseLine(){
@@ -100,9 +116,14 @@ void CGUIScrollableMemoryLabelBox::UpdateMemoryLine(size_t index, uint32_t addr,
     DLabels[index]->SetText(FormatMemoryLine(DMemoryDevice->LoadData(addr,bytes),addr,bytes));
 }
 
-std::string CGUIScrollableMemoryLabelBox::FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes){
+std::string CGUIScrollableMemoryLabelBox::FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes) const{
     std::stringstream Stream;
 
+    if (std::static_pointer_cast<CMemoryControllerDevice>(DMemoryDevice)->FindWatchpoint({addr, bytes})){
+        Stream<<'@';
+    } else {
+        Stream<<' ';
+    }
     Stream<<std::setfill('0') << std::setw(8) << std::hex << addr;
     Stream<<":";
     for(uint32_t Index = 0; Index < bytes; Index++){
@@ -147,17 +168,15 @@ size_t CGUIScrollableMemoryLabelBox::GetBufferedLineCount() const{
 std::string CGUIScrollableMemoryLabelBox::GetBufferedLine(size_t index) const{
     size_t MemoryIndex = 0;
     uint32_t CurrentAddress;
-    size_t CurrentLine = GetBaseLine();
+    size_t CurrentLine = index;
 
     if(!DAscending){
         CurrentLine = DBufferedLineCount - CurrentLine - 1;
-        CurrentLine = CurrentLine < GetLineCount() ? 0 : CurrentLine - GetLineCount();
     }
 
     LineIndexToBaseAddressMemoryIndex(CurrentLine,CurrentAddress,MemoryIndex);
 
-    uint32_t NextAddress = CurrentAddress + DBytesPerLine;
-    uint32_t Bytes = NextAddress > DMemoryBases[MemoryIndex] + DMemorySizes[MemoryIndex] ? (DMemoryBases[MemoryIndex] + DMemorySizes[MemoryIndex]) - CurrentAddress : DBytesPerLine;
+    uint32_t Bytes = AddressMemoryIndexToLineBytes(CurrentAddress, MemoryIndex);
 
     return FormatMemoryLine(DMemoryDevice->LoadData(CurrentAddress,Bytes), CurrentAddress, Bytes);
 }
@@ -167,11 +186,11 @@ void CGUIScrollableMemoryLabelBox::SetBufferedLines(const std::vector< std::stri
 }
 
 void CGUIScrollableMemoryLabelBox::UpdateBufferedLine(size_t index, const std::string &line){
-    
+    DLabels[index - DBaseLine]->SetText(line);
 }
 
 void CGUIScrollableMemoryLabelBox::SetWidthCharacters(int chars){
-    int MinWidth = DBytesPerLine * 4 + 11;
+    int MinWidth = DBytesPerLine * 4 + 12;
     if(chars >= MinWidth){
         CGUIScrollableLabelBox::SetWidthCharacters(chars);
     }
@@ -180,4 +199,8 @@ void CGUIScrollableMemoryLabelBox::SetWidthCharacters(int chars){
 
 void CGUIScrollableMemoryLabelBox::Refresh(){
     RefreshLabels();
+}
+
+void CGUIScrollableMemoryLabelBox::SetBaseAddress(uint32_t addr){
+    SetBaseAddress(addr, true);
 }

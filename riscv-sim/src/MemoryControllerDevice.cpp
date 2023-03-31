@@ -1,4 +1,5 @@
 #include "MemoryControllerDevice.h"
+#include "MemoryRange.h"
 #include <cstdio>
 
 static const uint32_t CMemoryControllerDeviceIndexBits = 4;
@@ -6,14 +7,21 @@ static const uint32_t CMemoryControllerDeviceIndices = 1<<CMemoryControllerDevic
 static const uint32_t CMemoryControllerDeviceIndexMask = CMemoryControllerDeviceIndices - 1;
 
 
-CMemoryControllerDevice::CMemoryControllerDevice(uint32_t bits){
+CMemoryControllerDevice::CMemoryControllerDevice(uint32_t bits, uint32_t *watchpoint_address, bool *watchpoint_hit){
     DBaseAddress = 0;
     DMemorySize = 32 > bits ? 1<<bits : 0;
     DShiftBits = bits - CMemoryControllerDeviceIndexBits;
     DSubDevices.resize(CMemoryControllerDeviceIndices);
+
+    WatchpointHit = watchpoint_hit;
+    WatchpointAddress = watchpoint_address;
 }
 
-std::shared_ptr<CMemoryDevice> CMemoryControllerDevice::AccessAddress(uint32_t addr, uint32_t size){
+std::shared_ptr<CMemoryDevice> CMemoryControllerDevice::AccessAddress(uint32_t addr, uint32_t size, bool debug_load){
+    if (!debug_load && FindWatchpoint({addr, size})) {
+        *WatchpointHit = true;
+        *WatchpointAddress = addr;
+    }
     uint32_t Offset = addr - DBaseAddress;
     uint32_t Index = (Offset>>DShiftBits) & CMemoryControllerDeviceIndexMask;
     
@@ -29,6 +37,22 @@ void CMemoryControllerDevice::DumpData(std::ostream &out, uint32_t saddr, uint32
             SubDevice->DumpData(out,saddr,eaddr);
         }
     }
+}
+
+void CMemoryControllerDevice::ClearWatchpoints(){
+    DWatchpoints.clear();
+}
+
+void CMemoryControllerDevice::AddWatchpoint(CMemoryRange mem_range){
+    DWatchpoints.insert(mem_range);
+}
+
+void CMemoryControllerDevice::RemoveWatchpoint(CMemoryRange mem_range){
+    DWatchpoints.erase(mem_range);
+}
+
+bool CMemoryControllerDevice::FindWatchpoint(CMemoryRange mem_range) const{
+    return DWatchpoints.end() != DWatchpoints.find(mem_range);
 }
 
 bool CMemoryControllerDevice::AttachDevice(std::shared_ptr< CMemoryDevice > device, uint32_t addr){
@@ -59,7 +83,7 @@ bool CMemoryControllerDevice::AttachDevice(std::shared_ptr< CMemoryDevice > devi
         return false;
     }
     uint32_t NewBase = addr & ((~(uint32_t)0)<<NewBits);
-    auto NewMemoryController = std::make_shared<CMemoryControllerDevice>(NewBits);
+    auto NewMemoryController = std::make_shared<CMemoryControllerDevice>(NewBits, WatchpointAddress, WatchpointHit);
     NewMemoryController->BaseAddress(NewBase);
     if(!NewMemoryController->AttachDevice(device,addr)){
         return false;
@@ -104,9 +128,9 @@ void CMemoryControllerDevice::StoreUINT64(uint32_t addr, uint64_t val){
 }
 
 const uint8_t *CMemoryControllerDevice::LoadData(uint32_t addr, uint32_t size){
-    return AccessAddress(addr, size)->LoadData(addr, size);
+  return AccessAddress(addr, size, true)->LoadData(addr, size);
 }
 
 void CMemoryControllerDevice::StoreData(uint32_t addr, const uint8_t *src, uint32_t size){
-    AccessAddress(addr, size)->StoreData(addr, src, size);
+  AccessAddress(addr, size, true)->StoreData(addr, src, size);
 }

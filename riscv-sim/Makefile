@@ -53,6 +53,7 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/Path.o                           \
     $(OBJ_DIR)/MemoryControllerDevice.o         \
     $(OBJ_DIR)/MemoryDevice.o                   \
+    $(OBJ_DIR)/MemoryRange.o                    \
     $(OBJ_DIR)/FlashMemoryDevice.o              \
     $(OBJ_DIR)/RAMMemoryDevice.o                \
     $(OBJ_DIR)/RegisterBlockMemoryDevice.o      \
@@ -82,6 +83,7 @@ AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/Path.o                           \
     $(OBJ_DIR)/MemoryControllerDevice.o         \
     $(OBJ_DIR)/MemoryDevice.o                   \
+    $(OBJ_DIR)/MemoryRange.o                    \
     $(OBJ_DIR)/FlashMemoryDevice.o              \
     $(OBJ_DIR)/RAMMemoryDevice.o                \
     $(OBJ_DIR)/RegisterBlockMemoryDevice.o      \

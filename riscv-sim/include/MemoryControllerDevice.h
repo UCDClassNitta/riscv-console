@@ -2,6 +2,8 @@
 #define MEMORYCONTROLLERDEVICE_H
 
 #include "MemoryDevice.h"
+#include "MemoryRange.h"
+#include <set>
 
 class CMemoryControllerDevice : public CMemoryDevice{
     protected:
@@ -10,10 +12,14 @@ class CMemoryControllerDevice : public CMemoryDevice{
         uint32_t DShiftBits;
         std::vector< std::shared_ptr<CMemoryDevice> > DSubDevices;
 
-        std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size);
+        std::shared_ptr<CMemoryDevice> AccessAddress(uint32_t addr, uint32_t size, bool debug_load=false);
 
+	std::set< CMemoryRange > DWatchpoints;
+
+	uint32_t *WatchpointAddress;
+	bool *WatchpointHit;
     public:
-        CMemoryControllerDevice(uint32_t bits);
+        CMemoryControllerDevice(uint32_t bits, uint32_t *watchpoint_address, bool *watchpoint_hit);
         virtual ~CMemoryControllerDevice(){};
         virtual void DumpData(std::ostream &out, uint32_t saddr=0, uint32_t eaddr=0);
         virtual bool AttachDevice(std::shared_ptr< CMemoryDevice > device, uint32_t addr);
@@ -41,6 +47,15 @@ class CMemoryControllerDevice : public CMemoryDevice{
 
         virtual const uint8_t *LoadData(uint32_t addr, uint32_t size);
         virtual void StoreData(uint32_t addr, const uint8_t *src, uint32_t size);
+
+        void ClearWatchpoints();
+        void AddWatchpoint(CMemoryRange mem_range);
+        void RemoveWatchpoint(CMemoryRange mem_range);
+        bool FindWatchpoint(CMemoryRange mem_range) const;
+
+	const std::set< CMemoryRange > &Watchpoints() const{
+	    return DWatchpoints;
+	};
 };
 
 #endif
