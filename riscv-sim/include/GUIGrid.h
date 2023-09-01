@@ -5,7 +5,7 @@
 
 class CGUIGrid : public virtual CGUIContainer{
     public:
-        virtual ~CGUIGrid(){};
+        virtual ~CGUIGrid() = default;
         
         virtual unsigned int GetRowSpacing() const = 0;
         virtual void SetRowSpacing(unsigned int spacing) = 0;

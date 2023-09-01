@@ -99,7 +99,7 @@ class CRISCVConsole{
         void MarkBreakpointStrings();
 
     public:
-        CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufreq);
+        CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufreq, std::shared_ptr<CGraphicFactory> graphicfactory);
         ~CRISCVConsole();
 
         uint32_t ScreenWidth(){

@@ -1,10 +1,11 @@
 #include "GUIScrollableLabelBox.h"
 #include "GUIFactory.h"
 
-CGUIScrollableLabelBox::CGUIScrollableLabelBox(size_t initsize){
-    DContainingFrame = CGUIFactory::NewFrame();
-    DContainingGrid = CGUIFactory::NewGrid();
-    DScrollbar = CGUIFactory::NewScrollBar(CGUIScrollBar::EOrientation::Vertical);
+CGUIScrollableLabelBox::CGUIScrollableLabelBox(std::shared_ptr<CGUIFactory> guifactory, size_t initsize){
+    DGUIFactory = guifactory;
+    DContainingFrame = DGUIFactory->NewFrame();
+    DContainingGrid = DGUIFactory->NewGrid();
+    DScrollbar = DGUIFactory->NewScrollBar(CGUIScrollBar::EOrientation::Vertical);
     DContainingGrid->Attach(DScrollbar,1,0,1,1);
     DContainingGrid->SetHorizontalExpand(true);
     DContainingGrid->SetVerticalExpand(true);
@@ -202,8 +203,8 @@ void CGUIScrollableLabelBox::SetLineCount(size_t count){
         DLabels.pop_back();
     }
     while(DLabels.size() < count){
-        auto Label = CGUIFactory::NewLabel("X");
-        auto EventBox = CGUIFactory::NewEventBox();
+        auto Label = DGUIFactory->NewLabel("X");
+        auto EventBox = DGUIFactory->NewEventBox();
         Label->SetFontFamily(DFontFamily);
         Label->SetJustification(SGUIJustificationType::Left);
         if(0 < DWidthCharacters){

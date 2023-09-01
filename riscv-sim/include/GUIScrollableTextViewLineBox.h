@@ -1,6 +1,7 @@
 #ifndef GUISCROLLABLETEXTVIEWLINEBOX_H
 #define GUISCROLLABLETEXTVIEWLINEBOX_H
 #include "GUIScrollableLineBox.h"
+#include "GUIFactory.h"
 #include "GUIFrame.h"
 #include "GUIGrid.h"
 #include "GUILabel.h"
@@ -13,6 +14,7 @@
 
 class CGUIScrollableTextViewLineBox : public virtual CGUIScrollableLineBox, public std::enable_shared_from_this<CGUIScrollableTextViewLineBox> {
     protected:
+        std::shared_ptr<CGUIFactory> DGUIFactory;
         std::shared_ptr<CGUIFrame> DContainingFrame;
         std::shared_ptr<CGUITextView> DTextView;
         std::shared_ptr<CGUIScrollWindow> DScrollWindow;
@@ -44,7 +46,7 @@ class CGUIScrollableTextViewLineBox : public virtual CGUIScrollableLineBox, publ
         virtual bool WidgetScrollEvent(std::shared_ptr<CGUIWidget> widget, SGUIScrollEvent &event);
 
     public:
-        CGUIScrollableTextViewLineBox(size_t initsize=8);
+        CGUIScrollableTextViewLineBox(std::shared_ptr<CGUIFactory> guifactory, size_t initsize=8);
         virtual ~CGUIScrollableTextViewLineBox();
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const override;

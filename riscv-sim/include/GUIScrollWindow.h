@@ -8,7 +8,7 @@ class CGUIScrollWindow : public virtual CGUIContainer{
     public:
         enum class EScrollPolicyType{Always = 0, Automatic, Never, External};
 
-        virtual ~CGUIScrollWindow() {};
+        virtual ~CGUIScrollWindow() = default;
         virtual void SetScrollPolicy(EScrollPolicyType hpolicy, EScrollPolicyType vpolicy) = 0;
         virtual void SetMinContentWidth(int width) = 0;
         virtual void SetMinContentHeight(int height) = 0;

@@ -6,7 +6,7 @@
 
 class CGUIMenuItem : public virtual CGUIContainer{
     public:
-        virtual ~CGUIMenuItem(){};
+        virtual ~CGUIMenuItem() = default;
         
         virtual std::shared_ptr<CGUILabel> GetLabel() = 0;
         virtual void SetSubMenu(std::shared_ptr<CGUIWidget> widget) = 0;

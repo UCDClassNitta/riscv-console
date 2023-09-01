@@ -5,8 +5,7 @@
 
 class CGUIButton : public virtual CGUIContainer{
     public:
-        
-        virtual ~CGUIButton(){};
+        virtual ~CGUIButton() = default;
         
         virtual std::string GetLabel() const = 0;
         virtual void SetLabel(const std::string &label) = 0;

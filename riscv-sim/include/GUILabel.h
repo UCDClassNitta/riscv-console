@@ -6,7 +6,7 @@
 
 class CGUILabel : public virtual CGUIWidget{
     public:
-        virtual ~CGUILabel(){};        
+        virtual ~CGUILabel() = default;        
         
         virtual std::string GetText() = 0;
         virtual void SetText(const std::string &str) = 0;

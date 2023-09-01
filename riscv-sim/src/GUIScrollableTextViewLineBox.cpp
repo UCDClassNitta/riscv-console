@@ -3,10 +3,11 @@
 #include <sstream>
 #include <iterator>
 
-CGUIScrollableTextViewLineBox::CGUIScrollableTextViewLineBox(size_t initsize){
-    DTextView = CGUIFactory::NewTextView();
-    DContainingFrame = CGUIFactory::NewFrame();
-    DScrollWindow = CGUIFactory::NewScrollWindow();
+CGUIScrollableTextViewLineBox::CGUIScrollableTextViewLineBox(std::shared_ptr<CGUIFactory> guifactory, size_t initsize){
+    DGUIFactory = guifactory;
+    DTextView = DGUIFactory->NewTextView();
+    DContainingFrame = DGUIFactory->NewFrame();
+    DScrollWindow = DGUIFactory->NewScrollWindow();
     DScrollWindow->Add(DTextView);
     DContainingFrame->Add(DScrollWindow);
 

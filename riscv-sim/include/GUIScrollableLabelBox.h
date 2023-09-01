@@ -1,6 +1,7 @@
 #ifndef GUISCROLLABLELABELBOX_H
 #define GUISCROLLABLELABELBOX_H
 #include "GUIScrollableLineBox.h"
+#include "GUIFactory.h"
 #include "GUIFrame.h"
 #include "GUIGrid.h"
 #include "GUILabel.h"
@@ -12,6 +13,7 @@
 
 class CGUIScrollableLabelBox : public virtual CGUIScrollableLineBox, public std::enable_shared_from_this<CGUIScrollableLabelBox> {
     protected:
+        std::shared_ptr<CGUIFactory> DGUIFactory;
         std::shared_ptr<CGUIGrid> DContainingGrid;
         std::shared_ptr<CGUIFrame> DContainingFrame;
         std::vector< std::shared_ptr<CGUIEventBox> > DLabelEventBoxes;
@@ -50,7 +52,7 @@ class CGUIScrollableLabelBox : public virtual CGUIScrollableLineBox, public std:
         virtual void RefreshLabels();
 
     public:
-        CGUIScrollableLabelBox(size_t initsize=8);
+        CGUIScrollableLabelBox(std::shared_ptr<CGUIFactory> guifactory, size_t initsize=8);
         virtual ~CGUIScrollableLabelBox();
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const override;

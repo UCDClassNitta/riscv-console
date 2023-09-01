@@ -38,10 +38,42 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/AutoRunner.o                     \
     $(OBJ_DIR)/AutoRecorder.o                   \
     $(OBJ_DIR)/GraphicFactoryCairo.o            \
+    $(OBJ_DIR)/GraphicResourceContextCairo.o    \
+    $(OBJ_DIR)/GraphicSurfaceCairo.o            \
+    $(OBJ_DIR)/GUIEvent.o                       \
+    $(OBJ_DIR)/GUIJustification.o               \
+    $(OBJ_DIR)/GUIApplicationGTK3.o             \
+    $(OBJ_DIR)/GUIBoxGTK3.o                     \
+    $(OBJ_DIR)/GUIButtonGTK3.o                  \
+    $(OBJ_DIR)/GUIComboBoxGTK3.o                \
+    $(OBJ_DIR)/GUIContainerGTK3.o               \
+    $(OBJ_DIR)/GUICursorGTK3.o                  \
+    $(OBJ_DIR)/GUIDisplayGTK3.o                 \
+    $(OBJ_DIR)/GUIDrawingAreaGTK3.o             \
+    $(OBJ_DIR)/GUIEventBoxGTK3.o                \
+    $(OBJ_DIR)/GUIEventGTK3.o                   \
     $(OBJ_DIR)/GUIFactoryGTK3.o                 \
+    $(OBJ_DIR)/GUIFileChooserDialogGTK3.o       \
+    $(OBJ_DIR)/GUIFileFilter.o                  \
+    $(OBJ_DIR)/GUIFrameGTK3.o                   \
+    $(OBJ_DIR)/GUIGridGTK3.o                    \
+    $(OBJ_DIR)/GUILabelGTK3.o                   \
+    $(OBJ_DIR)/GUIMenuBarGTK3.o                 \
+    $(OBJ_DIR)/GUIMenuGTK3.o                    \
+    $(OBJ_DIR)/GUIMenuItemGTK3.o                \
+    $(OBJ_DIR)/GUIMenuShellGTK3.o               \
     $(OBJ_DIR)/GUIScrollableLabelBox.o          \
     $(OBJ_DIR)/GUIScrollableMemoryLabelBox.o    \
     $(OBJ_DIR)/GUIScrollableTextViewLineBox.o   \
+    $(OBJ_DIR)/GUIScrollBarGTK3.o               \
+    $(OBJ_DIR)/GUIScrollWindowGTK3.o            \
+    $(OBJ_DIR)/GUITextBufferGTK3.o              \
+    $(OBJ_DIR)/GUITextIterGTK3.o                \
+    $(OBJ_DIR)/GUITextTagGTK3.o                 \
+    $(OBJ_DIR)/GUITextViewGTK3.o                \
+    $(OBJ_DIR)/GUIToggleButtonGTK3.o            \
+    $(OBJ_DIR)/GUIWidgetGTK3.o                  \
+    $(OBJ_DIR)/GUIWindowGTK3.o                  \
     $(OBJ_DIR)/RISCVConsoleApplication.o        \
     $(OBJ_DIR)/RISCVConsoleApplicationConfig.o  \
     $(OBJ_DIR)/PeriodicTimeout.o                \
@@ -75,6 +107,8 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
 AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/AutoRunner.o                     \
     $(OBJ_DIR)/GraphicFactoryCairo.o            \
+    $(OBJ_DIR)/GraphicResourceContextCairo.o    \
+    $(OBJ_DIR)/GraphicSurfaceCairo.o            \
     $(OBJ_DIR)/FileDataContainer.o              \
     $(OBJ_DIR)/FileDataSink.o                   \
     $(OBJ_DIR)/FileDataSource.o                 \

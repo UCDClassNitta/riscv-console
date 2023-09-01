@@ -11,8 +11,7 @@ using TGraphicSurfaceAccessRawDataCallback = bool (*)(void *calldata, uint8_t *d
 
 class CGraphicSurface{
     public:
-        CGraphicSurface(){};
-        virtual ~CGraphicSurface(){};
+        virtual ~CGraphicSurface() = default;
         
         virtual int Width() const = 0;
         virtual int Height() const = 0;

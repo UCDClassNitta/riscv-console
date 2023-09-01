@@ -7,7 +7,7 @@
 class CGUIApplication{
     public:
         CGUIApplication(){};
-        virtual ~CGUIApplication(){};
+        virtual ~CGUIApplication() = default;
         
         virtual void SetActivateCallback(TGUICalldata calldata, TGUIApplicationCallback callback) = 0;
         virtual void SetTimer(int timems, TGUICalldata calldata, TGUITimeoutCallback callback) = 0;

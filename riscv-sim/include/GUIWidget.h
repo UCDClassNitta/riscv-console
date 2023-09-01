@@ -4,6 +4,7 @@
 #include "GUIEvent.h"
 #include "GUICursor.h"
 #include "GraphicSurface.h"
+#include <string>
 
 class CGUIWidget{
     public:

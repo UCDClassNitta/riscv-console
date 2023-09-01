@@ -3,7 +3,7 @@
 
 class CGUITextIter{
     public:
-        virtual ~CGUITextIter(){};
+        virtual ~CGUITextIter() = default;
 
         virtual bool MoveBackwardLines(int count) = 0;
         virtual bool MoveForwardLines(int count) = 0; 

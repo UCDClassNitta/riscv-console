@@ -5,7 +5,7 @@
 
 class CGUIComboBox : public virtual CGUIContainer{
     public:
-        virtual ~CGUIComboBox(){};
+        virtual ~CGUIComboBox() = default;
         
         virtual void SetFontFamily(const std::string &family) = 0;
 

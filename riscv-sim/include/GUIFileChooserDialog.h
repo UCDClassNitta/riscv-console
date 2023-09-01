@@ -1,18 +1,12 @@
-
 #ifndef GUIFILECHOOSERDIALOG_H
 #define GUIFILECHOOSERDIALOG_H
-#include "GUIWindow.h"
 
-class CGUIFileFilter{
-    public:
-        virtual ~CGUIFileFilter(){};
-        
-        virtual void AddPattern(const std::string &pattern) = 0;
-};
+#include "GUIWindow.h"
+#include "GUIFileFilter.h"
 
 class CGUIFileChooserDialog : public virtual CGUIWindow{
     public:
-        virtual ~CGUIFileChooserDialog(){};
+        virtual ~CGUIFileChooserDialog() = default;
         
         virtual void SetFilter(std::shared_ptr<CGUIFileFilter> filter) = 0;
         virtual std::string GetCurrentFolder() = 0;
@@ -23,4 +17,3 @@ class CGUIFileChooserDialog : public virtual CGUIWindow{
 };
 
 #endif
-

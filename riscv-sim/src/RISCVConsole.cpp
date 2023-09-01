@@ -28,7 +28,7 @@ constexpr typename std::underlying_type<E>::type to_underlying(E enumerator) noe
     return static_cast<typename std::underlying_type<E>::type>(enumerator);
 }
 
-CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufreq){
+CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufreq, std::shared_ptr<CGraphicFactory> graphicfactory){
     DDebugMode = false;
     DTimerDelayUS = timerus;
     DVideoDelayMS = videoms;
@@ -37,7 +37,7 @@ CRISCVConsole::CRISCVConsole(uint32_t timerus, uint32_t videoms, uint32_t cpufre
     DTimerTicks = uint64_t(DTimerDelayUS) * DDebugCPUFreq / 1000000;
 
     DRefreshScreenBuffer.store(false);
-    DVideoController = std::make_shared< CVideoController >();
+    DVideoController = std::make_shared< CVideoController >(graphicfactory);
 
     DMemoryController = std::make_shared< CMemoryControllerDevice >(32);    
     DMainMemory = std::make_shared< CRAMMemoryDevice >(DMainMemorySize);

@@ -5,7 +5,7 @@
 
 class CGUIContainer : public virtual CGUIWidget{
     public:
-        virtual ~CGUIContainer(){};
+        virtual ~CGUIContainer() = default;
         
         virtual void SetBorderWidth(int width) = 0;
         virtual void Add(std::shared_ptr<CGUIWidget> widget) = 0;
