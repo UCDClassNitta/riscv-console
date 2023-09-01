@@ -10,7 +10,7 @@
 
 class CGUITextBuffer{
     public:
-        virtual ~CGUITextBuffer(){};
+        virtual ~CGUITextBuffer() = default;
 
         virtual void SetText(const std::string &text) = 0;
         virtual void Insert(std::shared_ptr<CGUITextIter> start, const std::string &text) = 0;

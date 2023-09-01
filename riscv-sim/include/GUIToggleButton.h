@@ -6,7 +6,7 @@
 class CGUIToggleButton : public virtual CGUIButton{
     public:
         
-        virtual ~CGUIToggleButton(){};
+        virtual ~CGUIToggleButton() = default;
         
         virtual bool GetActive() const = 0;
         virtual void SetActive(bool active) = 0;

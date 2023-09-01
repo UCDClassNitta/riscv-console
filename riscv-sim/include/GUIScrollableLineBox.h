@@ -11,7 +11,7 @@ using TGUIScrollableLineBoxScrollEventCallback = bool (*)(std::shared_ptr<CGUISc
 
 class CGUIScrollableLineBox{
     public:
-        virtual ~CGUIScrollableLineBox(){};
+        virtual ~CGUIScrollableLineBox() = default;
 
         virtual std::shared_ptr<CGUIWidget> ContainingWidget() const = 0;
 

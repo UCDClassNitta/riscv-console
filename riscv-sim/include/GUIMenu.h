@@ -5,8 +5,7 @@
 
 class CGUIMenu : public virtual CGUIMenuShell{
     public:
-        virtual ~CGUIMenu(){};
-        
+        virtual ~CGUIMenu() = default;
 };
 
 #endif

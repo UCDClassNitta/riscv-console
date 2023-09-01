@@ -11,7 +11,7 @@
 
 std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::DApplicationPointer;
 
-CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, const SPrivateConstructionType &key){
+CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, std::shared_ptr<CGUIFactory> guifactory, const SPrivateConstructionType &key){
     std::string ConfigFilePath = getenv("HOME");
     
     ConfigFilePath += ConfigFilePath.back() == '/' ? ".riscv_console.cfg" : "/.riscv_console.cfg";
@@ -19,9 +19,11 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, c
     DConfiguration.Load(ConfigFile);
 
     DFirmwareFileOpenFolder = DCartridgeFileOpenFolder = DRecordFileOpenFolder = CPath::CurrentPath().ToString();
-    DApplication = CGUIFactory::ApplicationInstance(appname);
+    DGUIFactory = guifactory;
+    DGraphicFactory = DGUIFactory->GraphicFactoryInstance();
+    DApplication = DGUIFactory->ApplicationInstance(appname);
     
-    DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
+    DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency(),DGraphicFactory);
     DInputRecorder = std::make_shared<CAutoRecorder>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
     DApplication->SetActivateCallback(this, ActivateCallback);
     
@@ -202,7 +204,7 @@ void CRISCVConsoleApplication::MainWindowDestroy(std::shared_ptr<CGUIWidget> wid
 }
 
 bool CRISCVConsoleApplication::MainWindowKeyPressEvent(std::shared_ptr<CGUIWidget> widget, SGUIKeyEvent &event){
-    auto ButtonSearch = DKeyControllerMapping.find(event.DValue.DValue);
+    auto ButtonSearch = DKeyControllerMapping.find(event.DValue);
     if(ButtonSearch != DKeyControllerMapping.end()){
         ButtonSearch->second->SetActive(true);
         UpdateConsoleButtonChange(ButtonSearch->second);
@@ -212,13 +214,13 @@ bool CRISCVConsoleApplication::MainWindowKeyPressEvent(std::shared_ptr<CGUIWidge
 }
 
 bool CRISCVConsoleApplication::MainWindowKeyReleaseEvent(std::shared_ptr<CGUIWidget> widget, SGUIKeyEvent &event){
-    auto ButtonSearch = DKeyControllerMapping.find(event.DValue.DValue);
+    auto ButtonSearch = DKeyControllerMapping.find(event.DValue);
     if(ButtonSearch != DKeyControllerMapping.end()){
         ButtonSearch->second->SetActive(false);
         UpdateConsoleButtonChange(ButtonSearch->second);
     }
     else{
-        auto ZoomSearch = DKeyZoomMapping.find(event.DValue.DValue);
+        auto ZoomSearch = DKeyZoomMapping.find(event.DValue);
         if(ZoomSearch != DKeyZoomMapping.end()){
             double CurrentScale = (double)DConsoleVideo->AllocatedHeight() / DRISCVConsole->ScreenHeight();
             double Scales[] = {1.0, 1.5, 2.0};
@@ -244,7 +246,7 @@ bool CRISCVConsoleApplication::MainWindowKeyReleaseEvent(std::shared_ptr<CGUIWid
                 }
             }
         }
-        else if(DKeySnapshotMapping.find(event.DValue.DValue) != DKeySnapshotMapping.end()){
+        else if(DKeySnapshotMapping.find(event.DValue) != DKeySnapshotMapping.end()){
             auto CurrentTime = std::chrono::system_clock::now();
             auto TimeT = std::chrono::system_clock::to_time_t(CurrentTime);
             auto LocalTime = ::localtime(&TimeT);
@@ -263,7 +265,7 @@ bool CRISCVConsoleApplication::MainWindowKeyReleaseEvent(std::shared_ptr<CGUIWid
             Filename += ".png";
             auto OutputSink = std::make_shared<CFileDataSink>(Filename);
             
-            CGraphicFactory::StoreSurface(OutputSink,SaveSurface);
+            DGraphicFactory->StoreSurface(OutputSink,SaveSurface);
         }
     }
     return true;
@@ -292,7 +294,7 @@ bool CRISCVConsoleApplication::DrawingAreaDraw(std::shared_ptr<CGUIWidget> widge
 bool CRISCVConsoleApplication::FirmwareButtonClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
     std::string Filename;
     {
-        auto FileChooser = CGUIFactory::NewFileChooserDialog("Select Firmware",true,DMainWindow);
+        auto FileChooser = DGUIFactory->NewFileChooserDialog("Select Firmware",true,DMainWindow);
         FileChooser->SetCurrentFolder(DFirmwareFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
@@ -328,7 +330,7 @@ bool CRISCVConsoleApplication::CartridgeButtonToggledEvent(std::shared_ptr<CGUIW
     if(DCartridgeButton->GetActive()){
         DCartridgeInLoading = true;
         std::string Filename;
-        auto FileChooser = CGUIFactory::NewFileChooserDialog("Select Cartridge",true,DMainWindow);
+        auto FileChooser = DGUIFactory->NewFileChooserDialog("Select Cartridge",true,DMainWindow);
         FileChooser->SetCurrentFolder(DCartridgeFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
@@ -530,7 +532,7 @@ bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidg
 
     if(!DDebugRecordButton->GetActive()){
         std::string Filename;
-        auto FileChooser = CGUIFactory::NewFileChooserDialog("Save Record",false,DMainWindow);
+        auto FileChooser = DGUIFactory->NewFileChooserDialog("Save Record",false,DMainWindow);
         FileChooser->SetCurrentFolder(DRecordFileOpenFolder);
         if(FileChooser->Run()){
             Filename = FileChooser->GetFilename();
@@ -592,28 +594,28 @@ void CRISCVConsoleApplication::BreakpointEvent(){
     DDebugRunButton->SetActive(false);
 }
 
-std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname){
+std::shared_ptr< CRISCVConsoleApplication > CRISCVConsoleApplication::Instance(const std::string &appname, std::shared_ptr<CGUIFactory> guifactory){
     if(!DApplicationPointer){
-        DApplicationPointer = std::make_shared< CRISCVConsoleApplication >(appname, SPrivateConstructionType{});   
+        DApplicationPointer = std::make_shared< CRISCVConsoleApplication >(appname, guifactory, SPrivateConstructionType{});   
     }
     return DApplicationPointer;
 }
 
 void CRISCVConsoleApplication::CreateConsoleWidgets(){
-    DConsoleBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
-    DConsoleVideo = CGUIFactory::NewDrawingArea();
+    DConsoleBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
+    DConsoleVideo = DGUIFactory->NewDrawingArea();
     CreateControllerWidgets();
     CreateSystemControlWidgets();
 
-    DControlsBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
+    DControlsBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
     DControlsBox->PackStart(DControllerGrid,false,false,GetWidgetSpacing());
     DControlsBox->PackStart(DSystemControlGrid,false,false,GetWidgetSpacing());
 
     DConsoleBox->PackStart(DConsoleVideo,false,false,GetWidgetSpacing());
     DConsoleBox->PackStart(DControlsBox,false,false,GetWidgetSpacing());
     
-    DDoubleBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
-    DWorkingBufferSurface = CGraphicFactory::CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
+    DDoubleBufferSurface = DGraphicFactory->CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
+    DWorkingBufferSurface = DGraphicFactory->CreateSurface(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight(), ESurfaceFormat::ARGB32);
     DConsoleVideo->SetSizeRequest(DRISCVConsole->ScreenWidth(), DRISCVConsole->ScreenHeight());
     DConsoleVideo->SetDrawEventCallback(this, DrawingAreaDrawCallback);
     auto TempRC = DDoubleBufferSurface->CreateResourceContext();
@@ -626,16 +628,16 @@ void CRISCVConsoleApplication::CreateConsoleWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateControllerWidgets(){
-    DUpButton = CGUIFactory::NewToggleButton();
-    DDownButton = CGUIFactory::NewToggleButton();
-    DLeftButton = CGUIFactory::NewToggleButton();
-    DRightButton = CGUIFactory::NewToggleButton();
-    DButton1 = CGUIFactory::NewToggleButton();
-    DButton2 = CGUIFactory::NewToggleButton();
-    DButton3 = CGUIFactory::NewToggleButton();
-    DButton4 = CGUIFactory::NewToggleButton();
-    DCommandButton = CGUIFactory::NewButton();
-    DControllerGrid = CGUIFactory::NewGrid();
+    DUpButton = DGUIFactory->NewToggleButton();
+    DDownButton = DGUIFactory->NewToggleButton();
+    DLeftButton = DGUIFactory->NewToggleButton();
+    DRightButton = DGUIFactory->NewToggleButton();
+    DButton1 = DGUIFactory->NewToggleButton();
+    DButton2 = DGUIFactory->NewToggleButton();
+    DButton3 = DGUIFactory->NewToggleButton();
+    DButton4 = DGUIFactory->NewToggleButton();
+    DCommandButton = DGUIFactory->NewButton();
+    DControllerGrid = DGUIFactory->NewGrid();
     DControllerGrid->Attach(DUpButton,1,0,1,1);
     DControllerGrid->Attach(DLeftButton,0,1,1,1);
     DControllerGrid->Attach(DRightButton,2,1,1,1);
@@ -700,11 +702,11 @@ void CRISCVConsoleApplication::CreateControllerWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateSystemControlWidgets(){
-    DPowerButton = CGUIFactory::NewToggleButton();
-    DResetButton = CGUIFactory::NewButton();
-    DFirmwareButton = CGUIFactory::NewButton();
-    DCartridgeButton = CGUIFactory::NewToggleButton();
-    DSystemControlGrid = CGUIFactory::NewGrid();
+    DPowerButton = DGUIFactory->NewToggleButton();
+    DResetButton = DGUIFactory->NewButton();
+    DFirmwareButton = DGUIFactory->NewButton();
+    DCartridgeButton = DGUIFactory->NewToggleButton();
+    DSystemControlGrid = DGUIFactory->NewGrid();
     DSystemControlGrid->Attach(DCartridgeButton,0,0,2,1);
     DSystemControlGrid->Attach(DResetButton,0,1,1,1);
     DSystemControlGrid->Attach(DPowerButton,1,1,1,1);
@@ -726,10 +728,10 @@ void CRISCVConsoleApplication::CreateSystemControlWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugWidgets(){
-    DConsoleDebugBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
-    DDebugBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
+    DConsoleDebugBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Horizontal,GetWidgetSpacing());
+    DDebugBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
     CreateDebugRegisterWidgets();
-    auto RegisterBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Horizontal,0);
+    auto RegisterBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Horizontal,0);
     RegisterBox->PackStart(DRegisterGrid,false,false,GetWidgetSpacing());
     DDebugBox->PackStart(RegisterBox,false,false,GetWidgetSpacing());
 
@@ -738,9 +740,9 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
 
     CreateDebugInstructionWidgets();
     CreateDebugCSRWidgets();
-    auto InstCSRGrid = CGUIFactory::NewGrid();
-    auto InstLabel = CGUIFactory::NewLabel("Instructions");
-    auto CSRLabel = CGUIFactory::NewLabel("CSRs");
+    auto InstCSRGrid = DGUIFactory->NewGrid();
+    auto InstLabel = DGUIFactory->NewLabel("Instructions");
+    auto CSRLabel = DGUIFactory->NewLabel("CSRs");
     InstLabel->SetJustification(SGUIJustificationType::Left);
     CSRLabel->SetJustification(SGUIJustificationType::Left);
     InstCSRGrid->Attach(InstLabel,0,0,1,1);
@@ -756,14 +758,14 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     InstCSRGrid->SetRowSpacing(GetWidgetSpacing());
     DDebugBox->PackStart(InstCSRGrid,true,true,GetWidgetSpacing());
     CreateDebugMemoryWidgets();
-    auto MemoryGrid = CGUIFactory::NewGrid();
-    auto MemoryLabel = CGUIFactory::NewLabel("Memory");
-    DDebugMemoryFirmwareButton = CGUIFactory::NewButton();
-    DDebugMemoryCartridgeButton = CGUIFactory::NewButton();
-    DDebugMemoryRegistersButton = CGUIFactory::NewButton();
-    DDebugMemoryVideoButton = CGUIFactory::NewButton();
-    DDebugMemoryDataButton = CGUIFactory::NewButton();
-    DDebugMemoryStackButton = CGUIFactory::NewToggleButton();
+    auto MemoryGrid = DGUIFactory->NewGrid();
+    auto MemoryLabel = DGUIFactory->NewLabel("Memory");
+    DDebugMemoryFirmwareButton = DGUIFactory->NewButton();
+    DDebugMemoryCartridgeButton = DGUIFactory->NewButton();
+    DDebugMemoryRegistersButton = DGUIFactory->NewButton();
+    DDebugMemoryVideoButton = DGUIFactory->NewButton();
+    DDebugMemoryDataButton = DGUIFactory->NewButton();
+    DDebugMemoryStackButton = DGUIFactory->NewToggleButton();
     MemoryLabel->SetJustification(SGUIJustificationType::Left);
     MemoryGrid->Attach(MemoryLabel,0,0,1,1);
     MemoryGrid->Attach(DDebugMemoryFirmwareButton,1,0,1,1);
@@ -811,14 +813,14 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
-    DRegisterGrid = CGUIFactory::NewGrid(); 
+    DRegisterGrid = DGUIFactory->NewGrid(); 
     auto QuarterCount = CRISCVCPU::RegisterCount() / 4;
     size_t MaxChar = 0;
     for(size_t RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
         MaxChar = std::max(CRISCVCPU::CInstruction::RegisterName(RegisterIndex).length(),MaxChar);
     }
     MaxChar++;
-    auto Title = CGUIFactory::NewLabel("CPU Regs");
+    auto Title = DGUIFactory->NewLabel("CPU Regs");
     Title->SetJustification(SGUIJustificationType::Left);
     DRegisterGrid->Attach(Title,0,0,8,1);
     for(size_t RegisterIndex = 0; RegisterIndex < CRISCVCPU::RegisterCount(); RegisterIndex++){
@@ -829,31 +831,31 @@ void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
         else if(RegisterName == "sp"){
             DDebugMemoryStackPointerRegisterIndex = RegisterIndex;
         }
-        DGeneralRegisterNameLabels.push_back(CGUIFactory::NewLabel(RegisterName + ":"));
+        DGeneralRegisterNameLabels.push_back(DGUIFactory->NewLabel(RegisterName + ":"));
         DGeneralRegisterNameLabels.back()->SetJustification(SGUIJustificationType::Right);
         DGeneralRegisterNameLabels.back()->SetHorizontalExpand(true);
         DGeneralRegisterNameLabels.back()->SetFontFamily("monospace");
         DGeneralRegisterNameLabels.back()->SetWidthCharacters(MaxChar);
         DRegisterGrid->Attach(DGeneralRegisterNameLabels.back(),(RegisterIndex/QuarterCount)*2,(RegisterIndex%QuarterCount)+1,1,1);
-        DGeneralRegisterValueLabels.push_back(CGUIFactory::NewLabel("XXXXXXXX"));
+        DGeneralRegisterValueLabels.push_back(DGUIFactory->NewLabel("XXXXXXXX"));
         DGeneralRegisterValueLabels.back()->SetFontFamily("monospace");
         DGeneralRegisterValueLabels.back()->SetWidthCharacters(8);
         DRegisterGrid->Attach(DGeneralRegisterValueLabels.back(),(RegisterIndex/QuarterCount)*2+1,(RegisterIndex%QuarterCount)+1,1,1);
     }
-    DProgramCounterNameLabel = CGUIFactory::NewLabel("pc:");
+    DProgramCounterNameLabel = DGUIFactory->NewLabel("pc:");
     DProgramCounterNameLabel->SetJustification(SGUIJustificationType::Right);
     DProgramCounterNameLabel->SetHorizontalExpand(true);
     DProgramCounterNameLabel->SetFontFamily("monospace");
     DProgramCounterNameLabel->SetWidthCharacters(MaxChar);
-    DProgramCounterNameEventBox = CGUIFactory::NewEventBox();
+    DProgramCounterNameEventBox = DGUIFactory->NewEventBox();
     DProgramCounterNameEventBox->Add(DProgramCounterNameLabel);
     DProgramCounterNameEventBox->SetButtonPressEventCallback(this,ProgramCounterButtonEventCallback);
     
     DRegisterGrid->Attach(DProgramCounterNameEventBox,0,QuarterCount+1,1,1);
-    DProgramCounterValueLabel = CGUIFactory::NewLabel("XXXXXXXX");
+    DProgramCounterValueLabel = DGUIFactory->NewLabel("XXXXXXXX");
     DProgramCounterValueLabel->SetFontFamily("monospace");
     DProgramCounterValueLabel->SetWidthCharacters(8);
-    DProgramCounterValueEventBox = CGUIFactory::NewEventBox();
+    DProgramCounterValueEventBox = DGUIFactory->NewEventBox();
     DProgramCounterValueEventBox->Add(DProgramCounterValueLabel);
     DProgramCounterValueEventBox->SetButtonPressEventCallback(this,ProgramCounterButtonEventCallback);
     DRegisterGrid->Attach(DProgramCounterValueEventBox,1,QuarterCount+1,1,1);
@@ -862,12 +864,12 @@ void CRISCVConsoleApplication::CreateDebugRegisterWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugControlWidgets(){
-    DDebugControlBox = CGUIFactory::NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
+    DDebugControlBox = DGUIFactory->NewBox(CGUIBox::EOrientation::Vertical,GetWidgetSpacing());
 
-    DDebugRunButton = CGUIFactory::NewToggleButton();
-    DDebugStepButton = CGUIFactory::NewButton();
-    DDebugClearButton = CGUIFactory::NewButton();
-    DDebugRecordButton = CGUIFactory::NewToggleButton();
+    DDebugRunButton = DGUIFactory->NewToggleButton();
+    DDebugStepButton = DGUIFactory->NewButton();
+    DDebugClearButton = DGUIFactory->NewButton();
+    DDebugRecordButton = DGUIFactory->NewToggleButton();
     DDebugRunButton->SetLabel("Run");
     DDebugRunButton->SetToggledEventCallback(this, RunButtonToggledEventCallback);
     DDebugRunButton->SetTooltipText("Start Running");
@@ -892,21 +894,21 @@ void CRISCVConsoleApplication::CreateDebugControlWidgets(){
 }
 
 void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
-    DDebugInstructions = std::make_shared<CGUIScrollableTextViewLineBox>();//std::make_shared<CGUIScrollableLabelBox>();
+    DDebugInstructions = std::make_shared<CGUIScrollableTextViewLineBox>(DGUIFactory);//std::make_shared<CGUIScrollableLabelBox>();
     // Assume @01234567: abcdef zero,zero,-2147483648
     DDebugInstructions->SetWidthCharacters(38);
     DDebugInstructions->SetLineCount(GetInstructionLineCount());
     DDebugInstructions->SetButtonPressEventCallback(this,InstructionBoxButtonEventCallback);
     DDebugInstructions->SetScrollEventCallback(this,InstructionBoxScrollEventCallback);
 
-    DDebugInstructionComboBox = CGUIFactory::NewComboBox();
+    DDebugInstructionComboBox = DGUIFactory->NewComboBox();
     DDebugInstructionComboBox->SetFontFamily("monospace");
     DDebugInstructionComboBox->SetChangedEventCallback(this,InstructionComboBoxChangedEventCallback);
 
 }
 
 void CRISCVConsoleApplication::CreateDebugCSRWidgets(){
-    DDebugCSRegisters = std::make_shared<CGUIScrollableTextViewLineBox>();//std::make_shared<CGUIScrollableLabelBox>();
+    DDebugCSRegisters = std::make_shared<CGUIScrollableTextViewLineBox>(DGUIFactory);//std::make_shared<CGUIScrollableLabelBox>();
     // Assume mcounteren: 01234567 add buffer
     DDebugCSRegisters->SetWidthCharacters(22);
     std::vector< std::string > InitialCSR;
@@ -932,7 +934,7 @@ void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
         {DRISCVConsole->VideoMemoryBase(), DRISCVConsole->VideoMemorySize()},
         {DRISCVConsole->MainMemoryBase(), DRISCVConsole->MainMemorySize()}
     };
-    DDebugMemory = std::make_shared<CGUIScrollableMemoryLabelBox>(DRISCVConsole->Memory(), MemoryRegions);
+    DDebugMemory = std::make_shared<CGUIScrollableMemoryLabelBox>(DGUIFactory, DRISCVConsole->Memory(), MemoryRegions);
     DDebugMemory->SetLineCount(GetMemoryLineCount());
 }
 
@@ -979,7 +981,7 @@ void CRISCVConsoleApplication::SetKeyZoomMapping(const std::string &keys, bool z
             DKeyZoomMapping[SGUIKeyType::Keya + Delta] = zoomin;
         }
         else{
-            DKeyZoomMapping[(uint32_t)Letter] = zoomin;
+            DKeyZoomMapping[SGUIKeyType::ASCIIToValue(Letter)] = zoomin;
         }
     }
 }
@@ -997,7 +999,7 @@ void CRISCVConsoleApplication::SetSnapshotMapping(const std::string &keys){
             DKeySnapshotMapping.insert(SGUIKeyType::Keya + Delta);
         }
         else{
-            DKeySnapshotMapping.insert((uint32_t)Letter);
+            DKeySnapshotMapping.insert(SGUIKeyType::ASCIIToValue(Letter));
         }
     }
 }

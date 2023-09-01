@@ -28,7 +28,7 @@ class CAutoRunner {
         bool LoadInputJSONDocument();
 
         void ParseArguments(int &argc, char *argv[]);
-        void ParseInitData();
+        void ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory);
         void ParseCommandData();
         void SendCommand(uint32_t cycle, uint32_t nextCycle, const std::string &type, const std::string &data);
 
@@ -110,7 +110,7 @@ class CAutoRunner {
         static const std::string CSRS_STRING;
         static const std::string MEM_STRING;
 
-        explicit CAutoRunner(int argc, char *argv[]);
+        explicit CAutoRunner(int argc, char *argv[], std::shared_ptr<CGraphicFactory> graphicfactory);
 
 };
 

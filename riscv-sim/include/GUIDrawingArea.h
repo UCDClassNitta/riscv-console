@@ -6,9 +6,7 @@
 
 class CGUIDrawingArea : public virtual CGUIWidget{
     public:
-        virtual ~CGUIDrawingArea(){};
-        
-        
+        virtual ~CGUIDrawingArea() = default;
 };
 
 #endif

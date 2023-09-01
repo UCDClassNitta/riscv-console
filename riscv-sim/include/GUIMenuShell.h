@@ -5,10 +5,9 @@
 
 class CGUIMenuShell : public virtual CGUIContainer{
     public:
-        virtual ~CGUIMenuShell(){};
+        virtual ~CGUIMenuShell() = default;
         
         virtual void Append(std::shared_ptr<CGUIWidget> widget) = 0;
 };
 
 #endif
-

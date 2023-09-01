@@ -7,6 +7,7 @@
 
 class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
     protected:
+        std::shared_ptr<CGUIFactory> DGUIFactory;
         std::shared_ptr< CMemoryDevice > DMemoryDevice;
         std::vector< uint32_t > DMemoryBases;
         std::vector< uint32_t > DMemorySizes;
@@ -24,7 +25,7 @@ class CGUIScrollableMemoryLabelBox : public CGUIScrollableLabelBox{
         static std::string FormatMemoryLine(const uint8_t *buffer, uint32_t addr, uint32_t bytes);
 
     public:
-        CGUIScrollableMemoryLabelBox(std::shared_ptr< CMemoryDevice > device, const std::unordered_map< uint32_t, uint32_t > &regions, size_t initsize=8);
+        CGUIScrollableMemoryLabelBox(std::shared_ptr<CGUIFactory> guifactory, std::shared_ptr< CMemoryDevice > device, const std::unordered_map< uint32_t, uint32_t > &regions, size_t initsize=8);
         virtual ~CGUIScrollableMemoryLabelBox();
 
         virtual uint32_t GetBaseAddress();

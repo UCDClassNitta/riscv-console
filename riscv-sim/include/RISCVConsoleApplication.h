@@ -17,6 +17,8 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
 
     protected:
         static std::shared_ptr< CRISCVConsoleApplication > DApplicationPointer;
+        std::shared_ptr<CGUIFactory> DGUIFactory;
+        std::shared_ptr<CGraphicFactory> DGraphicFactory;
         std::shared_ptr<CGUIApplication> DApplication;
         CRISCVConsoleApplicationConfiguration DConfiguration;
         bool DDeleted = false;
@@ -185,10 +187,10 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         static std::string FormatHex32Bit(uint32_t val);
 
     public:
-        explicit CRISCVConsoleApplication(const std::string &appname, const SPrivateConstructionType &key);
+        explicit CRISCVConsoleApplication(const std::string &appname, std::shared_ptr<CGUIFactory> guifactory, const SPrivateConstructionType &key);
         ~CRISCVConsoleApplication();
         
-        static std::shared_ptr< CRISCVConsoleApplication > Instance(const std::string &appname);
+        static std::shared_ptr< CRISCVConsoleApplication > Instance(const std::string &appname, std::shared_ptr<CGUIFactory> guifactory);
         
         int Run(int argc, char *argv[]);
 

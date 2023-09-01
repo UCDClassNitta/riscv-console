@@ -10,8 +10,7 @@ class CGraphicResourceContext{
         enum class ELineCap{Butt, Round, Square};
         enum class ELineJoin{Miter, Round, Bevel};
         
-        CGraphicResourceContext(){};
-        virtual ~CGraphicResourceContext(){};
+        virtual ~CGraphicResourceContext() = default;
 
         virtual void SetSourceRGB(uint32_t rgb) = 0;
         virtual void SetSourceRGB(double r, double g, double b) = 0;

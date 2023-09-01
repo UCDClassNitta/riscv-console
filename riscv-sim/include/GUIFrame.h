@@ -5,7 +5,7 @@
 
 class CGUIFrame : public virtual CGUIContainer{
     public:
-        virtual ~CGUIFrame(){};
+        virtual ~CGUIFrame() = default;
         
         virtual void SetLabel(const std::string &label) = 0;
 };

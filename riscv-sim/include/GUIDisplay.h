@@ -6,8 +6,7 @@
 
 class CGUIDisplay{
     public:
-        CGUIDisplay(){};
-        virtual ~CGUIDisplay(){};
+        virtual ~CGUIDisplay() = default;
                        
         virtual void Sync() = 0;
         virtual void Flush() = 0;

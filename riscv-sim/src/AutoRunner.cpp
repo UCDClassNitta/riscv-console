@@ -59,13 +59,13 @@ const std::string CAutoRunner::CSRS_STRING = "CSRs";
 const std::string CAutoRunner::MEM_STRING = "Mem";
 
 
-CAutoRunner::CAutoRunner(int argc, char *argv[]){
+CAutoRunner::CAutoRunner(int argc, char *argv[], std::shared_ptr<CGraphicFactory> graphicfactory){
     DInputJSONPath = "./input.json";
     DOutputJSONPath = "./output.json";
 
     ParseArguments(argc, argv);
     LoadInputJSONDocument();
-    ParseInitData();
+    ParseInitData(graphicfactory);
 
     DOutputJSONDocument.SetObject();
     rapidjson::Value TempValue(rapidjson::kArrayType);
@@ -94,7 +94,7 @@ bool CAutoRunner::LoadInputJSONDocument(){
     return true;
 }
 
-void CAutoRunner::ParseInitData(){
+void CAutoRunner::ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory){
     uint32_t TimerUS = 0, VideoMS = 0, CPUFreq = 0;
 
     if(DInputJSONDocument.HasMember(INIT_STRING.c_str())){
@@ -109,7 +109,7 @@ void CAutoRunner::ParseInitData(){
             CPUFreq = Init[CPU_FREQ_STRING.c_str()].GetInt();
         }
     }
-    DRISCVConsole = std::make_shared<CRISCVConsole>(TimerUS, VideoMS, CPUFreq);
+    DRISCVConsole = std::make_shared<CRISCVConsole>(TimerUS, VideoMS, CPUFreq, graphicfactory);
     DRISCVConsole->SetDebugMode(true);
 }
 

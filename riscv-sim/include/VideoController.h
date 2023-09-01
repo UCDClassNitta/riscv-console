@@ -3,6 +3,7 @@
 
 #include "RAMMemoryDevice.h"
 #include "HardwareRegister.h"
+#include "GraphicFactory.h"
 #include "GraphicSurface.h"
 
 class CVideoController{
@@ -42,6 +43,7 @@ class CVideoController{
         };
 
         std::shared_ptr< CRAMMemoryDevice > DVideoRAM;
+        std::shared_ptr<CGraphicFactory> DGraphicFactory;
         std::vector< std::shared_ptr<CGraphicSurface> > DBackgrounds;
         std::vector< std::shared_ptr<CGraphicSurface> > DLargeSprites;
         std::vector< std::shared_ptr<CGraphicSurface> > DSmallSprites;
@@ -87,7 +89,7 @@ class CVideoController{
         bool RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surface);
 
     public:
-        CVideoController();
+        CVideoController(std::shared_ptr<CGraphicFactory> graphicfactory);
 
         uint32_t ScreenWidth() const{
             return DScreenWidth;

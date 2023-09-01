@@ -8,7 +8,7 @@
 class CGUITextView : public virtual CGUIContainer{
     public: 
         enum class EWrapModeType{None = 0, Character, Word, WordCharacter};
-        virtual ~CGUITextView(){};
+        virtual ~CGUITextView() = default;
 
         virtual void PlaceCursorOnscreen() = 0;
         virtual void SetEditable(bool edit) = 0;

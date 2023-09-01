@@ -10,7 +10,7 @@ class CDataSink;
 
 class CDataContainerIterator{
     public:  
-        virtual ~CDataContainerIterator(){};
+        virtual ~CDataContainerIterator() = default;
         virtual std::string Name() = 0;
         virtual bool IsContainer() = 0;
         virtual bool IsValid() = 0;
@@ -19,7 +19,7 @@ class CDataContainerIterator{
 
 class CDataContainer{
     public:
-        virtual ~CDataContainer(){};
+        virtual ~CDataContainer() = default;
         virtual std::shared_ptr< CDataContainerIterator > First() = 0;
         virtual std::shared_ptr< CDataSource > DataSource(const std::string &name) = 0;
         virtual std::shared_ptr< CDataSink > DataSink(const std::string &name) = 0;

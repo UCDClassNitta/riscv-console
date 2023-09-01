@@ -5,7 +5,7 @@
 
 class CGUIWindow : public virtual CGUIContainer{
     public:
-        virtual ~CGUIWindow(){};
+        virtual ~CGUIWindow() = default;
         
         virtual void SetMinSize(int width, int height) = 0;
         virtual void SetMaxSize(int width, int height) = 0;

@@ -23,12 +23,13 @@ const uint32_t CVideoController::DLargeSpriteCount = 64;
 const uint32_t CVideoController::DSmallSpriteCount = 128;
 const uint32_t CVideoController::DRefreshBaseCount = 10;
 
-CVideoController::CVideoController(){
+CVideoController::CVideoController(std::shared_ptr<CGraphicFactory> graphicfactory){
+    DGraphicFactory = graphicfactory;
     DVideoRAM = std::make_shared<CRAMMemoryDevice>(0x100000);
     uint8_t *MemoryBase = DVideoRAM->Data().data();
     uint32_t FontSize = 256 * ((MSXFontWidth + 7)/8) * MSXFontHeight;
     for(uint32_t BackgroundIndex = 0; BackgroundIndex < DBackgroundCount; BackgroundIndex++){
-        DBackgrounds.push_back(CGraphicFactory::CreateSurface(DScreenWidth, DScreenHeight, ESurfaceFormat::ARGB32));
+        DBackgrounds.push_back(DGraphicFactory->CreateSurface(DScreenWidth, DScreenHeight, ESurfaceFormat::ARGB32));
         DBackgroundBases.push_back(MemoryBase);
         if(!BackgroundIndex){
             DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
@@ -36,7 +37,7 @@ CVideoController::CVideoController(){
         MemoryBase += DScreenWidth * DScreenHeight;
     }
     for(uint32_t LargeSpriteIndex = 0; LargeSpriteIndex < DLargeSpriteCount; LargeSpriteIndex++){
-        DLargeSprites.push_back(CGraphicFactory::CreateSurface(DLargeSpriteWidth, DLargeSpriteHeight, ESurfaceFormat::ARGB32));
+        DLargeSprites.push_back(DGraphicFactory->CreateSurface(DLargeSpriteWidth, DLargeSpriteHeight, ESurfaceFormat::ARGB32));
         DLargeSpriteBases.push_back(MemoryBase);
         if(!LargeSpriteIndex){
             DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());
@@ -44,7 +45,7 @@ CVideoController::CVideoController(){
         MemoryBase += DLargeSpriteWidth * DLargeSpriteHeight;
     }
     for(uint32_t SmallSpriteIndex = 0; SmallSpriteIndex < DSmallSpriteCount; SmallSpriteIndex++){
-        DSmallSprites.push_back(CGraphicFactory::CreateSurface(DSmallSpriteWidth, DSmallSpriteHeight, ESurfaceFormat::ARGB32));
+        DSmallSprites.push_back(DGraphicFactory->CreateSurface(DSmallSpriteWidth, DSmallSpriteHeight, ESurfaceFormat::ARGB32));
         DSmallSpriteBases.push_back(MemoryBase);
         if(!SmallSpriteIndex){
             DSegmentBases.push_back(MemoryBase - DVideoRAM->Data().data());

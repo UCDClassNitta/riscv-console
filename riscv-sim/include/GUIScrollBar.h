@@ -6,7 +6,7 @@
 class CGUIScrollBar : public virtual CGUIWidget{
     public:
         enum class EOrientation{Horizontal, Vertical};
-        virtual ~CGUIScrollBar(){};
+        virtual ~CGUIScrollBar() = default;
         
         virtual double GetValue() = 0;
         virtual double GetLower() = 0;

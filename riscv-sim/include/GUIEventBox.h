@@ -5,7 +5,7 @@
 
 class CGUIEventBox : public virtual CGUIContainer{
     public:
-        virtual ~CGUIEventBox(){};
+        virtual ~CGUIEventBox() = default;
 };
 
 #endif
