@@ -25,7 +25,7 @@ else
 CFLAGS   += -O3
 endif
 
-INCLUDE  += -I $(INC_DIR)
+INCLUDE  += -I $(INC_DIR) -I $(INC_DIR)/gui -I $(INC_DIR)/gtk3
 CFLAGS   +=  -Wall `pkg-config --cflags $(PKGS)`
 LDFLAGS  +=`pkg-config --libs $(PKGS)` 
 #LDFLAGS += -lgdk_imlib
@@ -146,7 +146,13 @@ $(BIN_DIR)/$(AUTO_RUN_APP_NAME): $(AUTO_RUN_APP_OBJS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
-	
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/gui/%.cpp
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/gtk3/%.cpp
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
+
 directories: $(OBJ_DIR) $(BIN_DIR)
 
 $(OBJ_DIR):
