@@ -77,6 +77,9 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/RISCVConsoleApplication.o        \
     $(OBJ_DIR)/RISCVConsoleApplicationConfig.o  \
     $(OBJ_DIR)/PeriodicTimeout.o                \
+    $(OBJ_DIR)/BufferedSeekableDataSource.o     \
+    $(OBJ_DIR)/SeekableDataSourceConverter.o    \
+    $(OBJ_DIR)/SeekableDataSourceSandbox.o      \
     $(OBJ_DIR)/FileDataContainer.o              \
     $(OBJ_DIR)/FileDataSink.o                   \
     $(OBJ_DIR)/FileDataSource.o                 \
@@ -88,6 +91,7 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/FlashMemoryDevice.o              \
     $(OBJ_DIR)/RAMMemoryDevice.o                \
     $(OBJ_DIR)/RegisterBlockMemoryDevice.o      \
+    $(OBJ_DIR)/DwarfStructures.o                \
     $(OBJ_DIR)/ElfLoad.o                        \
     $(OBJ_DIR)/RISCVConsoleChipset.o            \
     $(OBJ_DIR)/RISCVConsole.o                   \
@@ -109,6 +113,9 @@ AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/GraphicFactoryCairo.o            \
     $(OBJ_DIR)/GraphicResourceContextCairo.o    \
     $(OBJ_DIR)/GraphicSurfaceCairo.o            \
+    $(OBJ_DIR)/BufferedSeekableDataSource.o     \
+    $(OBJ_DIR)/SeekableDataSourceConverter.o    \
+    $(OBJ_DIR)/SeekableDataSourceSandbox.o      \
     $(OBJ_DIR)/FileDataContainer.o              \
     $(OBJ_DIR)/FileDataSink.o                   \
     $(OBJ_DIR)/FileDataSource.o                 \
@@ -119,6 +126,7 @@ AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/FlashMemoryDevice.o              \
     $(OBJ_DIR)/RAMMemoryDevice.o                \
     $(OBJ_DIR)/RegisterBlockMemoryDevice.o      \
+    $(OBJ_DIR)/DwarfStructures.o                \
     $(OBJ_DIR)/ElfLoad.o                        \
     $(OBJ_DIR)/RISCVConsoleChipset.o            \
     $(OBJ_DIR)/RISCVConsole.o                   \
