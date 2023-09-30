@@ -16,6 +16,7 @@ class CBufferedSeekableDataSource : public CSeekableDataSource{
 
     public:
         CBufferedSeekableDataSource(std::shared_ptr<CDataSource> source);
+        CBufferedSeekableDataSource(const std::vector< uint8_t > &buffer);
         virtual ~CBufferedSeekableDataSource() = default;
         int Read(void *data, int length) override;
         size_t Tell() const override;

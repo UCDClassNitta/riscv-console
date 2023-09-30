@@ -6,13 +6,17 @@ CBufferedSeekableDataSource::CBufferedSeekableDataSource(std::shared_ptr<CDataSo
     DBufferedPosition = 0;
 }
 
+CBufferedSeekableDataSource::CBufferedSeekableDataSource(const std::vector< uint8_t > &buffer) : DBufferedData(buffer){
+    DBufferedPosition = 0;
+}
+
 void CBufferedSeekableDataSource::PrepareToPosition(size_t pos){
     if(pos > DBufferedData.size()){
         auto OldSize =  DBufferedData.size();
         auto NewSize = ((pos + DBlockSize - 1) / DBlockSize) * DBlockSize;
         DBufferedData.resize(NewSize);
         auto BytesToRead = DBufferedData.size() - OldSize;
-        auto BytesRead = DActualSource->Read(DBufferedData.data() + OldSize, BytesToRead);
+        auto BytesRead = DActualSource ? DActualSource->Read(DBufferedData.data() + OldSize, BytesToRead) : 0;
         if(BytesRead < BytesToRead){
             if(0 > BytesRead){
                 BytesRead = 0;

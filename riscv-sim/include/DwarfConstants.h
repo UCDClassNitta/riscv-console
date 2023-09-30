@@ -232,6 +232,7 @@ enum class DW_AT{
 // https://dwarfstd.org/doc/DWARF5.pdf
 // Table 7.6: Attribute form encodings
 enum class DW_FORM{
+    none            = 0x00,
     addr            = 0x01, // address
     block2          = 0x03, // block
     block4          = 0x04, // block
@@ -282,6 +283,7 @@ enum class DW_FORM{
 // https://dwarfstd.org/doc/DWARF5.pdf
 // Table 7.9: DWARF operation encodings
 enum class DW_OP{
+    none                = 0x00,
     addr                = 0x03, // constant address (size is target specific)
     deref               = 0x06, //
     const1u             = 0x08, // 1-byte constant
@@ -471,6 +473,7 @@ enum class DW_LLE{
 // https://dwarfstd.org/doc/DWARF5.pdf
 // Table 7.11: Base type encoding values
 enum class DW_ATE{
+    none            = 0x00,
     address         = 0x01,
     boolean         = 0x02,
     complex_float   = 0x03,

@@ -18,7 +18,7 @@ CElfLoad::CElfLoad(std::shared_ptr< CDataSource > src){
                 ReadSymbolTables();
                 ReadDebugInfo();
                 MergeSymbols();
-                PrintHeaders();
+                //PrintHeaders();
             }
             DValidFile = true;
         }
@@ -233,6 +233,9 @@ bool CElfLoad::ReadSectionHeaders(){
             TempHeader.DEntrySize = DInputSourceConverter->ReadUINT64();
         }
         DSectionHeaders.push_back(TempHeader);
+        if(TempHeader.DFlags == (CElfConstants::PF_W | CElfConstants::PF_R)){
+            DGlobalVariableSectionIndices.insert(Index);
+        }
     }
     return true;
 }
@@ -299,6 +302,8 @@ bool CElfLoad::ReadSymbolTables(){
 bool CElfLoad::ReadDebugInfo(){
     auto AbbreviationsOffset = 0;
     auto LineNumberOffset = 0;
+    std::unordered_map<std::string, uint64_t> GlobalSymbols;
+    DDwarfProgram.DLittleEndian = DInputSourceConverter->LittleEndian();
     DDwarfProgram.DAbbreviationsSize = 0;
     DDwarfProgram.DLineNumberSize = 0;
     DDwarfProgram.DCompilaitonUnits.clear();
@@ -321,9 +326,11 @@ bool CElfLoad::ReadDebugInfo(){
     }
     auto AbbreviationSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, AbbreviationsOffset, DDwarfProgram.DAbbreviationsSize);
     DDwarfProgram.DAbbreviationsSourceConverter = std::make_shared< CSeekableDataSourceConverter >(AbbreviationSandbox);
+    DDwarfProgram.DAbbreviationsSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
 
     auto LineNumberSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, LineNumberOffset, DDwarfProgram.DLineNumberSize);
     DDwarfProgram.DLineNumberSourceConverter = std::make_shared< CSeekableDataSourceConverter >(LineNumberSandbox);
+    DDwarfProgram.DLineNumberSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
     DDwarfProgram.D32Bit = D32Bit;
     DDwarfProgram.DDebugStrings = std::make_shared< CElfStructures::CStringTable >();
     for(auto &SectionHeader : DSectionHeaders){
@@ -361,7 +368,18 @@ bool CElfLoad::ReadDebugInfo(){
             }
         }
     }
-   DDwarfProgram.ConsolidateLineNumbers();
+    for(auto &SymbolEntity : DSymbolEntities){
+        auto Search = DStringTables.find(SymbolEntity.DNameSectionIndex);
+        if(Search != DStringTables.end()){
+            auto EntityName = Search->second.GetString(SymbolEntity.DNameIndex);
+            if(!EntityName.empty()){
+                GlobalSymbols[EntityName] = SymbolEntity.DAddress;
+            }
+        }
+    }
+
+    DDwarfProgram.ConsolidateLineNumbers();
+    DDwarfProgram.ConsolidateVariables(GlobalSymbols);
 
     return true;
 }
