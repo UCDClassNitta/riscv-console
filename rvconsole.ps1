@@ -16,6 +16,11 @@ if(!$IMAGE_DEV_ID){
     docker build -t $IMAGE_DEV -f Dockerfile .
 }
 
+# Create workspace directory if doesn't exist
+if(!(Test-Path "workspace")){
+    New-Item -ItemType Directory -Path "workspace"
+}
+
 $CURRENT_IP=(
     Get-NetIPConfiguration |
     Where-Object {
@@ -44,6 +49,32 @@ if(!$CONTAINER_DEV_ID){
         Write-Output "  docker restart $CONTAINER_DEV"
         docker restart $CONTAINER_DEV 
     }
+}
+
+$MOUNTED=(docker inspect --format='{{(index .Mounts 0).Source}}' $CONTAINER_DEV)
+Write-Output "Your Docker Container is mounted to ${MOUNTED}"
+Write-Output "Your current directory is $(pwd)"
+
+#https://stackoverflow.com/questions/5466329/whats-the-best-way-to-determine-the-location-of-the-current-powershell-script
+#$PSCommandPath: Contains the full path and file name of the script that is being run.
+$SCRIPT_DIR=(Split-Path -Parent $PSCommandPath)
+Write-Output "Your current shell script is running in ${SCRIPT_DIR}"
+
+if($MOUNTED -ne $SCRIPT_DIR)
+{
+    Write-Output "ERROR: The file you are running is NOT in your MOUNTED Volume!"
+    Write-Output "ERROR: The file you are running is NOT in your MOUNTED Volume!"
+    Write-Output "ERROR: The file you are running is NOT in your MOUNTED Volume!"
+    Write-Output "ERROR: The file you are running is NOT in your MOUNTED Volume!"
+    Write-Output "ERROR: The file you are running is NOT in your MOUNTED Volume!"
+
+    Write-Output "************************************************************************************************"
+    Write-Output "Options to correct the error: "
+    Write-Output "(1) Move all your files from the current location to your mounted path: $MOUNTED"
+    Write-Output "---- OR ----"
+    Write-Output "(2) Stop the container in your Docker application, remove the container, re-run ./rvconsole.ps1"
+    Write-Output "************************************************************************************************"
+    exit 0
 }
 
 # Container is running, exec bash
