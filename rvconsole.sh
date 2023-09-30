@@ -25,6 +25,9 @@ if [[ $IMAGE_DEV_ID == "" ]]; then
     $BUILD_CMD
 fi
 
+# Create workspace directory if doesn't exist
+mkdir -p ./workspace
+
 # Add xhost
 # xhost + 127.0.0.1
 
@@ -64,26 +67,20 @@ echo "Your current directory is $(pwd)"
 #https://stackoverflow.com/questions/242538/unix-shell-script-find-out-which-directory-the-script-file-resides
 #$0 is the name of the running process
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
-echo "Your current shell script is running at $SCRIPT_DIR"
-
+echo "Your current shell script is running in $SCRIPT_DIR"
 
 if [[ $MOUNTED != $SCRIPT_DIR ]]; then
+    echo "ERROR!: The file you are running is NOT in your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT in your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT in your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT in your MOUNTED Volume!"
+    echo "ERROR!: The file you are running is NOT in your MOUNTED Volume!"
+    
     echo "************************************************************************************************"
-    echo " "
-    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
-    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
-    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
-    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
-    echo "ERROR!: The file you are running is NOT on your MOUNTED Volume!"
-    echo " "
-    echo "OPTIONS to correct the error: "
-    echo " "
+    echo "Options to correct the error: "
     echo "(1) Move all your files from the current location to your mounted path: $MOUNTED"
-    echo " "
-    echo "OR"
-    echo " "
+    echo "---- OR ----"
     echo "(2) Stop the container in your Docker application, remove the container, re-run ./rvconsole.sh"
-    echo " "
     echo "************************************************************************************************"
     #stop the container/remove the container, restart the rvconsole whereever you want
     exit 0
