@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include "ElfStructures.h"
 #include "DwarfStructures.h"
@@ -37,6 +38,7 @@ class CElfLoad{
         std::vector< CElfStructures::SProgramHeader > DProgramHeaders;
         std::vector< CElfStructures::SSectionHeader > DSectionHeaders;
         CElfStructures::CStringTable DSectionNames;
+        std::unordered_set< uint16_t > DGlobalVariableSectionIndices;
         std::unordered_map< uint32_t,  CElfStructures::CStringTable > DStringTables;
         std::vector< CElfStructures::SSymbolEntity > DSymbolEntities;
         CDwarfStructures::SProgram DDwarfProgram;
