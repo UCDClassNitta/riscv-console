@@ -69,6 +69,7 @@ class CAutoRunner {
         static const std::string TIMER_US_STRING;
         static const std::string VIDEO_MS_STRING;
         static const std::string CPU_FREQ_STRING;
+        static const std::string VIDEO_MODEL_STRING;
 
         static const std::string COMMANDS_STRING;
         static const std::string CYCLE_STRING;

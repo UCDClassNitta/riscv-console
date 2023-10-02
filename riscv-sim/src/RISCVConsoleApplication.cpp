@@ -1,4 +1,5 @@
 #include "RISCVConsoleApplication.h"
+#include "VideoControllerAllocator.h"
 #include "FileDataSink.h"
 #include "FileDataSource.h"
 #include "Path.h"
@@ -23,7 +24,8 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, s
     DGraphicFactory = DGUIFactory->GraphicFactoryInstance();
     DApplication = DGUIFactory->ApplicationInstance(appname);
     
-    DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency(),DGraphicFactory);
+    auto VideoController = CVideoControllerAllocator::Allocate(GetVideoControllerModel(), DGraphicFactory);
+    DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency(),VideoController);
     DInputRecorder = std::make_shared<CAutoRecorder>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
     DApplication->SetActivateCallback(this, ActivateCallback);
     
@@ -1065,6 +1067,17 @@ uint32_t CRISCVConsoleApplication::GetCPUFrequency(){
         CPUFreq = 1000000;
     }
     return CPUFreq;
+}
+
+uint32_t CRISCVConsoleApplication::GetVideoControllerModel(){
+    auto VideoControllerModel = DConfiguration.GetIntegerParameter(CRISCVConsoleApplicationConfiguration::EParameter::VideoModel);
+    if(CVideoControllerAllocator::MinModel() > VideoControllerModel){
+        VideoControllerModel = CVideoControllerAllocator::MinModel();
+    }
+    else if(CVideoControllerAllocator::MaxModel() < VideoControllerModel){
+        VideoControllerModel = CVideoControllerAllocator::MaxModel();
+    }
+    return VideoControllerModel;
 }
 
 std::string CRISCVConsoleApplication::CreateRegisterTooltip(size_t index){

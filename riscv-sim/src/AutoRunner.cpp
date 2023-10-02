@@ -10,6 +10,7 @@
 #include "RISCVConsoleApplication.h"
 
 #include "RISCVConsole.h"
+#include "VideoControllerAllocator.h"
 #include "FileDataSink.h"
 #include "FileDataSource.h"
 #include "Path.h"
@@ -26,6 +27,7 @@ const std::string CAutoRunner::INIT_STRING = "Init";
 const std::string CAutoRunner::TIMER_US_STRING = "TimerUS";
 const std::string CAutoRunner::VIDEO_MS_STRING = "VideoMS";
 const std::string CAutoRunner::CPU_FREQ_STRING = "CPUFreq";
+const std::string CAutoRunner::VIDEO_MODEL_STRING = "VideoModel";
 const std::string CAutoRunner::COMMANDS_STRING = "Commands";
 const std::string CAutoRunner::CYCLE_STRING = "Cycle";
 const std::string CAutoRunner::TYPE_STRING = "Type";
@@ -95,7 +97,7 @@ bool CAutoRunner::LoadInputJSONDocument(){
 }
 
 void CAutoRunner::ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory){
-    uint32_t TimerUS = 0, VideoMS = 0, CPUFreq = 0;
+    uint32_t TimerUS = 0, VideoMS = 0, CPUFreq = 0, VideoModel = 1;
 
     if(DInputJSONDocument.HasMember(INIT_STRING.c_str())){
         const rapidjson::Value& Init = DInputJSONDocument[INIT_STRING.c_str()];
@@ -108,8 +110,12 @@ void CAutoRunner::ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory)
         if(Init[CPU_FREQ_STRING.c_str()].IsInt()){
             CPUFreq = Init[CPU_FREQ_STRING.c_str()].GetInt();
         }
+        if(Init[VIDEO_MODEL_STRING.c_str()].IsInt()){
+            VideoModel = Init[VIDEO_MODEL_STRING.c_str()].GetInt();
+        }
     }
-    DRISCVConsole = std::make_shared<CRISCVConsole>(TimerUS, VideoMS, CPUFreq, graphicfactory);
+    auto VideoController = CVideoControllerAllocator::Allocate(VideoModel,graphicfactory);
+    DRISCVConsole = std::make_shared<CRISCVConsole>(TimerUS, VideoMS, CPUFreq, VideoController);
     DRISCVConsole->SetDebugMode(true);
 }
 

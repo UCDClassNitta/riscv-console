@@ -106,7 +106,9 @@ SIM_APP_OBJS = $(OBJ_DIR)/main.o                \
     $(OBJ_DIR)/RISCVSYSTypeInstruction.o        \
     $(OBJ_DIR)/RISCVBlockInstructionCache.o     \
     $(OBJ_DIR)/MSXFont.o                        \
-    $(OBJ_DIR)/VideoController.o
+    $(OBJ_DIR)/Model01VideoController.o         \
+    $(OBJ_DIR)/Model02VideoController.o         \
+    $(OBJ_DIR)/VideoControllerAllocator.o
 
 AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/AutoRunner.o                     \
@@ -141,7 +143,9 @@ AUTO_RUN_APP_OBJS = $(OBJ_DIR)/autorunmain.o    \
     $(OBJ_DIR)/RISCVSYSTypeInstruction.o        \
     $(OBJ_DIR)/RISCVBlockInstructionCache.o     \
     $(OBJ_DIR)/MSXFont.o                        \
-    $(OBJ_DIR)/VideoController.o
+    $(OBJ_DIR)/Model01VideoController.o         \
+    $(OBJ_DIR)/Model02VideoController.o         \
+    $(OBJ_DIR)/VideoControllerAllocator.o
 
 
 all: directories $(BIN_DIR)/$(SIM_APP_NAME) $(BIN_DIR)/$(AUTO_RUN_APP_NAME)

@@ -1,29 +1,29 @@
-#include "VideoController.h"
+#include "Model01VideoController.h"
 #include "MSXFont.h"
 #include "GraphicFactory.h"
 #include "FileDataSink.h"
 #include <chrono>
 #include <cstring>
 
-const uint32_t CVideoController::DScreenWidth = 512;    // Provides 16:9 aspect ratio with 512 width
-const uint32_t CVideoController::DScreenHeight = 288;
-const uint32_t CVideoController::DLargeSpriteWidth = 64;
-const uint32_t CVideoController::DLargeSpriteHeight = 64;
-const uint32_t CVideoController::DSmallSpriteWidth = 16;
-const uint32_t CVideoController::DSmallSpriteHeight = 16;
-const uint32_t CVideoController::DPaletteCount = 4;
-const uint32_t CVideoController::DZLevels = 8;
-const uint32_t CVideoController::DTextWidth = DScreenWidth / MSXFontWidth;
-const uint32_t CVideoController::DTextHeight = DScreenHeight / MSXFontHeight;
-const uint32_t CVideoController::DCharacterWidth = (MSXFontWidth + 7)/8;
-const uint32_t CVideoController::DCharacterHeight = MSXFontHeight;
-const uint32_t CVideoController::DCharacterStride = DCharacterWidth * DCharacterHeight;
-const uint32_t CVideoController::DBackgroundCount = 5;
-const uint32_t CVideoController::DLargeSpriteCount = 64;
-const uint32_t CVideoController::DSmallSpriteCount = 128;
-const uint32_t CVideoController::DRefreshBaseCount = 10;
+const uint32_t CModel01VideoController::DScreenWidth = 512;    // Provides 16:9 aspect ratio with 512 width
+const uint32_t CModel01VideoController::DScreenHeight = 288;
+const uint32_t CModel01VideoController::DLargeSpriteWidth = 64;
+const uint32_t CModel01VideoController::DLargeSpriteHeight = 64;
+const uint32_t CModel01VideoController::DSmallSpriteWidth = 16;
+const uint32_t CModel01VideoController::DSmallSpriteHeight = 16;
+const uint32_t CModel01VideoController::DPaletteCount = 4;
+const uint32_t CModel01VideoController::DZLevels = 8;
+const uint32_t CModel01VideoController::DTextWidth = DScreenWidth / MSXFontWidth;
+const uint32_t CModel01VideoController::DTextHeight = DScreenHeight / MSXFontHeight;
+const uint32_t CModel01VideoController::DCharacterWidth = (MSXFontWidth + 7)/8;
+const uint32_t CModel01VideoController::DCharacterHeight = MSXFontHeight;
+const uint32_t CModel01VideoController::DCharacterStride = DCharacterWidth * DCharacterHeight;
+const uint32_t CModel01VideoController::DBackgroundCount = 5;
+const uint32_t CModel01VideoController::DLargeSpriteCount = 64;
+const uint32_t CModel01VideoController::DSmallSpriteCount = 128;
+const uint32_t CModel01VideoController::DRefreshBaseCount = 10;
 
-CVideoController::CVideoController(std::shared_ptr<CGraphicFactory> graphicfactory){
+CModel01VideoController::CModel01VideoController(std::shared_ptr<CGraphicFactory> graphicfactory){
     DGraphicFactory = graphicfactory;
     DVideoRAM = std::make_shared<CRAMMemoryDevice>(0x100000);
     uint8_t *MemoryBase = DVideoRAM->Data().data();
@@ -88,12 +88,12 @@ CVideoController::CVideoController(std::shared_ptr<CGraphicFactory> graphicfacto
     //strcpy((char *)DTextBase,"Hello World!");
 }
 
-bool CVideoController::RefreshTextModeCallback(void *calldata, uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
-    CVideoController *VideoController = static_cast<CVideoController *>(calldata);
+bool CModel01VideoController::RefreshTextModeCallback(void *calldata, uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
+    CModel01VideoController *VideoController = static_cast<CModel01VideoController *>(calldata);
     return VideoController->RefreshTextMode(data,format,stride,width,height);
 }
 
-bool CVideoController::RefreshGraphicsSurfaceRefreshCallback(void *calldata, uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
+bool CModel01VideoController::RefreshGraphicsSurfaceRefreshCallback(void *calldata, uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
     const uint32_t *Palette = static_cast<SSurfaceRefreshData *>(calldata)->DPalette;
     const uint8_t *VideoMemory = static_cast<SSurfaceRefreshData *>(calldata)->DVideoMemory;
 
@@ -105,7 +105,7 @@ bool CVideoController::RefreshGraphicsSurfaceRefreshCallback(void *calldata, uin
     return true;
 }
 
-void CVideoController::Refresh(std::shared_ptr<CGraphicSurface> surface){
+void CModel01VideoController::Refresh(std::shared_ptr<CGraphicSurface> surface){
     if(DModeControl->DMode){
         RefreshGraphicsMode(surface);
     }
@@ -114,7 +114,7 @@ void CVideoController::Refresh(std::shared_ptr<CGraphicSurface> surface){
     }
 }
 
-bool CVideoController::Tick(){
+bool CModel01VideoController::Tick(){
     if(--DRefreshCounter){
         return false;
     }
@@ -122,7 +122,7 @@ bool CVideoController::Tick(){
     return true;
 }
 
-bool CVideoController::RefreshTextMode(uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
+bool CModel01VideoController::RefreshTextMode(uint8_t *data, ESurfaceFormat format, int stride, int width, int height){
     //auto Start = std::chrono::steady_clock::now();
     for(uint32_t RowIndex = 0; RowIndex < DTextHeight; RowIndex++){
         for(uint32_t ColIndex = 0; ColIndex < DTextWidth; ColIndex++){
@@ -152,7 +152,7 @@ bool CVideoController::RefreshTextMode(uint8_t *data, ESurfaceFormat format, int
     return true;
 }
 
-bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surface){
+bool CModel01VideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surface){
     std::vector< std::vector< uint32_t > > RenderingOrders(DZLevels);
     //auto Start = std::chrono::steady_clock::now();
     
@@ -219,7 +219,7 @@ bool CVideoController::RefreshGraphicsMode(std::shared_ptr<CGraphicSurface> surf
     return true;
 }
 
-void CVideoController::Reset(){
+void CModel01VideoController::Reset(){
     uint32_t FontSize = 256 * ((MSXFontWidth + 7)/8) * MSXFontHeight;
     memset(DVideoRAM->Data().data(),0,DVideoRAM->Data().size());
     memcpy((char *)DFontBase,MSXFontData,FontSize);
