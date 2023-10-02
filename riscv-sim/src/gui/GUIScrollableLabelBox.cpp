@@ -139,7 +139,7 @@ bool CGUIScrollableLabelBox::WidgetDrawEvent(std::shared_ptr<CGUIWidget> widget,
     auto BoxHeight = ScrollableBox->DContainingGrid->AllocatedHeight();
     if(ScrollableBox->DLabels.size()){
         auto LabelHeight = ScrollableBox->DLabels[0]->AllocatedHeight();
-        auto NewLineCount = BoxHeight / LabelHeight;
+        size_t NewLineCount = BoxHeight / LabelHeight;
         if(NewLineCount != ScrollableBox->GetLineCount()){
             printf("AH %d LH %d \n",BoxHeight,ScrollableBox->DLabels.size() ? ScrollableBox->DLabels[0]->AllocatedHeight() : -1);
             ScrollableBox->SetLineCount(NewLineCount);

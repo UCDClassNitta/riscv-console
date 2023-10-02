@@ -355,7 +355,7 @@ bool CElfLoad::ReadDebugInfo(){
     for(auto &SectionHeader : DSectionHeaders){
         auto SectionName = DSectionNames.GetString(SectionHeader.DNameIndex);
         if(SectionName == ".debug_info"){
-            auto CurrentOffset = 0;
+            uint64_t CurrentOffset = 0;
             auto DebugSourceSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, SectionHeader.DFileOffset, SectionHeader.DSize);
             while(CurrentOffset < SectionHeader.DSize){
                 DebugSourceSandbox->Seek(CurrentOffset);

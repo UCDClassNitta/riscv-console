@@ -1,4 +1,5 @@
 #include "BufferedSeekableDataSource.h"
+#include <cstring>
 
 const size_t CBufferedSeekableDataSource::DBlockSize = 512;
 
@@ -15,7 +16,7 @@ void CBufferedSeekableDataSource::PrepareToPosition(size_t pos){
         auto OldSize =  DBufferedData.size();
         auto NewSize = ((pos + DBlockSize - 1) / DBlockSize) * DBlockSize;
         DBufferedData.resize(NewSize);
-        auto BytesToRead = DBufferedData.size() - OldSize;
+        int BytesToRead = DBufferedData.size() - OldSize;
         auto BytesRead = DActualSource ? DActualSource->Read(DBufferedData.data() + OldSize, BytesToRead) : 0;
         if(BytesRead < BytesToRead){
             if(0 > BytesRead){

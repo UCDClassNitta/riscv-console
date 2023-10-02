@@ -1,4 +1,5 @@
 #include "GUITextTagGTK3.h"
+#include <algorithm>
 
 CGUITextTagGTK3::CGUITextTagGTK3(GtkTextTag *texttag){
     DTextTag = texttag;

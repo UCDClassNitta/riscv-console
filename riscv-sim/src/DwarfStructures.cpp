@@ -464,7 +464,7 @@ bool CDwarfStructures::SProgrammaticScope::Print(int indent, bool recurse) const
     for(int Index = 0; Index < indent; Index++){
         printf(" ");
     }
-    printf("[%08llx, %08llx] : %s\n",DPCRange.DLowPC,DPCRange.DHighPC,DName.c_str());
+    printf("[%08" PRIX64 ", %08" PRIX64 "] : %s\n",DPCRange.DLowPC,DPCRange.DHighPC,DName.c_str());
     for(auto Variable : DVariables){
         for(int Index = 0; Index < indent; Index++){
             printf(" ");
