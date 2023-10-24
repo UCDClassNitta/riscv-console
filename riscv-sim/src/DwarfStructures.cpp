@@ -259,7 +259,8 @@ bool CDwarfStructures::SDie::ProcessDataType(){
         }
         switch(DTag){
             case DW_TAG::pointer_type:      NewDataType->DQualifiers.insert(SDataType::EQualifiers::Pointer);
-                                            NewDataType->DName = NewDataType->DReferencedType->DName + " *";
+                                            // void * is handled as a pointer without a type.
+                                            NewDataType->DName = (NewDataType->DReferencedType ? NewDataType->DReferencedType->DName : std::string("void")) + " *";
                                             break;
             case DW_TAG::volatile_type:     NewDataType->DQualifiers.insert(SDataType::EQualifiers::Volatile);
                                             if(NewDataType->DReferencedType->DQualifiers.find(SDataType::EQualifiers::Pointer) != NewDataType->DReferencedType->DQualifiers.end()){
@@ -516,7 +517,6 @@ uint64_t CDwarfStructures::SProgram::ReadCompilationUnit(std::shared_ptr<CSeekab
     }
     NewCompUnit->DAddressSize = SourceConverter->ReadUINT8();
     NewCompUnit->DAbbreviationOffset = D32Bit ? SourceConverter->ReadUINT32() : SourceConverter->ReadUINT64();
-    
     ReadAbbreviationTable(NewCompUnit);
     NewCompUnit->DRoot = std::make_shared<CDwarfStructures::SDie>();
     NewCompUnit->DRoot->DCompilationUnit = NewCompUnit;
