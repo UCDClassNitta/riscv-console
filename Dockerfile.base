@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3.10
 
 RUN apt-get update && apt-get install build-essential gawk texinfo flex bison vim -y
 RUN mkdir /build

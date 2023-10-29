@@ -5,7 +5,7 @@ if [[ -f /.dockerenv ]]; then
 fi
 
 # Check that base image exists (Removed changed to cjnitta/riscv_base)
-#IMAGE_BASE="riscv_base"
+#IMAGE_BASE="cjnitta/riscv_base"
 #IMAGE_BASE_ID="$(docker images -q $IMAGE_BASE)"
 #
 #if [[ $IMAGE_BASE_ID == "" ]]; then
@@ -20,7 +20,7 @@ IMAGE_DEV="riscv_console_dev"
 IMAGE_DEV_ID="$(docker images -q $IMAGE_DEV)"
 if [[ $IMAGE_DEV_ID == "" ]]; then
     echo "$IMAGE_DEV does not exist, building:"
-    BUILD_CMD="docker build -t $IMAGE_DEV -f Dockerfile ."
+    BUILD_CMD="docker build --load -t $IMAGE_DEV -f Dockerfile ."
     echo "  $BUILD_CMD"
     $BUILD_CMD
 fi
@@ -29,7 +29,7 @@ fi
 mkdir -p ./workspace
 
 # Add xhost
-# xhost + 127.0.0.1
+xhost + 127.0.0.1
 
 # Check if container exists is running or if needs to be restarted
 CONTAINER_DEV="riscv_console_run"

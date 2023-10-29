@@ -12,8 +12,8 @@ $IMAGE_DEV = "riscv_console_dev"
 $IMAGE_DEV_ID = docker images -q $IMAGE_DEV
 if(!$IMAGE_DEV_ID){
     Write-Output "$IMAGE_DEV does not exist, building:"
-    Write-Output "  docker build -t $IMAGE_DEV -f Dockerfile ."
-    docker build -t $IMAGE_DEV -f Dockerfile .
+    Write-Output "  docker build --load -t $IMAGE_DEV -f Dockerfile ."
+    docker build --load -t $IMAGE_DEV -f Dockerfile .
 }
 
 # Create workspace directory if doesn't exist
