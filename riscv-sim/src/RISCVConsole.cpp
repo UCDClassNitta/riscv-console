@@ -576,6 +576,9 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
     if(ElfFile.ValidFile()){
         for(size_t Index = 0; Index < ElfFile.ProgramHeaderCount(); Index++){
             auto &Header = ElfFile.ProgramHeader(Index);
+            if(Header.DSegmentType != CElfConstants::PT_LOAD){
+                continue;
+            }
             if((Header.DPhysicalAddress < DFirmwareMemoryBase)||(DFirmwareMemoryBase + DFirmwareMemorySize < Header.DPhysicalAddress + Header.DFileSize)){
                 return false;
             }
@@ -586,6 +589,9 @@ bool CRISCVConsole::ProgramFirmware(std::shared_ptr< CDataSource > elfsrc){
         DFirmwareFlash->EraseAll();
         for(size_t Index = 0; Index < ElfFile.ProgramHeaderCount(); Index++){
             auto &Header = ElfFile.ProgramHeader(Index);
+            if(Header.DSegmentType != CElfConstants::PT_LOAD){
+                continue;
+            }
             DFirmwareFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DFirmwareFlash->WriteEnabled(false);
@@ -607,6 +613,9 @@ uint64_t CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
     if(ElfFile.ValidFile()){
         for(size_t Index = 0; Index < ElfFile.ProgramHeaderCount(); Index++){
             auto &Header = ElfFile.ProgramHeader(Index);
+            if(Header.DSegmentType != CElfConstants::PT_LOAD){
+                continue;
+            }
             if((Header.DPhysicalAddress < DCartridgeMemoryBase)||(DCartridgeMemoryBase + DCartridgeMemorySize < Header.DPhysicalAddress + Header.DFileSize)){
                 return false;
             }
@@ -617,6 +626,9 @@ uint64_t CRISCVConsole::InsertCartridge(std::shared_ptr< CDataSource > elfsrc){
         DCartridgeFlash->EraseAll();
         for(size_t Index = 0; Index < ElfFile.ProgramHeaderCount(); Index++){
             auto &Header = ElfFile.ProgramHeader(Index);
+            if(Header.DSegmentType != CElfConstants::PT_LOAD){
+                continue;
+            }
             DCartridgeFlash->StoreData(Header.DPhysicalAddress,Header.DPayload.data(),Header.DFileSize);
         }
         DCartridgeFlash->WriteEnabled(false);

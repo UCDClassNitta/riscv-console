@@ -7,9 +7,9 @@
 class CElfConstants{
     public:
         // Program Header Flags
-        static const uint32_t PF_X = 0x04; // Executable
-        static const uint32_t PF_W = 0x01; // Writable
-        static const uint32_t PF_R = 0x02; // Readable
+        static const uint32_t PF_X = 0x01; // Executable
+        static const uint32_t PF_W = 0x02; // Writable
+        static const uint32_t PF_R = 0x04; // Readable
 
 
         enum EProgramHeaderType : uint32_t{

@@ -1,8 +1,16 @@
 FROM python:3.10
 
-RUN apt-get update && apt-get install build-essential gawk texinfo flex bison vim -y
-RUN mkdir /build
-RUN cd /build && git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
-RUN mkdir /build/riscv-gnu-toolchain/build
-RUN cd /build/riscv-gnu-toolchain/build && ../configure --prefix=/opt/riscv32 --with-arch=rv32em --with-abi=ilp32e && make && make clean && cd / && rm -rf /build
+RUN apt-get update && \
+    apt-get install build-essential gawk texinfo flex bison vim -y --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/\* /tmp/\* /var/tmp/* && \
+    mkdir /build && \
+    cd /build && git clone --recursive https://github.com/riscv/riscv-gnu-toolchain && \
+    mkdir /build/riscv-gnu-toolchain/build && \
+    cd /build/riscv-gnu-toolchain/build && \
+    ../configure --prefix=/opt/riscv32 --with-arch=rv32em_zicsr --with-abi=ilp32e && \
+    make && \
+    make clean && \
+    cd / && \
+    rm -rf /build
 ENV PATH="/opt/riscv32/bin/:${PATH}"

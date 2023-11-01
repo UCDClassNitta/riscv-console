@@ -1,9 +1,10 @@
 FROM cjnitta/riscv_base
 
-RUN apt-get update && apt-get install sudo libgtk-3-dev dbus-x11 -y
-
-# Add user so that container does not run as root 
-RUN useradd -m docker 
+# Install packages and add user so that container does not run as root 
+RUN apt-get update && apt-get install sudo libgtk-3-dev dbus-x11 -y --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/\* /tmp/\* /var/tmp/* && \
+    useradd -m docker 
 
 COPY . /code
 WORKDIR /code
