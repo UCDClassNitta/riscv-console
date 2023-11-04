@@ -1,23 +1,50 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "main.h"
+#include "api.h"
+#include <stdlib.h>
+
+#define SCREEN_WIDTH 512  // Define the screen width (example value)
+#define SCREEN_HEIGHT 288 // Define the screen height (example value)
+#define SPRITE_WIDTH 32   // Define the sprite width
+#define SPRITE_HEIGHT 32  // Define the sprite height
+#define MAX_X (SCREEN_WIDTH - SPRITE_WIDTH)
+#define MAX_Y (SCREEN_HEIGHT - SPRITE_HEIGHT)
+#define SPEED_INCREASE 50  // Change this value to control speed
+
+uint32_t getTicks(void);
+uint32_t getControllerStatus(void);
 
 volatile int global = 42;
+volatile uint32_t videoToggle = 0;
 volatile uint32_t controller_status = 0;
+volatile uint32_t vidIntCtr = 0;
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xF4800);
+
 volatile uint32_t *MODE_REGISTER = (volatile uint32_t *)(0x500F6780);
 volatile uint32_t *MEDIUM_PALETTE = (volatile uint32_t *)(0x500F2000);
 volatile uint32_t *MEDIUM_CONTROL = (volatile uint32_t *)(0x500F5F00);
 volatile uint8_t *MEDIUM_DATA = (volatile uint8_t *)(0x500D0000);
-
-uint32_t mediumControlSetter(uint8_t palette, int16_t x, int16_t y, int8_t z, uint8_t index);
-
-uint32_t setSpriteColor(uint16_t alpha, uint16_t red, uint16_t green, uint16_t blue);
+volatile uint32_t *VIDEO_MODE = (volatile uint32_t *)(0x500FF414);
 
 void printError(char* errorMessage);
 
-void setUpMediumSprites();
+void setUpMediumSprites() {
+    // Set up sprite data for two sprites (this assumes sprite 0 and sprite 1 are the ones we're moving)
+    for (int i = 0; i < 1024; i++) {
+        MEDIUM_DATA[i] = 1; // Set up the first sprite (index 0)
+        MEDIUM_DATA[1024 + i] = 1; // Set up the second sprite (index 1)
+    }
+
+    // Set the color green for the sprites
+    MEDIUM_PALETTE[1] = setSpriteColor(255, 0, 255, 0);
+
+    // Initialize control registers for two sprites
+    MEDIUM_CONTROL[0] = mediumControlSetter(0, 0, 0, 0, 0); // First sprite
+    *MODE_REGISTER = 1; // Set graphics mode
+}
 
 void beginTheGUI();
 
@@ -26,35 +53,31 @@ int main() {
     int b = 12;
     int last_global = 42;
     int x_pos = 0;
+    int y_pos = 0; // Y position of the sprite, now declared
     int countdown = 1;
 
     beginTheGUI();
-    
+
     while (1) {
         int c = a + b + global;
         if(global != last_global){
+            controller_status = getControllerStatus();
             if(controller_status){
-                if(controller_status & 0x1){
-                    if(x_pos & 0x3F){
-                        x_pos--;
-                    }
+                // Update sprite position based on controller_status
+                if(controller_status & 0x1 && x_pos - SPEED_INCREASE >= 0){
+                    x_pos -= SPEED_INCREASE;
                 }
-                if(controller_status & 0x2){
-                    if(x_pos >= 0x40){
-                        x_pos -= 0x40;
-                    }
+                if(controller_status & 0x2 && y_pos - SPEED_INCREASE >= 0){
+                    y_pos -= SPEED_INCREASE; // Updated for Y position
                 }
-                if(controller_status & 0x4){
-                    if(x_pos < 0x8C0){
-                        x_pos += 0x40;
-                    }
+                if(controller_status & 0x4 && y_pos + SPEED_INCREASE <= MAX_Y){
+                    y_pos += SPEED_INCREASE; // Updated for Y position
                 }
-                if(controller_status & 0x8){
-                    if((x_pos & 0x3F) != 0x3F){
-                        x_pos++;
-                    }
+                if(controller_status & 0x8 && x_pos + SPEED_INCREASE <= MAX_X){
+                    x_pos += SPEED_INCREASE;
                 }
-                MEDIUM_CONTROL[0] = mediumControlSetter(0, (x_pos & 0x3F)<<3, (x_pos>>6)<<3, 0, 0);
+                // Update the sprite control registers with the new position
+                MEDIUM_CONTROL[0] = mediumControlSetter(0, x_pos, y_pos, 0, 0);
             }
             last_global = global;
         }
@@ -94,22 +117,3 @@ void beginTheGUI() {
     setUpMediumSprites();
 }
 
-void setUpMediumSprites() {
-    for (int y = 0; y < 32; y++) {
-        for (int x = 0; x < 32; x++) {
-            MEDIUM_DATA[1024+y*32+x] = 1;
-        }
-    }
-
-    // for (int y = 0; y < 32; y++) {
-    //     for (int x = 0; x < 32; x++) {
-    //         MEDIUM_DATA[y*32+x] = 1; // These are setting the colors
-    //     }
-    // }
-
-    MEDIUM_PALETTE[1] = setSpriteColor(255, 0, 255, 0);
-    MEDIUM_PALETTE[2] = setSpriteColor(255, 0, 255, 255);
-    MEDIUM_CONTROL[0] = mediumControlSetter(0,0,0,0,0);
-    MEDIUM_CONTROL[1] = mediumControlSetter(0,64,64,0,0);
-    *MODE_REGISTER = 1;
-}
