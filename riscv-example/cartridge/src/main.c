@@ -5,24 +5,12 @@
 #include "api.h"
 #include <stdlib.h>
 
-#define SCREEN_WIDTH 512  // Define the screen width (example value)
-#define SCREEN_HEIGHT 288 // Define the screen height (example value)
-#define SPRITE_WIDTH 32   // Define the sprite width
-#define SPRITE_HEIGHT 32  // Define the sprite height
-#define MAX_X (SCREEN_WIDTH - SPRITE_WIDTH)
-#define MAX_Y (SCREEN_HEIGHT - SPRITE_HEIGHT)
-#define SPEED_INCREASE 50  // Change this value to control speed
-
-uint32_t getTicks(void);
-uint32_t getControllerStatus(void);
-
 volatile int global = 42;
-volatile uint32_t videoToggle = 0;
 volatile uint32_t controller_status = 0;
+volatile uint32_t videoToggle = 0;
 volatile uint32_t vidIntCtr = 0;
 
 volatile char *VIDEO_MEMORY = (volatile char *)(0x50000000 + 0xF4800);
-
 volatile uint32_t *MODE_REGISTER = (volatile uint32_t *)(0x500F6780);
 volatile uint32_t *MEDIUM_PALETTE = (volatile uint32_t *)(0x500F2000);
 volatile uint32_t *MEDIUM_CONTROL = (volatile uint32_t *)(0x500F5F00);
@@ -48,7 +36,7 @@ void setUpMediumSprites() {
 
 void beginTheGUI();
 
-int main() {
+int moveBox() {
     int a = 4;
     int b = 12;
     int last_global = 42;
@@ -56,10 +44,11 @@ int main() {
     int y_pos = 0; // Y position of the sprite, now declared
     int countdown = 1;
 
+    *VIDEO_MODE = 1; // VIDEO MODE ON
     beginTheGUI();
 
     while (1) {
-        int c = a + b + global;
+        global = getTicks();
         if(global != last_global){
             controller_status = getControllerStatus();
             if(controller_status){
@@ -117,3 +106,7 @@ void beginTheGUI() {
     setUpMediumSprites();
 }
 
+int main() {
+    moveBox();
+    return 0;
+}
