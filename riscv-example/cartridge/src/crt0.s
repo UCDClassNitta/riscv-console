@@ -13,4 +13,20 @@ _start:
     nop
     jal zero, main
     .cfi_endproc
-    .end
+    
+
+.section .text, "ax"
+.global getTicks, getControllerStatus, getVideoToggle, getVidIntCtr
+getTicks:
+    li a5, 0
+    ecall
+getControllerStatus:
+    li a5, 1
+    ecall
+getVideoToggle:
+    li a5, 2
+    ecall
+getVidIntCtr:
+    li a5, 3
+    ecall
+
