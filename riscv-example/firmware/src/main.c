@@ -15,13 +15,12 @@ int main() {
     int last_global = 42;
     int x_pos = 12;
     char *Buffer = malloc(32);
-    strcpy(Buffer,"OS STARTED");
+    strcpy(Buffer,"OS STARTED!!!");
     strcpy((char *)VIDEO_MEMORY,Buffer);
 
     while (1){
         if(*CartridgeStatus & 0x1){
-            FunctionPtr Fun = (FunctionPtr)((*CartridgeStatus) & 0xFFFFFFFC);
-            Fun();
+            ((FunctionPtr)((*CartridgeStatus) & 0xFFFFFFFC))();
         }
     }
 
