@@ -16,7 +16,7 @@ int main() {
     int last_global = 42;
     int x_pos = 12;
     char *Buffer = malloc(32);
-    strcpy(Buffer,"OS STARTED!!!");
+    strcpy(Buffer,"OS STARTED!!! Please insert a cartridge");
     strcpy((char *)VIDEO_MEMORY,Buffer);
 
     while (1){
