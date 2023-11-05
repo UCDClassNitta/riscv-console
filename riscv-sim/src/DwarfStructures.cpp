@@ -201,14 +201,19 @@ bool CDwarfStructures::SDie::IsDataType(DW_TAG tag){
 }
 
 bool CDwarfStructures::SDie::ProcessDataType(){
-    //printf("In %s @ %d\n",__FILE__,__LINE__);
+    //printf("In %s @ %d for %08llx\n",__FILE__,__LINE__,DAddress);
     if(auto CompilationUnit = DCompilationUnit.lock()){
         if(CompilationUnit->GetDataTypeByAddress(DAddress)){
             return true;
         }
         auto NewDataType = std::make_shared< SDataType >();
         std::shared_ptr<SDataType> ReferencedType;
-        std::string TypedefName;
+
+        if(HasAttribute(DW_AT::name)){
+            NewDataType->DName = GetAttribute(DW_AT::name).GetString();
+        }
+        // Moved up to break potential reference cycles
+        CompilationUnit->DDataTypesByAddress[DAddress] = NewDataType;
         // Get the referenced type, used for typedefs and adding qualifiers volatile, const, *, etc.
         if(HasAttribute(DW_AT::type)) {
             auto RefTypeAddr = GetAttribute(DW_AT::type).GetUINT64();
@@ -247,12 +252,13 @@ bool CDwarfStructures::SDie::ProcessDataType(){
             NewDataType->DConstant = GetAttribute(DW_AT::const_value);
         }
         for(auto Child : DChildren){
+            if((DW_TAG::subprogram == Child->DTag)||(DW_TAG::template_type_parameter== Child->DTag)){
+                // Skip member functions, template parameters
+                continue;
+            }
             Child->ProcessDataType();
             ReferencedType = CompilationUnit->GetDataTypeByAddress(Child->DAddress);
             NewDataType->DChildren.push_back(ReferencedType);
-        }
-        if(HasAttribute(DW_AT::name)){
-            NewDataType->DName = GetAttribute(DW_AT::name).GetString();
         }
         if(DW_TAG::typedef_ == DTag){
             NewDataType->DAlias = ReferencedType->DName;
@@ -282,7 +288,7 @@ bool CDwarfStructures::SDie::ProcessDataType(){
             case DW_TAG::array_type:        NewDataType->DQualifiers.insert(SDataType::EQualifiers::Array);
                                             if(!DChildren.empty()){
                                                 auto SubRangeDie = DChildren[0];
-                                                auto ArraySize = SubRangeDie->GetAttribute(DW_AT::upper_bound).GetUINT64() + 1;
+                                                auto ArraySize = SubRangeDie->HasAttribute(DW_AT::upper_bound) ? SubRangeDie->GetAttribute(DW_AT::upper_bound).GetUINT64() + 1 : SubRangeDie->GetAttribute(DW_AT::count).GetUINT64();
                                                 NewDataType->DByteSize *= ArraySize;
                                                 NewDataType->DName = NewDataType->DReferencedType->DName + std::string("[") + std::to_string(ArraySize) + std::string("]");
                                                 NewDataType->DChildren.clear();
@@ -302,7 +308,6 @@ bool CDwarfStructures::SDie::ProcessDataType(){
                                             break;
             default:                        break;
         }
-        CompilationUnit->DDataTypesByAddress[DAddress] = NewDataType;
         if(HasAttribute(DW_AT::declaration)){
             CompilationUnit->DDeclaredDataTypes.push_back(NewDataType);
         }
@@ -482,6 +487,24 @@ bool CDwarfStructures::SProgrammaticScope::Print(int indent, bool recurse) const
     return true;
 }
 
+std::shared_ptr< CDwarfStructures::SDie > CDwarfStructures::SProgram::GetDIEByAddress(uint32_t addr){
+    for(auto CompilationUnit : DCompilaitonUnits){
+        if((CompilationUnit->DOffset <= addr) && (addr <= CompilationUnit->DOffset + CompilationUnit->DLength)){
+            return CompilationUnit->GetDIEByAddress(addr - CompilationUnit->DOffset, false);
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr< CDwarfStructures::SDataType > CDwarfStructures::SProgram::GetDataTypeByAddress(uint32_t addr){
+    for(auto CompilationUnit : DCompilaitonUnits){
+        if((CompilationUnit->DOffset <= addr) && (addr <= CompilationUnit->DOffset + CompilationUnit->DLength)){
+            return CompilationUnit->GetDataTypeByAddress(addr - CompilationUnit->DOffset, false);
+        }
+    }
+    return nullptr;
+}
+
 uint64_t CDwarfStructures::SProgram::ReadCompilationUnit(std::shared_ptr<CSeekableDataSource> source){
     std::shared_ptr< CDwarfStructures::SCompilationUnit > NewCompUnit;
     std::shared_ptr< CSeekableDataSourceConverter > SourceConverter = std::make_shared< CSeekableDataSourceConverter >(source);
@@ -504,6 +527,7 @@ uint64_t CDwarfStructures::SProgram::ReadCompilationUnit(std::shared_ptr<CSeekab
         LengthSize = 12;
     }
     NewCompUnit = std::make_shared< CDwarfStructures::SCompilationUnit >();
+    NewCompUnit->DProgram = shared_from_this();
     NewCompUnit->D32Bit = D32Bit;
     NewCompUnit->DLittleEndian = DLittleEndian;
     NewCompUnit->DOffset = CUOffset;
@@ -524,8 +548,6 @@ uint64_t CDwarfStructures::SProgram::ReadCompilationUnit(std::shared_ptr<CSeekab
     if(NewCompUnit->DRoot->HasAttribute(DW_AT::stmt_list)){
         ReadLineNumbers(NewCompUnit);
     }
-    NewCompUnit->ProcessDataTypes();
-    NewCompUnit->ProcessVariables();
     DCompilaitonUnits.push_back(NewCompUnit);
     return CUSize + LengthSize;
 }
@@ -769,6 +791,15 @@ bool CDwarfStructures::SProgram::ConsolidateLineNumbers(){
 bool CDwarfStructures::SProgram::ConsolidateVariables(const std::unordered_map<std::string, uint64_t> &globalsymbols){
     std::unordered_map< std::string, std::shared_ptr< SDataType > > DefinedStructsByName;
     std::unordered_map< std::string, std::shared_ptr< SDataType > > DefinedUnionsByName;
+
+    // Process all data types before processing variables
+    for(auto CompilationUnit : DCompilaitonUnits){
+        CompilationUnit->ProcessDataTypes();
+    }
+    for(auto CompilationUnit : DCompilaitonUnits){
+        CompilationUnit->ProcessVariables();
+    }
+
     for(auto CompilationUnit : DCompilaitonUnits){
         DefinedStructsByName.insert(CompilationUnit->DDefinedStructsByName.begin(),CompilationUnit->DDefinedStructsByName.end());
         DefinedUnionsByName.insert(CompilationUnit->DDefinedUnionsByName.begin(),CompilationUnit->DDefinedUnionsByName.end());
@@ -936,18 +967,28 @@ CDwarfStructures::SValue CDwarfStructures::SCompilationUnit::ReadValue(std::shar
     return ReturnValue;
 }
 
-std::shared_ptr< CDwarfStructures::SDie > CDwarfStructures::SCompilationUnit::GetDIEByAddress(uint32_t addr){
+std::shared_ptr< CDwarfStructures::SDie > CDwarfStructures::SCompilationUnit::GetDIEByAddress(uint32_t addr, bool deepsearch){
     auto Search = DDIEsByAddress.find(addr);
     if(Search != DDIEsByAddress.end()){
         return Search->second;
     }
+    if(deepsearch){
+        if(auto Program = DProgram.lock()){
+            return Program->GetDIEByAddress(addr);
+        }
+    }
     return nullptr;
 }
 
-std::shared_ptr< CDwarfStructures::SDataType > CDwarfStructures::SCompilationUnit::GetDataTypeByAddress(uint32_t addr){
+std::shared_ptr< CDwarfStructures::SDataType > CDwarfStructures::SCompilationUnit::GetDataTypeByAddress(uint32_t addr, bool deepsearch){
     auto Search = DDataTypesByAddress.find(addr);
     if(Search != DDataTypesByAddress.end()){
         return Search->second;
+    }
+    if(deepsearch){
+        if(auto Program = DProgram.lock()){
+            return Program->GetDataTypeByAddress(addr);
+        }
     }
     return nullptr;
 }

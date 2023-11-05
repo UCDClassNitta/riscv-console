@@ -8,6 +8,7 @@
 CElfLoad::CElfLoad(std::shared_ptr< CDataSource > src){
     DInputSource = std::make_shared<CBufferedSeekableDataSource>(src);
     DInputSourceConverter = std::make_shared< CSeekableDataSourceConverter >(DInputSource);
+    DDwarfProgram = std::make_shared< CDwarfStructures::SProgram >();
     DValidFile = false;
     if(ValidateHeader()){
         if(ReadProgramHeaders()){
@@ -303,53 +304,53 @@ bool CElfLoad::ReadDebugInfo(){
     auto AbbreviationsOffset = 0;
     auto LineNumberOffset = 0;
     std::unordered_map<std::string, uint64_t> GlobalSymbols;
-    DDwarfProgram.DLittleEndian = DInputSourceConverter->LittleEndian();
-    DDwarfProgram.DAbbreviationsSize = 0;
-    DDwarfProgram.DLineNumberSize = 0;
-    DDwarfProgram.DCompilaitonUnits.clear();
-    DDwarfProgram.DLineNumberData.DFilePaths.clear();
-    DDwarfProgram.DLineNumberData.DLineNumberEntries.clear();
+    DDwarfProgram->DLittleEndian = DInputSourceConverter->LittleEndian();
+    DDwarfProgram->DAbbreviationsSize = 0;
+    DDwarfProgram->DLineNumberSize = 0;
+    DDwarfProgram->DCompilaitonUnits.clear();
+    DDwarfProgram->DLineNumberData.DFilePaths.clear();
+    DDwarfProgram->DLineNumberData.DLineNumberEntries.clear();
 
     for(auto &SectionHeader : DSectionHeaders){
         auto SectionName = DSectionNames.GetString(SectionHeader.DNameIndex);
         if(SectionName == ".debug_line"){
             LineNumberOffset = SectionHeader.DFileOffset;
-            DDwarfProgram.DLineNumberSize = SectionHeader.DSize;
+            DDwarfProgram->DLineNumberSize = SectionHeader.DSize;
         }
         if(SectionName == ".debug_abbrev"){
             AbbreviationsOffset = SectionHeader.DFileOffset;
-            DDwarfProgram.DAbbreviationsSize = SectionHeader.DSize;
+            DDwarfProgram->DAbbreviationsSize = SectionHeader.DSize;
         }
     }
-    if(!DDwarfProgram.DAbbreviationsSize || !DDwarfProgram.DLineNumberSize){
+    if(!DDwarfProgram->DAbbreviationsSize || !DDwarfProgram->DLineNumberSize){
         return true; 
     }
-    auto AbbreviationSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, AbbreviationsOffset, DDwarfProgram.DAbbreviationsSize);
-    DDwarfProgram.DAbbreviationsSourceConverter = std::make_shared< CSeekableDataSourceConverter >(AbbreviationSandbox);
-    DDwarfProgram.DAbbreviationsSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
+    auto AbbreviationSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, AbbreviationsOffset, DDwarfProgram->DAbbreviationsSize);
+    DDwarfProgram->DAbbreviationsSourceConverter = std::make_shared< CSeekableDataSourceConverter >(AbbreviationSandbox);
+    DDwarfProgram->DAbbreviationsSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
 
-    auto LineNumberSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, LineNumberOffset, DDwarfProgram.DLineNumberSize);
-    DDwarfProgram.DLineNumberSourceConverter = std::make_shared< CSeekableDataSourceConverter >(LineNumberSandbox);
-    DDwarfProgram.DLineNumberSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
-    DDwarfProgram.D32Bit = D32Bit;
-    DDwarfProgram.DDebugStrings = std::make_shared< CElfStructures::CStringTable >();
+    auto LineNumberSandbox = std::make_shared< CSeekableDataSourceSandbox >(DInputSource, LineNumberOffset, DDwarfProgram->DLineNumberSize);
+    DDwarfProgram->DLineNumberSourceConverter = std::make_shared< CSeekableDataSourceConverter >(LineNumberSandbox);
+    DDwarfProgram->DLineNumberSourceConverter->LittleEndian(DInputSourceConverter->LittleEndian());
+    DDwarfProgram->D32Bit = D32Bit;
+    DDwarfProgram->DDebugStrings = std::make_shared< CElfStructures::CStringTable >();
     for(auto &SectionHeader : DSectionHeaders){
         auto SectionName = DSectionNames.GetString(SectionHeader.DNameIndex);
         if(SectionName == ".debug_str"){
             std::vector<char> Buffer(SectionHeader.DSize);
             DInputSourceConverter->Seek(SectionHeader.DFileOffset);
             DInputSourceConverter->Read((uint8_t *)Buffer.data(),SectionHeader.DSize);
-            DDwarfProgram.DDebugStrings->SetPayload(Buffer);
+            DDwarfProgram->DDebugStrings->SetPayload(Buffer);
         }
     }
-    DDwarfProgram.DDebugLineStrings = std::make_shared< CElfStructures::CStringTable >();
+    DDwarfProgram->DDebugLineStrings = std::make_shared< CElfStructures::CStringTable >();
     for(auto &SectionHeader : DSectionHeaders){
         auto SectionName = DSectionNames.GetString(SectionHeader.DNameIndex);
         if(SectionName == ".debug_line_str"){
             std::vector<char> Buffer(SectionHeader.DSize);
             DInputSourceConverter->Seek(SectionHeader.DFileOffset);
             DInputSourceConverter->Read((uint8_t *)Buffer.data(),SectionHeader.DSize);
-            DDwarfProgram.DDebugLineStrings->SetPayload(Buffer);
+            DDwarfProgram->DDebugLineStrings->SetPayload(Buffer);
         }
     }
     for(auto &SectionHeader : DSectionHeaders){
@@ -360,7 +361,7 @@ bool CElfLoad::ReadDebugInfo(){
             while(CurrentOffset < SectionHeader.DSize){
                 DebugSourceSandbox->Seek(CurrentOffset);
                 //auto CULength = ReadDebugCompilationUnit(DebugSourceSandbox);
-                auto CULength = DDwarfProgram.ReadCompilationUnit(DebugSourceSandbox);
+                auto CULength = DDwarfProgram->ReadCompilationUnit(DebugSourceSandbox);
                 if(!CULength){
                     break;
                 }
@@ -378,8 +379,8 @@ bool CElfLoad::ReadDebugInfo(){
         }
     }
 
-    DDwarfProgram.ConsolidateLineNumbers();
-    DDwarfProgram.ConsolidateVariables(GlobalSymbols);
+    DDwarfProgram->ConsolidateLineNumbers();
+    DDwarfProgram->ConsolidateVariables(GlobalSymbols);
 
     return true;
 }

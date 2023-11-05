@@ -149,7 +149,7 @@ class CDwarfStructures{
             bool Print(int indent, bool recurse) const;
         };
 
-        struct SProgram{
+        struct SProgram : public std::enable_shared_from_this< SProgram >{
             bool D32Bit;
             bool DLittleEndian;
             std::shared_ptr< CElfStructures::CStringTable > DDebugStrings;
@@ -161,6 +161,8 @@ class CDwarfStructures{
             std::vector< std::shared_ptr< SCompilationUnit > > DCompilaitonUnits;
             SLineNumberData DLineNumberData;
             std::shared_ptr< SProgrammaticScope > DGlobalScope;
+            std::shared_ptr< SDie > GetDIEByAddress(uint32_t addr);
+            std::shared_ptr< SDataType > GetDataTypeByAddress(uint32_t addr);
             uint64_t ReadCompilationUnit(std::shared_ptr<CSeekableDataSource> source);
             bool ReadAbbreviationTable(std::shared_ptr< SCompilationUnit > cu);
             bool ReadLineNumbers(std::shared_ptr< SCompilationUnit > cu);
@@ -170,6 +172,7 @@ class CDwarfStructures{
         };
 
         struct SCompilationUnit : public std::enable_shared_from_this< SCompilationUnit >{
+            std::weak_ptr< SProgram > DProgram;
             bool D32Bit;
             bool DLittleEndian;
             uint32_t DOffset;
@@ -191,8 +194,8 @@ class CDwarfStructures{
             std::vector< std::shared_ptr< SVariable > > DExternVariables;
             SLineNumberData DLineNumberData;
             SValue ReadValue(std::shared_ptr< CSeekableDataSourceConverter > source, DW_FORM form, int64_t implicit);
-            std::shared_ptr< SDie > GetDIEByAddress(uint32_t addr);
-            std::shared_ptr< SDataType > GetDataTypeByAddress(uint32_t addr);
+            std::shared_ptr< SDie > GetDIEByAddress(uint32_t addr, bool deepsearch = true);
+            std::shared_ptr< SDataType > GetDataTypeByAddress(uint32_t addr, bool deepsearch = true);
             bool ReadDebugInformationEntry(std::shared_ptr< CDwarfStructures::SDie > &die, std::shared_ptr< CSeekableDataSourceConverter > source);
             bool ResolvePaths(std::vector< std::unordered_map<DW_LNCT,CDwarfStructures::SValue> > &directories, std::vector< std::unordered_map<DW_LNCT,CDwarfStructures::SValue> > &files);
             bool ProcessDataTypes();
