@@ -26,7 +26,7 @@ CFLAGS   += -O3
 endif
 
 INCLUDE  += -I $(INC_DIR) -I $(INC_DIR)/gui -I $(INC_DIR)/gtk3
-CFLAGS   +=  -Wall `pkg-config --cflags $(PKGS)`
+CFLAGS   += -Wall `pkg-config --cflags $(PKGS)`
 LDFLAGS  +=`pkg-config --libs $(PKGS)` 
 #LDFLAGS += -lgdk_imlib
 CPPFLAGS += -std=c++14 

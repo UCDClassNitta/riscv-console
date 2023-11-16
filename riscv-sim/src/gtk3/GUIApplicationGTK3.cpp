@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 
 CGUIApplicationGTK3::CGUIApplicationGTK3(const std::string &appname){
-    DApplication = gtk_application_new (appname.c_str(), G_APPLICATION_FLAGS_NONE);
+    DApplication = gtk_application_new (appname.c_str(), G_APPLICATION_DEFAULT_FLAGS);
     //g_signal_connect(DApplication, "startup", G_CALLBACK (StartupCallback), NULL);
     g_signal_connect(DApplication, "activate", G_CALLBACK (ActivateCallback), this);
     
