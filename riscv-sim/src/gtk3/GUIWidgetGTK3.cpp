@@ -8,7 +8,8 @@ CGUIWidgetGTK3::CGUIWidgetGTK3(GtkWidget *widget, bool reference){
     //if(reference){ // Seems to fail on exit if not always referenced.
         g_object_ref(DWidget);
     //}
-    
+    DPendingSetCursor = false;
+
     DActivateCalldata = nullptr;
     DActivateCallback = nullptr;
     
@@ -35,6 +36,7 @@ CGUIWidgetGTK3::CGUIWidgetGTK3(GtkWidget *widget, bool reference){
     
     DDrawCalldata = nullptr;
     DDrawCallback = nullptr;
+    g_signal_connect(DWidget, "realize", G_CALLBACK(RealizeEventCallback), this);
 }
 
 CGUIWidgetGTK3::~CGUIWidgetGTK3(){
@@ -43,6 +45,16 @@ CGUIWidgetGTK3::~CGUIWidgetGTK3(){
     }
 }
 
+void CGUIWidgetGTK3::RealizeEventCallback(GtkWidget *widget, gpointer data){
+    CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
+
+    if(Widget->DPendingSetCursor){
+        Widget->SetCursor(Widget->DCursorToSet);
+        Widget->DCursorToSet.reset();
+        Widget->DPendingSetCursor = false;
+    }
+    Widget->Realize();
+}
 
 void CGUIWidgetGTK3::ActivateEventCallback(GtkWidget *widget, gpointer data){
     CGUIWidgetGTK3 *Widget = static_cast<CGUIWidgetGTK3 *>(data); 
@@ -302,9 +314,19 @@ void CGUIWidgetGTK3::Invalidate(){
 }
 
 void CGUIWidgetGTK3::SetCursor(std::shared_ptr< CGUICursor > cursor){
-    std::shared_ptr<CGUICursorGTK3> Cursor = std::dynamic_pointer_cast<CGUICursorGTK3>(cursor);
-    
-    gdk_window_set_cursor(gtk_widget_get_window(DWidget), Cursor->DCursor);
+    GdkCursor *NewCursor = NULL;
+    if(cursor){
+        std::shared_ptr<CGUICursorGTK3> Cursor = std::dynamic_pointer_cast<CGUICursorGTK3>(cursor);
+        NewCursor = Cursor->GetCursor();
+    }
+    auto WidgetWindow = gtk_widget_get_window(DWidget);
+    if(WidgetWindow){
+        gdk_window_set_cursor(WidgetWindow, NewCursor);
+    }
+    else{
+        DPendingSetCursor = true;
+        DCursorToSet = cursor;
+    }
 }
 
 void CGUIWidgetGTK3::SetTooltipText(const std::string &tip){

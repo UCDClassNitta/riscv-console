@@ -8,10 +8,15 @@
 class CGUITextViewGTK3 : public virtual CGUITextView, public CGUIContainerGTK3{
     protected:
         std::shared_ptr<CGUITextBufferGTK3> DBuffer;
+        bool DUpdatedCursor;
+
+        static void EnterEventCallback(GtkWidget* widget, GdkEventCrossing *event, gpointer data);
     public: 
         CGUITextViewGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUITextViewGTK3();
 
+        void Realize() override;
+        void SetCursor(std::shared_ptr< CGUICursor > cursor) override;
         void PlaceCursorOnscreen() override;
         void SetEditable(bool edit) override;
         void SetCursorVisible(bool visibility) override;

@@ -3,6 +3,11 @@
 #include <sstream>
 #include <iterator>
 
+bool TextViewDraw(std::shared_ptr<CGUIWidget> widget, std::shared_ptr<CGraphicResourceContext> rc, TGUICalldata data){
+    printf("TextViewDraw\n");
+    return true;
+}
+
 CGUIScrollableTextViewLineBox::CGUIScrollableTextViewLineBox(std::shared_ptr<CGUIFactory> guifactory, size_t initsize){
     DGUIFactory = guifactory;
     DTextView = DGUIFactory->NewTextView();
@@ -34,6 +39,7 @@ CGUIScrollableTextViewLineBox::CGUIScrollableTextViewLineBox(std::shared_ptr<CGU
     DTextView->SetButtonPressEventCallback(this,WidgetButtonEventCallback);
     DTextView->SetButtonReleaseEventCallback(this,WidgetButtonEventCallback);
     DScrollWindow->GetVerticalScrollBar()->SetValueChangedEventCallback(this,ScrollBarChangedEventCallback);
+//DTextView->SetDrawEventCallback(nullptr, TextViewDraw);
 }
 
 CGUIScrollableTextViewLineBox::~CGUIScrollableTextViewLineBox(){

@@ -193,6 +193,7 @@ bool CRISCVConsoleApplication::Timeout(){
     if(DRISCVConsole->VideoTimerTick(DDoubleBufferSurface)){
         DConsoleVideo->Invalidate();
     }
+
     return true;
 }
 
@@ -902,11 +903,11 @@ void CRISCVConsoleApplication::CreateDebugInstructionWidgets(){
     DDebugInstructions->SetLineCount(GetInstructionLineCount());
     DDebugInstructions->SetButtonPressEventCallback(this,InstructionBoxButtonEventCallback);
     DDebugInstructions->SetScrollEventCallback(this,InstructionBoxScrollEventCallback);
+    DDebugInstructions->SetCursor(nullptr);
 
     DDebugInstructionComboBox = DGUIFactory->NewComboBox();
     DDebugInstructionComboBox->SetFontFamily("monospace");
     DDebugInstructionComboBox->SetChangedEventCallback(this,InstructionComboBoxChangedEventCallback);
-
 }
 
 void CRISCVConsoleApplication::CreateDebugCSRWidgets(){
@@ -926,6 +927,7 @@ void CRISCVConsoleApplication::CreateDebugCSRWidgets(){
     }
     DDebugCSRegisters->SetBufferedLines(InitialCSR);
     DDebugCSRegisters->SetLineCount(GetInstructionLineCount());
+    DDebugCSRegisters->SetCursor(nullptr);
 }
 
 void CRISCVConsoleApplication::CreateDebugMemoryWidgets(){
