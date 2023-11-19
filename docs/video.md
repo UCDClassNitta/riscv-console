@@ -100,11 +100,11 @@ Below is the memory map layout for the Background Data Images Tile Mode 0 data.
 Below is the memory map layout for the background controls.
 | Base Address | Size    | Description              |
 | ------------ |-------- | ------------------------ |
-| 0x500F5100   | 0x4(4B) | Background Controls 0    |
-| 0x500F5104   | 0x4(4B) | Background Controls 1    |
+| 0x500F5A00   | 0x4(4B) | Background Controls 0    |
+| 0x500F5A04   | 0x4(4B) | Background Controls 1    |
 | ...          | ...     | ...                      |
-| 0x500F51F8   | 0x4(4B) | Background Controls 62   |
-| 0x500F51FC   | 0x4(4B) | Background Controls 63   |
+| 0x500F5AF8   | 0x4(4B) | Background Controls 62   |
+| 0x500F5AFC   | 0x4(4B) | Background Controls 63   |
 
 #### Background Control Structure
 Below is the structure of the background controls in "pixel" mode.
