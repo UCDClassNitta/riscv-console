@@ -19,6 +19,7 @@ class CGUITextView : public virtual CGUIContainer{
         virtual int GetRequiredCharactersWidth(int chars) = 0;
         virtual int GetRequiredLinesHeight(int lines) = 0;
         virtual int GetLineNumberAtY(int y) = 0;
+        virtual int GetLineOffsetAtPosition(int x, int y) = 0;
 };
 
 #endif

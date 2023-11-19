@@ -111,3 +111,9 @@ int CGUITextViewGTK3::GetLineNumberAtY(int y){
     gtk_text_view_get_line_at_y(GTK_TEXT_VIEW(DWidget), &TempIter, y, NULL);
     return gtk_text_iter_get_line(&TempIter);
 }
+
+int CGUITextViewGTK3::GetLineOffsetAtPosition(int x, int y){
+    GtkTextIter TempIter;
+    gtk_text_view_get_iter_at_position(GTK_TEXT_VIEW(DWidget), &TempIter, NULL, x, y);
+    return gtk_text_iter_get_line_offset(&TempIter);
+}

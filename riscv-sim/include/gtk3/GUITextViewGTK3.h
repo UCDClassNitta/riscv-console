@@ -26,6 +26,7 @@ class CGUITextViewGTK3 : public virtual CGUITextView, public CGUIContainerGTK3{
         int GetRequiredCharactersWidth(int chars) override;
         int GetRequiredLinesHeight(int lines) override;
         int GetLineNumberAtY(int y) override;
+        int GetLineOffsetAtPosition(int x, int y) override;
 };
 
 
