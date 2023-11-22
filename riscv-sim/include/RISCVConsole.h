@@ -74,6 +74,9 @@ class CRISCVConsole{
         CRISCVConsoleBreakpointCalldata DBreakpointCalldata;
         CRISCVConsoleBreakpointCallback DBreakpointCallback;
 
+        std::shared_ptr< CDwarfStructures::SProgrammaticScope > DFirmwareScope;
+        std::shared_ptr< CDwarfStructures::SProgrammaticScope > DCartridgeScope;
+
 
         static const uint32_t DMainMemorySize;
         static const uint32_t DMainMemoryBase;
@@ -228,7 +231,7 @@ class CRISCVConsole{
             return DRegisterMemoryBase;
         };
 
-        
+        bool GetActiveScopes(std::vector< std::shared_ptr< CDwarfStructures::SProgrammaticScope > > &scopes) const;
 
 };
 

@@ -79,6 +79,10 @@ class CElfLoad{
         const CDwarfStructures::SLineNumberData &LineNumberData() const{
             return DDwarfProgram->DLineNumberData;
         };
+        std::shared_ptr< CDwarfStructures::SProgrammaticScope > GetGlobalScopes() const{
+            return DDwarfProgram->DGlobalScope;
+        };
+
         void PrintHeaders();
 
 

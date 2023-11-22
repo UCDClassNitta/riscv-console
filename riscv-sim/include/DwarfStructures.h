@@ -109,7 +109,7 @@ class CDwarfStructures{
         };
 
         struct SDataType{
-            enum class EQualifiers {Volatile, Const, Pointer, Array, Struct, Union, Enum};
+            enum class EQualifiers {Volatile, Const, Pointer, Array, Struct, Union, Enum, Typedef};
             std::string DName;
             std::string DAlias;
             size_t DByteSize;
@@ -120,8 +120,14 @@ class CDwarfStructures{
             std::shared_ptr< SDataType > DReferencedType;
             std::vector< std::shared_ptr< SDataType > >  DChildren;
             std::unordered_set< EQualifiers > DQualifiers;
+            bool IsVolatile() const;
+            bool IsConst() const;
+            bool IsPointer() const;
+            bool IsArray() const;
             bool IsStruct() const;
             bool IsUnion() const;
+            bool IsEnum() const;
+            bool IsTypedef() const;
         };
 
         struct SPCRange{

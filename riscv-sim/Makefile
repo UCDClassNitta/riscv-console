@@ -120,6 +120,8 @@ SIM_APP_OBJS =          $(OBJ_DIR)/main.o                           \
                         $(OBJ_DIR)/RISCVConsoleApplication.o        \
                         $(OBJ_DIR)/RISCVConsoleApplicationConfig.o  \
                         $(OBJ_DIR)/PeriodicTimeout.o                \
+                        $(OBJ_DIR)/VariableTranslator.o             \
+                        $(OBJ_DIR)/VariableTreeViewDecorator.o      \
                         $(GUI_FRAMEWORK)                            \
                         $(DATA_UTIL_OBJS)                           \
                         $(ELF_DWARF_OBJS)                           \

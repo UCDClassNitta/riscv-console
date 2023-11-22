@@ -32,6 +32,65 @@ std::string CDwarfStructures::SValue::GetString() const{
 }
 
 int64_t CDwarfStructures::SValue::GetINT64() const{
+    switch(DForm){
+        case DW_FORM::addr            :
+        case DW_FORM::ref_addr        :
+        case DW_FORM::sec_offset      :
+        case DW_FORM::strp_sup        :
+
+        case DW_FORM::data1           :
+        case DW_FORM::data2           :
+        case DW_FORM::data4           :
+        case DW_FORM::data8           :
+
+        case DW_FORM::ref1            :
+        case DW_FORM::ref2            :
+        case DW_FORM::ref4            :
+        case DW_FORM::ref8            :
+
+        case DW_FORM::flag            :
+        
+        case DW_FORM::strx1           :
+        case DW_FORM::strx2           :
+        case DW_FORM::strx3           :
+        case DW_FORM::strx4           :
+
+        case DW_FORM::addrx1          : 
+        case DW_FORM::addrx2          : 
+        case DW_FORM::addrx3          : 
+        case DW_FORM::addrx4          :
+
+        case DW_FORM::ref_sup4        : 
+        case DW_FORM::ref_sup8        :
+
+        case DW_FORM::ref_sig8        : 
+        case DW_FORM::implicit_const  : {
+                                            int64_t ReturnValue = DData.back() & 0x80 ? -1 : 0;
+                                            for(auto ByteIter = DData.rbegin(); ByteIter != DData.rend(); ByteIter++){
+                                                ReturnValue <<= 8;
+                                                ReturnValue |= *ByteIter;
+                                            }
+                                            return ReturnValue;
+                                        }
+                                        break;
+        case DW_FORM::sdata           :
+        case DW_FORM::udata           :
+        case DW_FORM::ref_udata       :
+        case DW_FORM::strx            :
+        case DW_FORM::addrx           :
+        case DW_FORM::loclistx        :
+        case DW_FORM::rnglistx        : {
+                                            // Find most significant bit and determine if 1 for sign extension.
+                                            int64_t ReturnValue = DData.back() & ((0xFF<<(((DData.size()+1) * 7) & 0x7)) & 0xFF) ? -1 : 0;
+                                            for(auto ByteIter = DData.rbegin(); ByteIter != DData.rend(); ByteIter++){
+                                                ReturnValue <<= 7;
+                                                ReturnValue |= (*ByteIter) & 0x7F;
+                                            }
+                                            return ReturnValue;
+                                        }
+                                        break;
+        default:                        break;
+    }
     return -1;
 }
 
@@ -260,8 +319,9 @@ bool CDwarfStructures::SDie::ProcessDataType(){
             ReferencedType = CompilationUnit->GetDataTypeByAddress(Child->DAddress);
             NewDataType->DChildren.push_back(ReferencedType);
         }
-        if(DW_TAG::typedef_ == DTag){
+        if((DW_TAG::typedef_ == DTag)||(DW_TAG::member == DTag)){
             NewDataType->DAlias = ReferencedType->DName;
+            NewDataType->DQualifiers.insert(SDataType::EQualifiers::Typedef);
         }
         switch(DTag){
             case DW_TAG::pointer_type:      NewDataType->DQualifiers.insert(SDataType::EQualifiers::Pointer);
@@ -346,12 +406,37 @@ void CDwarfStructures::SLineNumberStateMachine::Reset(){
     DRegs.is_stmt = DDefaultIsStmt;
     DRegs.basic_block = DRegs.end_sequence = DRegs.prologue_end = DRegs.epilogue_begin = false;
 }
+
+bool CDwarfStructures::SDataType::IsVolatile() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Volatile);
+}
+
+bool CDwarfStructures::SDataType::IsConst() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Const);
+}
+
+bool CDwarfStructures::SDataType::IsPointer() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Pointer);
+}
+
+bool CDwarfStructures::SDataType::IsArray() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Array);
+}
+
 bool CDwarfStructures::SDataType::IsStruct() const{
     return DQualifiers.end() != DQualifiers.find(EQualifiers::Struct);
 }
 
 bool CDwarfStructures::SDataType::IsUnion() const{
     return DQualifiers.end() != DQualifiers.find(EQualifiers::Union);
+}
+
+bool CDwarfStructures::SDataType::IsEnum() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Enum);
+}
+
+bool CDwarfStructures::SDataType::IsTypedef() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Typedef);
 }
 
 bool CDwarfStructures::SProgrammaticScope::AddVariableToScope(std::shared_ptr< SVariable > variable){
@@ -399,14 +484,22 @@ bool CDwarfStructures::SProgrammaticScope::AddVariableToScope(std::shared_ptr< S
 bool CDwarfStructures::SProgrammaticScope::GetScopesFromPC(uint64_t pc, std::vector< std::shared_ptr< SProgrammaticScope > > &scopes) const{
     if(DParent.expired()){
         // Get correct scope, and then add all other scope in global
+        //printf("PC = %08llx:\n",pc);
         auto Search = DSubScopes.lower_bound(pc);
         if(Search == DSubScopes.end()){
             return false;
         }
-        Search->second->GetScopesFromPC(pc,scopes);
-        scopes.push_back(Search->second);
+        //printf("  Found %08llx -> %08llx\n", Search->second->DPCRange.DLowPC, Search->second->DPCRange.DHighPC);
+        if(Search->second->DPCRange.DLowPC <= pc){
+            Search->second->GetScopesFromPC(pc,scopes);
+           scopes.push_back(Search->second);
+        }
+        else{
+            Search = DSubScopes.end();
+        }
         for(auto &AddrScope : DSubScopes){
-            if(AddrScope.second != Search->second){
+            //printf("  Scope '%s' %08llx -> %08llx\n",AddrScope.second->DName.c_str(),AddrScope.second->DPCRange.DLowPC, AddrScope.second->DPCRange.DHighPC);
+            if((DSubScopes.end() == Search)||(AddrScope.second != Search->second)){
                 scopes.push_back(AddrScope.second);
             }
         }
@@ -831,19 +924,48 @@ bool CDwarfStructures::SProgram::ConsolidateVariables(const std::unordered_map<s
     DGlobalScope = std::make_shared< SProgrammaticScope >();
     DGlobalScope->DPCRange.DLowPC = 0;
     DGlobalScope->DPCRange.DHighPC = -1;
+    std::unordered_map< std::string, std::pair<uint32_t, uint32_t> > FilenamesToAddresses;
+
+    for(auto &Entry : DLineNumberData.DLineNumberEntries){
+        auto Filename = DLineNumberData.DFilePaths[Entry.DFileIndex];
+        auto Search = FilenamesToAddresses.find(Filename);
+        if(FilenamesToAddresses.end() == Search){
+            FilenamesToAddresses[Filename] = std::make_pair(Entry.DAddress,Entry.DAddress);
+        }
+        else{
+            Search->second = std::make_pair(std::min(Search->second.first,Entry.DAddress),std::max(Search->second.second,Entry.DAddress));
+        }
+    }
     for(auto CompilationUnit : DCompilaitonUnits){
+        auto CUName = CompilationUnit->DRoot->GetAttribute(DW_AT::name).GetString();
         auto LowPC = CompilationUnit->DRoot->GetAttribute(DW_AT::low_pc).GetUINT64();
         auto HighPC = LowPC + CompilationUnit->DRoot->GetAttribute(DW_AT::high_pc).GetUINT64() -1;
         std::string CUFilename;
-        for(auto &Entry : DLineNumberData.DLineNumberEntries){
-            if((LowPC <= Entry.DAddress)&&(HighPC >= Entry.DAddress)){
-                CUFilename = DLineNumberData.DFilePaths[Entry.DFileIndex];
+        uint64_t BestOverlap = 0;
+        std::string BestFilenameMatch;
+        for(auto &FilenameAddress : FilenamesToAddresses){
+            if((FilenameAddress.second.first <= LowPC)&&(HighPC <= FilenameAddress.second.second)){
+                CUFilename = FilenameAddress.first;
                 if(!CUFilename.empty()){
                     break;
                 }
             }
+            auto OverlapLow = std::max(uint64_t(FilenameAddress.second.first),LowPC);
+            auto OverlapHigh = std::min(uint64_t(FilenameAddress.second.second),HighPC);
+            if(OverlapLow < OverlapHigh){
+                auto Overlap = OverlapHigh - OverlapLow;
+                if(Overlap > BestOverlap){
+                    BestOverlap  = Overlap;
+                    BestFilenameMatch = FilenameAddress.first;
+                }
+            }
         }
-
+        if(CUFilename.empty()){
+            CUFilename = BestFilenameMatch;   
+            if(BestFilenameMatch.find(CUName) == BestFilenameMatch.length() - CUName.length()){
+                // Definitely matched right one. Consider if needing to modify High/low PC
+            }
+        }
         for(auto &AddrVariable : CompilationUnit->DVariablesByAddress){
             auto Variable = AddrVariable.second;
             if(DW_OP::none == Variable->DLocation.DType){
