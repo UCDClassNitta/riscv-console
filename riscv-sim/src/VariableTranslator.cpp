@@ -329,20 +329,28 @@ bool CVariableTranslator::SetVariableBaseValue(std::shared_ptr<CProgramState> st
         case DW_ATE::float_:        {
                                         double DoubleValue;
                                         if(bytes.size() == sizeof(float)){
-                                            uint32_t IntValue = 0;    
+                                            union {
+                                                uint32_t DIntValue;
+                                                float DFloatValue;
+                                            } Int32Float;
+                                            Int32Float.DIntValue = 0;    
                                             for(auto Iter = bytes.rbegin(); Iter != bytes.rend(); Iter++){
-                                                IntValue <<= 8;
-                                                IntValue |= *Iter;
+                                                Int32Float.DIntValue <<= 8;
+                                                Int32Float.DIntValue |= *Iter;
                                             }
-                                            DoubleValue = *(float *)&IntValue;
+                                            DoubleValue = Int32Float.DFloatValue;
                                         }
                                         else if(bytes.size() == sizeof(double)){
-                                            uint64_t IntValue = 0;    
+                                            union {
+                                                uint64_t DIntValue;
+                                                double DDoubleValue;
+                                            } Int64Double;
+                                            Int64Double.DIntValue = 0;
                                             for(auto Iter = bytes.rbegin(); Iter != bytes.rend(); Iter++){
-                                                IntValue <<= 8;
-                                                IntValue |= *Iter;
+                                                Int64Double.DIntValue <<= 8;
+                                                Int64Double.DIntValue |= *Iter;
                                             }
-                                            DoubleValue = *(double *)&IntValue;
+                                            DoubleValue = Int64Double.DDoubleValue;
                                         }
                                         else{
                                             return false;
@@ -426,8 +434,8 @@ bool CVariableTranslator::SetVariableEnumValue(std::shared_ptr<CProgramState> st
 
 bool CVariableTranslator::SetVariableArrayValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth){
     auto ReferencedType = datatype->DReferencedType;
-    auto Elements = datatype->DByteSize / ReferencedType->DByteSize;
-    for(auto Index = 0; Index < Elements; Index++){
+    size_t Elements = datatype->DByteSize / ReferencedType->DByteSize;
+    for(size_t Index = 0; Index < Elements; Index++){
         auto NewVariableState = std::make_shared<CProgramState>();
         NewVariableState->DName = state->DName + std::string("[") + std::to_string(Index) + std::string("]");
         NewVariableState->DType = ReferencedType->DName;

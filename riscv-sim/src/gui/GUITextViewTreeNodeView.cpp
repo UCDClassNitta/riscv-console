@@ -161,7 +161,7 @@ void CGUITextViewTreeNodeView::Update(){
     DLines.clear();
     DVisibleNodes.clear();
     auto TheRootNode = RootNode();
-    for(auto Index = 0; Index < TheRootNode->ChildCount(); Index++){
+    for(size_t Index = 0; Index < TheRootNode->ChildCount(); Index++){
         std::vector<bool> MoreChildren = {Index + 1 < TheRootNode->ChildCount()};
         UpdateNode(TheRootNode->GetChild(Index),MoreChildren);
     }
@@ -187,7 +187,7 @@ void CGUITextViewTreeNodeView::Update(){
 void CGUITextViewTreeNodeView::UpdateNode(std::shared_ptr<CGUITreeNodeIter> node, const std::vector< bool > &morechildren){
     std::string Line;
 
-    for(auto Index = 0; Index + 1 < morechildren.size(); Index++){
+    for(size_t Index = 0; Index + 1 < morechildren.size(); Index++){
         Line += morechildren[Index] ? std::string(DVerticalBar) : std::string(" ");
         Line += std::string(" ");
     }
@@ -204,7 +204,7 @@ void CGUITextViewTreeNodeView::UpdateNode(std::shared_ptr<CGUITreeNodeIter> node
     DLines.push_back(Line);
     DVisibleNodes.push_back(node);
     if(node->GetExpanded()){
-        for(auto Index = 0; Index < node->ChildCount(); Index++){
+        for(size_t Index = 0; Index < node->ChildCount(); Index++){
             auto MoreChildren = morechildren;
             MoreChildren.push_back(Index + 1 < node->ChildCount());
             UpdateNode(node->GetChild(Index),MoreChildren);
@@ -216,7 +216,7 @@ bool CGUITextViewTreeNodeView::WidgetMotionEventCallback(std::shared_ptr<CGUIWid
     CGUITextViewTreeNodeView *TreeNodeView = static_cast<CGUITextViewTreeNodeView *>(data);
     auto VerticalScrollBar = TreeNodeView->DScrollWindow->GetVerticalScrollBar();
     auto Y = event.DWindowY + VerticalScrollBar->GetValue();
-    auto LineNumber = TreeNodeView->DTextView->GetLineNumberAtY(Y);
+    size_t LineNumber = TreeNodeView->DTextView->GetLineNumberAtY(Y);
     if(LineNumber < TreeNodeView->DVisibleNodes.size()){
         auto Node = TreeNodeView->DVisibleNodes[LineNumber];
         if(Node->GetTooltipIsMarkup()){
@@ -237,8 +237,8 @@ bool CGUITextViewTreeNodeView::WidgetButtonEventCallback(std::shared_ptr<CGUIWid
         auto HorizontalScrollBar = TreeNodeView->DScrollWindow->GetHorizontalScrollBar();
         auto X = event.DWindowX + HorizontalScrollBar->GetValue();
         auto Y = event.DWindowY + VerticalScrollBar->GetValue();
-        auto LineOffset = TreeNodeView->DTextView->GetLineOffsetAtPosition(X,Y);
-        auto LineNumber = TreeNodeView->DTextView->GetLineNumberAtY(Y);
+        size_t LineOffset = TreeNodeView->DTextView->GetLineOffsetAtPosition(X,Y);
+        size_t LineNumber = TreeNodeView->DTextView->GetLineNumberAtY(Y);
         if(LineNumber < TreeNodeView->DVisibleNodes.size()){
             auto Node = TreeNodeView->DVisibleNodes[LineNumber];
             if(((Node->Depth() - 1) * 2 == LineOffset)&&(Node->ChildCount())){
@@ -280,7 +280,7 @@ std::shared_ptr<CGUITreeNodeIter> CGUITextViewTreeNodeView::RootNode(){
 std::shared_ptr<CGUITreeNodeIter> CGUITextViewTreeNodeView::GetNodeAtXY(int x, int y) const{
     auto VerticalScrollBar = DScrollWindow->GetVerticalScrollBar();
     auto Y = y + VerticalScrollBar->GetValue();
-    auto LineNumber = DTextView->GetLineNumberAtY(Y);
+    size_t LineNumber = DTextView->GetLineNumberAtY(Y);
     if(LineNumber < DVisibleNodes.size()){
         return DVisibleNodes[LineNumber];
     }
