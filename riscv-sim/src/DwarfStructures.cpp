@@ -259,9 +259,9 @@ bool CDwarfStructures::SDie::IsDataType(DW_TAG tag){
     
 }
 
-bool CDwarfStructures::SDie::ProcessDataType(){
-    //printf("In %s @ %d for %08llx\n",__FILE__,__LINE__,DAddress);
+bool CDwarfStructures::SDie::ProcessDataType(){    
     if(auto CompilationUnit = DCompilationUnit.lock()){
+        //printf("In %s @ %d for %08x (%08x)\n",__FILE__,__LINE__,DAddress, DAddress + CompilationUnit->DOffset);
         if(CompilationUnit->GetDataTypeByAddress(DAddress)){
             return true;
         }
@@ -382,7 +382,7 @@ bool CDwarfStructures::SDie::ProcessVariable(){
         auto DieParent = DParent.lock();
         NewVariable->DLocation = GetAttribute(DW_AT::location).GetLocation(CompilationUnit->DAddressSize,CompilationUnit->DLittleEndian);
         NewVariable->DName = GetAttribute(DW_AT::name).GetString();
-        NewVariable->DType = CompilationUnit->DDataTypesByAddress[uint32_t(GetAttribute(DW_AT::type).GetUINT64())];
+        NewVariable->DType = CompilationUnit->GetDataTypeByAddress(uint32_t(GetAttribute(DW_AT::type).GetUINT64()));
         if(DieParent){
             NewVariable->DValidRange.DLowPC = DieParent->HasAttribute(DW_AT::low_pc) ? DieParent->GetAttribute(DW_AT::low_pc).GetUINT64() : 0;
             NewVariable->DValidRange.DHighPC = DieParent->HasAttribute(DW_AT::high_pc) ? DieParent->GetAttribute(DW_AT::high_pc).GetUINT64() - 1 : -1;
