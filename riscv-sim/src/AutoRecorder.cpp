@@ -1,24 +1,8 @@
 #include "AutoRecorder.h"
 #include "AutoRunner.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/rapidjson.h"
-#include "rapidjson/memorystream.h"
-#include "rapidjson/filewritestream.h"
-#include "RISCVConsoleApplication.h"
-#include "RISCVConsole.h"
 #include "FileDataSink.h"
-#include "FileDataSource.h"
 #include "Path.h"
-#include <iomanip>
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <sstream>
-#include <map>
+#include "JSONWriter.h"
 
 std::unordered_map< CRISCVConsole::EDirection, std::string > CAutoRecorder::DDirectionPressMapping = {{CRISCVConsole::EDirection::Left,CAutoRunner::DIRECTION_LEFT_STRING},
                                                                                                         {CRISCVConsole::EDirection::Up,CAutoRunner::DIRECTION_UP_STRING},
@@ -37,190 +21,119 @@ std::unordered_map< CRISCVConsole::EButtonNumber, std::string > CAutoRecorder::D
                                                                                                         {CRISCVConsole::EButtonNumber::Button3,CAutoRunner::BUTTON_3_RELEASE_STRING},
                                                                                                         {CRISCVConsole::EButtonNumber::Button4,CAutoRunner::BUTTON_4_RELEASE_STRING},};
 
-CAutoRecorder::CAutoRecorder(uint32_t timerus, uint32_t videoms, uint32_t cpufreq){
+CAutoRecorder::CAutoRecorder(uint32_t timerus, uint32_t videoms, uint32_t cpufreq, uint32_t videomodel){
     DTimerDelayUS = timerus;
     DVideoDelayMS = videoms;
     DDebugCPUFreq = cpufreq;
-       
-    DOutputJSONDocument.SetObject();
-    rapidjson::Value TempValue(rapidjson::kArrayType);
-    DOutputJSONObjectArray = TempValue;
+    DVideoModel = videomodel;
 }
 
 bool CAutoRecorder::AddFWEvent(const std::string &data){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Data(rapidjson::kStringType);
-    Data.SetString(data.c_str(), Allocator);
-
     DFirmwareFilename = data;
     // Firware programming will always reset console.
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), 0, Allocator);  
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), rapidjson::StringRef(CAutoRunner::INSERT_FW_STRING), Allocator);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), Data, Allocator);
-
-    DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+    DRecordedEvents.push_back({.DCycle=0,.DType=CAutoRunner::INSERT_FW_STRING,.DData=data});
     return true;
 }
 
 bool CAutoRecorder::AddInsertCREvent(const std::string &data, uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Data(rapidjson::kStringType);
-    Data.SetString(data.c_str(), Allocator);
-
     DCartridgeFilename = data;
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), rapidjson::StringRef(CAutoRunner::INSERT_CR_STRING), Allocator);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), Data, Allocator);
-
-    DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+    DRecordedEvents.push_back({.DCycle=cycle,.DType=CAutoRunner::INSERT_CR_STRING,.DData=data});
     return true;
 }
 
 bool CAutoRecorder::AddRemoveCREvent(uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Data(rapidjson::kStringType);
-    
     DCartridgeFilename.clear();
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), rapidjson::StringRef(CAutoRunner::REMOVE_CR_STRING), Allocator);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-    DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+    DRecordedEvents.push_back({.DCycle=cycle,.DType=CAutoRunner::REMOVE_CR_STRING,.DData=std::string()});
     return true;
 }
 
 bool CAutoRecorder::AddCommandPressEvent(uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Type(rapidjson::kStringType);
-    
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), rapidjson::StringRef(CAutoRunner::CMD_BUTTON_STRING), Allocator);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-    DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+    DRecordedEvents.push_back({.DCycle=cycle,.DType=CAutoRunner::CMD_BUTTON_STRING,.DData=std::string()});
     return true;
 }
 
 bool CAutoRecorder::AddDirectionPressEvent(CRISCVConsole::EDirection direction, uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Type(rapidjson::kStringType);
     auto Search = DDirectionPressMapping.find(direction);
 
     if(Search != DDirectionPressMapping.end()){
-        DDepressedDiretions.insert(direction);
-        Type.SetString(Search->second.c_str(), Allocator);
-
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), Type, Allocator);
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-        DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+        DDepressedDirections.insert(direction);
+        DRecordedEvents.push_back({.DCycle=cycle,.DType=Search->second.c_str(),.DData=std::string()});
         return true;
     }
     return false;
 }
 
 bool CAutoRecorder::AddDirectionReleaseEvent(CRISCVConsole::EDirection direction, uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Type(rapidjson::kStringType);
     auto Search = DDirectionReleaseMapping.find(direction);
 
     if(Search != DDirectionReleaseMapping.end()){
-        DDepressedDiretions.erase(direction);
-        Type.SetString(Search->second.c_str(), Allocator);
-
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), Type, Allocator);
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-        DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+        DDepressedDirections.erase(direction);
+        DRecordedEvents.push_back({.DCycle=cycle,.DType=Search->second.c_str(),.DData=std::string()});
         return true;
     }
     return false;
 }
 
 bool CAutoRecorder::AddButtonPressEvent(CRISCVConsole::EButtonNumber button, uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Type(rapidjson::kStringType);
     auto Search = DButtonPressMapping.find(button);
 
     if(Search != DButtonPressMapping.end()){
         DDepressedButtons.insert(button);
-        Type.SetString(Search->second.c_str(), Allocator);
-
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), Type, Allocator);
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-        DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+        DRecordedEvents.push_back({.DCycle=cycle,.DType=Search->second.c_str(),.DData=std::string()});
         return true;
     }
     return false;
 }
 
 bool CAutoRecorder::AddButtonReleaseEvent(CRISCVConsole::EButtonNumber button, uint64_t cycle){
-    rapidjson::Document::AllocatorType &Allocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    rapidjson::Value Type(rapidjson::kStringType);
     auto Search = DButtonReleaseMapping.find(button);
 
     if(Search != DButtonReleaseMapping.end()){
         DDepressedButtons.erase(button);
-        Type.SetString(Search->second.c_str(), Allocator);
-
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::CYCLE_STRING), cycle, Allocator);  
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::TYPE_STRING), Type, Allocator);
-        Root.AddMember(rapidjson::StringRef(CAutoRunner::DATA_STRING), "", Allocator);
-
-        DOutputJSONObjectArray.PushBack(Root, Allocator);
-
+        DRecordedEvents.push_back({.DCycle=cycle,.DType=Search->second.c_str(),.DData=std::string()});
         return true;
     }
     return false;
 }
 
 void CAutoRecorder::OutputJSONFile(const std::string &path){
-    rapidjson::Document::AllocatorType &OutputAllocator = DOutputJSONDocument.GetAllocator();
-    rapidjson::Value Root(rapidjson::kObjectType);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::TIMER_US_STRING), DTimerDelayUS, OutputAllocator);  
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::VIDEO_MS_STRING), DVideoDelayMS, OutputAllocator);
-    Root.AddMember(rapidjson::StringRef(CAutoRunner::CPU_FREQ_STRING), DDebugCPUFreq, OutputAllocator);
-    DOutputJSONDocument.AddMember(rapidjson::StringRef(CAutoRunner::INIT_STRING), Root, OutputAllocator);
-    DOutputJSONDocument.AddMember(rapidjson::StringRef(CAutoRunner::COMMANDS_STRING), DOutputJSONObjectArray, OutputAllocator);
+    std::shared_ptr< CJSONElement > Root = std::make_shared< CJSONElement >();
+    std::shared_ptr< CJSONElement > Init = std::make_shared< CJSONElement >();
+    std::shared_ptr< CJSONElement > Commands = std::make_shared< CJSONElement >();
+    Root->Type(CJSONElement::EType::Object);
+    Init->Type(CJSONElement::EType::Object);
+    Init->AssignMember(CAutoRunner::TIMER_US_STRING, DTimerDelayUS);
+    Init->AssignMember(CAutoRunner::VIDEO_MS_STRING, DVideoDelayMS);
+    Init->AssignMember(CAutoRunner::CPU_FREQ_STRING, DDebugCPUFreq);
+    Init->AssignMember(CAutoRunner::VIDEO_MODEL_STRING, DVideoModel);
 
-    FILE* f = fopen(path.c_str(), "w");
-	char WriteBuffer[65535];
-	rapidjson::FileWriteStream os(f, WriteBuffer, sizeof(WriteBuffer));
+    Commands->Type(CJSONElement::EType::Array);
+    for(size_t Index = 0; Index < DRecordedEvents.size(); Index++){
+        auto Event = DRecordedEvents[Index];
+        auto TempCommand = std::make_shared< CJSONElement >();
+        TempCommand->Type(CJSONElement::EType::Object);
+        TempCommand->AssignMember(CAutoRunner::CYCLE_STRING, Event.DCycle);
+        TempCommand->AssignMember(CAutoRunner::TYPE_STRING, Event.DType);
+        TempCommand->AssignMember(CAutoRunner::DATA_STRING, Event.DData);
+        Commands->PushBack(TempCommand);
+    }
+    Root->AssignMember(CAutoRunner::INIT_STRING,Init);
+    Root->AssignMember(CAutoRunner::COMMANDS_STRING,Commands);
 
-	rapidjson::PrettyWriter<rapidjson::FileWriteStream> Writer(os);
-	DOutputJSONDocument.Accept(Writer);
-	fclose(f);
+    auto OutFile = std::make_shared<CFileDataSink>(path);
+    CJSONWriter JSONWriter;
+    JSONWriter.Write(OutFile,Root);
 }
 
 void CAutoRecorder::ResetRecord(){
-    DOutputJSONDocument.SetObject();
-    DOutputJSONObjectArray.Clear();
+    DRecordedEvents.clear();
     if(!DFirmwareFilename.empty()){
         AddFWEvent(DFirmwareFilename);
     }
     if(!DCartridgeFilename.empty()){
         AddInsertCREvent(DCartridgeFilename,0);
     }
-    for(auto Direction : DDepressedDiretions){
+    for(auto Direction : DDepressedDirections){
         AddDirectionPressEvent(Direction,0);
     }
     for(auto Button : DDepressedButtons){

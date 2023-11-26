@@ -27,7 +27,7 @@ CRISCVConsoleApplication::CRISCVConsoleApplication(const std::string &appname, s
     
     auto VideoController = CVideoControllerAllocator::Allocate(GetVideoControllerModel(), DGraphicFactory);
     DRISCVConsole = std::make_shared<CRISCVConsole>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency(),VideoController);
-    DInputRecorder = std::make_shared<CAutoRecorder>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency());
+    DInputRecorder = std::make_shared<CAutoRecorder>(GetTimerUS(),GetScreenTimeoutMS(),GetCPUFrequency(),GetVideoControllerModel());
     DApplication->SetActivateCallback(this, ActivateCallback);
     DVariableTranslator = std::make_shared<CVariableTranslator>(DRISCVConsole->CPU(), DRISCVConsole->Memory());
     
@@ -534,7 +534,6 @@ bool CRISCVConsoleApplication::ClearButtonClickEvent(std::shared_ptr<CGUIWidget>
 }
 
 bool CRISCVConsoleApplication::RecordButtonToggledEvent(std::shared_ptr<CGUIWidget> widget){
-
     if(!DDebugRecordButton->GetActive()){
         std::string Filename;
         auto FileChooser = DGUIFactory->NewFileChooserDialog("Save Record",false,DMainWindow);

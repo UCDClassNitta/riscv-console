@@ -1,38 +1,48 @@
 #ifndef AUTO_RUNNER_H
 #define AUTO_RUNNER_H
 
-#define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_HAS_CXX11_RVALUE_REFS 1
-#include "rapidjson/document.h"
 #include "RISCVConsole.h"
+#include "JSONParser.h"
 
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <map>
-#include <unordered_map>
-#include <memory>
+#include <string>
+
 
 class CAutoRunner {
     protected:
+        struct SCommand{
+            uint64_t DCycle;
+            std::string DType;
+            std::string DData;
+        };
+
         std::string DInputJSONPath;
         std::string DOutputJSONPath;
 
-        rapidjson::Document DInputJSONDocument; 
-        rapidjson::Document DOutputJSONDocument;
-        rapidjson::Value DOutputJSONObjectArray;
-
         std::shared_ptr<CRISCVConsole> DRISCVConsole;
 
+        std::shared_ptr< const CJSONElement > DInitNode;
+        std::shared_ptr< const CJSONElement > DCommandsNode;
+        std::shared_ptr< CJSONElement > DOutputArray;
+
+        uint32_t DTimerUS;
+        uint32_t DVideoMS;
+        uint32_t DCPUFreq;
+        uint32_t DVideoModel;
+
+        int DReturnCode;
+
         bool LoadInputJSONDocument();
+        bool LoadInitParameter(uint32_t &param, const std::string &paramname);
 
         void ParseArguments(int &argc, char *argv[]);
-        void ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory);
-        void ParseCommandData();
-        void SendCommand(uint32_t cycle, uint32_t nextCycle, const std::string &type, const std::string &data);
+        bool ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory);
+        bool ParseIntMember(uint64_t &num, std::shared_ptr< const CJSONElement > node, const std::string &name);
+        bool ParseStringMember(std::string &str, std::shared_ptr< const CJSONElement > node, const std::string &name);
+        bool ParseCommand(SCommand &command, std::shared_ptr< const CJSONElement > node);
+        bool ParseCommandData();
+        void SendCommand(uint64_t cycle, uint64_t nextCycle, const std::string &type, const std::string &data);
 
-        void OutputJSONFile();
+        bool OutputJSONFile();
 
         bool InsertFW(const std::string &data);
         bool InsertCR(const std::string &data);
@@ -52,16 +62,16 @@ class CAutoRunner {
         std::map<std::string, std::string> OutputRegs();
         std::map<std::string, std::string> OutputCSRs();
         std::map<std::string, std::string> OutputMem(const std::string &data);
+        void QueueOutputMap(uint64_t cycle, const std::string &key, const std::map<std::string, std::string> &outmap);
 
         bool DoStep();
         bool DoRun();
         bool DoStop();
         bool DoPowerOn();
         bool DoPowerOff();
-        bool DoCycleSteps(uint32_t cycle, uint32_t nextCycle);
+        bool DoCycleSteps(uint64_t cycle, uint64_t nextCycle);
 
         uint32_t GetAddressHex(const std::string &str_addr);
-        rapidjson::Value FormatOutputMap(std::map<std::string, std::string> map, rapidjson::Document::AllocatorType &allocator);
         std::string FormatHex32Bit(uint32_t val);
         
     public:
@@ -112,6 +122,9 @@ class CAutoRunner {
         static const std::string MEM_STRING;
 
         explicit CAutoRunner(int argc, char *argv[], std::shared_ptr<CGraphicFactory> graphicfactory);
+        int ReturnCode() const{
+            return DReturnCode;
+        };
 
 };
 

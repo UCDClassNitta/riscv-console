@@ -1,27 +1,14 @@
 #include "AutoRunner.h"
-#include "rapidjson/document.h"
-#include "rapidjson/filereadstream.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/rapidjson.h"
-#include "rapidjson/memorystream.h"
-#include "rapidjson/filewritestream.h"
-#include "RISCVConsoleApplication.h"
-
 #include "RISCVConsole.h"
 #include "VideoControllerAllocator.h"
 #include "FileDataSink.h"
 #include "FileDataSource.h"
 #include "Path.h"
+#include "JSONWriter.h"
 #include "RISCVSYSTypeInstruction.h"
+
 #include <iomanip>
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
 #include <sstream>
-#include <map>
 
 const std::string CAutoRunner::INIT_STRING = "Init";
 const std::string CAutoRunner::TIMER_US_STRING = "TimerUS";
@@ -64,17 +51,27 @@ const std::string CAutoRunner::MEM_STRING = "Mem";
 CAutoRunner::CAutoRunner(int argc, char *argv[], std::shared_ptr<CGraphicFactory> graphicfactory){
     DInputJSONPath = "./input.json";
     DOutputJSONPath = "./output.json";
-
+    DReturnCode = 0;
+    DOutputArray = std::make_shared< CJSONElement >();
+    DOutputArray->Type(CJSONElement::EType::Array);
     ParseArguments(argc, argv);
-    LoadInputJSONDocument();
-    ParseInitData(graphicfactory);
+    if(!LoadInputJSONDocument()){
+        DReturnCode = -1;
+        return;
+    }
 
-    DOutputJSONDocument.SetObject();
-    rapidjson::Value TempValue(rapidjson::kArrayType);
-    DOutputJSONObjectArray = TempValue;
-
-    ParseCommandData();
-    OutputJSONFile();
+    if(!ParseInitData(graphicfactory)){
+        DReturnCode = -1;
+        return;
+    }
+    if(!ParseCommandData()){
+        DReturnCode = -1;
+        return;
+    }
+    if(!OutputJSONFile()){
+        DReturnCode = -1;
+        return;
+    }
 }
 
 void CAutoRunner::ParseArguments(int &argc, char *argv[]){
@@ -87,74 +84,135 @@ void CAutoRunner::ParseArguments(int &argc, char *argv[]){
 }
 
 bool CAutoRunner::LoadInputJSONDocument(){
-    FILE* fp = fopen(DInputJSONPath.c_str(), "r");
-    char readBuffer[65536];
-    rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-    DInputJSONDocument.ParseStream(is);
-    fclose(fp);
+    auto InputFile = std::make_shared< CFileDataSource >(DInputJSONPath);
+    CJSONParser Parser;
 
+    if(!Parser.Parse(InputFile)){
+        return false;
+    }
+    DTimerUS = 0;
+    DVideoMS = 0;
+    DCPUFreq = 0;
+    DVideoModel = 1;
+    auto RootNode = Parser.Root();
+    if(CJSONElement::EType::Object != RootNode->Type()){
+        return false;
+    }
+    DInitNode = RootNode->Member(INIT_STRING);
+    DCommandsNode  = RootNode->Member(COMMANDS_STRING);
+    if(!DCommandsNode){
+        return false;
+    }
     return true;
 }
 
-void CAutoRunner::ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory){
-    uint32_t TimerUS = 0, VideoMS = 0, CPUFreq = 0, VideoModel = 1;
-
-    if(DInputJSONDocument.HasMember(INIT_STRING.c_str())){
-        const rapidjson::Value& Init = DInputJSONDocument[INIT_STRING.c_str()];
-        if(Init[TIMER_US_STRING.c_str()].IsInt()){
-            TimerUS = Init[TIMER_US_STRING.c_str()].GetInt(); 
+bool CAutoRunner::LoadInitParameter(uint32_t &param, const std::string &paramname){
+    if(DInitNode){
+        uint64_t Temp;
+        if(!ParseIntMember(Temp, DInitNode, paramname)){
+            return false;
         }
-        if(Init[VIDEO_MS_STRING.c_str()].IsInt()){
-            VideoMS = Init[VIDEO_MS_STRING.c_str()].GetInt();
-        }
-        if(Init[CPU_FREQ_STRING.c_str()].IsInt()){
-            CPUFreq = Init[CPU_FREQ_STRING.c_str()].GetInt();
-        }
-        if(Init[VIDEO_MODEL_STRING.c_str()].IsInt()){
-            VideoModel = Init[VIDEO_MODEL_STRING.c_str()].GetInt();
-        }
+        param = Temp;
     }
-    auto VideoController = CVideoControllerAllocator::Allocate(VideoModel,graphicfactory);
-    DRISCVConsole = std::make_shared<CRISCVConsole>(TimerUS, VideoMS, CPUFreq, VideoController);
-    DRISCVConsole->SetDebugMode(true);
+    return true;
 }
 
-void CAutoRunner::ParseCommandData(){
-    if(DInputJSONDocument.HasMember(COMMANDS_STRING.c_str())){
-        const rapidjson::Value& Commands = DInputJSONDocument[COMMANDS_STRING.c_str()];
-        if(Commands.IsArray()){
-            size_t len = Commands.Size();
-            for (size_t i = 0; i < len; i++){
-                uint32_t CurrentCycle = 0;
-                uint32_t NextCycle = 0;
-                std::string Type = "";
-                std::string Data = "";
-
-                const rapidjson::Value& CMD = Commands[i];
-
-                if(CMD.HasMember(CYCLE_STRING.c_str()) && CMD[CYCLE_STRING.c_str()].IsInt()){
-                    CurrentCycle = CMD[CYCLE_STRING.c_str()].GetInt();
-                }
-                if(CMD.HasMember(TYPE_STRING.c_str()) && CMD[TYPE_STRING.c_str()].IsString()){
-                    Type = CMD[TYPE_STRING.c_str()].GetString();
-                }
-                if(CMD.HasMember(DATA_STRING.c_str()) && CMD[DATA_STRING.c_str()].IsString()){
-                    Data = CMD[DATA_STRING.c_str()].GetString();
-                    Data = Data == "" ? "." : Data;
-                }
-                if(i + 1 < len){
-                    const rapidjson::Value &NextCMD = Commands[i+1];
-                    if(NextCMD.HasMember(CYCLE_STRING.c_str()) && NextCMD[CYCLE_STRING.c_str()].IsInt()){
-                        NextCycle = NextCMD[CYCLE_STRING.c_str()].GetInt();
-                    }
-                }
-                else {
-                    NextCycle = CurrentCycle;
-                }
-                SendCommand(CurrentCycle, NextCycle, Type, Data);                    
-            }
+bool CAutoRunner::ParseInitData(std::shared_ptr<CGraphicFactory> graphicfactory){
+    if(DInitNode){
+        if(!LoadInitParameter(DTimerUS, TIMER_US_STRING)){
+            return false;
+        }
+        if(!LoadInitParameter(DVideoMS, VIDEO_MS_STRING)){
+            return false;
+        }
+        if(!LoadInitParameter(DCPUFreq, CPU_FREQ_STRING)){
+            return false;
+        }
+        if(!LoadInitParameter(DVideoModel, VIDEO_MODEL_STRING)){
+            return false;
         }
     }
+    auto VideoController = CVideoControllerAllocator::Allocate(DVideoModel,graphicfactory);
+    DRISCVConsole = std::make_shared<CRISCVConsole>(DTimerUS, DVideoMS, DCPUFreq, VideoController);
+    DRISCVConsole->SetDebugMode(true);
+    return true;
+}
+
+bool CAutoRunner::ParseIntMember(uint64_t &num, std::shared_ptr< const CJSONElement > node, const std::string &name){
+    if(node){
+        auto TempNode = node->Member(name);
+        if(TempNode){
+            size_t Position;
+            if(CJSONElement::EType::Number != TempNode->Type()){
+                return false;
+            }
+            try{
+                num = std::stoull(TempNode->PrimitiveText(),&Position);
+            }
+            catch(std::invalid_argument &e){
+                printf("std::stoull(%s) for %s\n",TempNode->PrimitiveText().c_str(),name.c_str());
+                throw e;
+            }
+            
+            if(Position != TempNode->PrimitiveText().length()){
+                return false;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CAutoRunner::ParseStringMember(std::string &str, std::shared_ptr< const CJSONElement > node, const std::string &name){
+    if(node){
+        auto TempNode = node->Member(name);
+        if(TempNode){
+            if(CJSONElement::EType::String != TempNode->Type()){
+                return false;
+            }
+            str = TempNode->PrimitiveText();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CAutoRunner::ParseCommand(SCommand &command, std::shared_ptr< const CJSONElement > node){
+    if(!node || (CJSONElement::EType::Object != node->Type())){
+        return false;
+    }
+    if(!ParseIntMember(command.DCycle,node,CYCLE_STRING)){
+        return false;
+    }
+    if(!ParseStringMember(command.DType,node,TYPE_STRING)){
+        return false;
+    }
+    if(!ParseStringMember(command.DData,node,DATA_STRING)){
+        return false;
+    }
+    return true;
+}
+
+bool CAutoRunner::ParseCommandData(){
+    if(CJSONElement::EType::Array == DCommandsNode->Type()){
+        if(!DCommandsNode->ChildCount()){
+            return false;
+        }
+        SCommand CurrentCommand, NextCommand;
+        for(size_t Index = 0; Index < DCommandsNode->ChildCount(); Index++){
+            auto CommandNode = DCommandsNode->Index(Index);
+            if(!ParseCommand(NextCommand,CommandNode)){
+                return false;
+            }
+            if(Index){
+                SendCommand(CurrentCommand.DCycle,NextCommand.DCycle,CurrentCommand.DType,CurrentCommand.DData);
+            }
+            CurrentCommand = NextCommand;
+        }
+        SendCommand(CurrentCommand.DCycle,NextCommand.DCycle,CurrentCommand.DType,CurrentCommand.DData);
+        return true;
+    }
+    return false;
 }
 
 bool CAutoRunner::IsDirectionButton(const std::string &type){
@@ -173,27 +231,22 @@ bool CAutoRunner::IsNumberReleaseButton(const std::string &type){
     return (type == BUTTON_1_RELEASE_STRING || type == BUTTON_2_RELEASE_STRING || type == BUTTON_3_RELEASE_STRING || type == BUTTON_4_RELEASE_STRING);
 }
     
-void CAutoRunner::OutputJSONFile(){
-    rapidjson::Document::AllocatorType &OutputAllocator = DOutputJSONDocument.GetAllocator();
-    DOutputJSONDocument.AddMember(rapidjson::StringRef(OUTPUTS_STRING), DOutputJSONObjectArray, OutputAllocator);
-    FILE* f = fopen(DOutputJSONPath.c_str(), "w");
-	char WriteBuffer[65535];
-	rapidjson::FileWriteStream os(f, WriteBuffer, sizeof(WriteBuffer));
+bool CAutoRunner::OutputJSONFile(){
+    auto OutFile = std::make_shared< CFileDataSink >(DOutputJSONPath);
+    CJSONWriter JSONWriter;
 
-	rapidjson::PrettyWriter<rapidjson::FileWriteStream> Writer(os);
-	DOutputJSONDocument.Accept(Writer);
-	fclose(f);
+    return JSONWriter.Write(OutFile, DOutputArray);
 }
 
-void CAutoRunner::SendCommand(uint32_t cycle, uint32_t nextCycle, const std::string &type, const std::string &data){
-    if(type == INSERT_FW_STRING){
+void CAutoRunner::SendCommand(uint64_t cycle, uint64_t nextCycle, const std::string &type, const std::string &data){
+    if(INSERT_FW_STRING == type){
         InsertFW(data);
         DoPowerOn();
     }
-    else if(type == INSERT_CR_STRING){
+    else if(INSERT_CR_STRING == type){
         InsertCR(data);
     }
-    else if(type == REMOVE_CR_STRING){
+    else if(REMOVE_CR_STRING == type){
         RemoveCR();
     }
     else if(IsDirectionButton(type)){
@@ -208,35 +261,17 @@ void CAutoRunner::SendCommand(uint32_t cycle, uint32_t nextCycle, const std::str
     else if(IsNumberReleaseButton(type)){
         ReleaseButton(type);  
     }
-    else if(type == CMD_BUTTON_STRING){
+    else if(CMD_BUTTON_STRING == type){
         PressCommand();
     }
-    else if(type == OUTPUT_REG_STRING){
-        std::map<std::string, std::string> outRegs = OutputRegs();
-        rapidjson::Document::AllocatorType &OutputAllocator = DOutputJSONDocument.GetAllocator();
-        rapidjson::Value outRegJsonVal = FormatOutputMap(outRegs, OutputAllocator);
-        rapidjson::Value temp(rapidjson::kObjectType);
-        temp.AddMember(rapidjson::StringRef(CYCLE_STRING), cycle, OutputAllocator);
-        temp.AddMember(rapidjson::StringRef(REGS_STRING), outRegJsonVal, OutputAllocator);
-        DOutputJSONObjectArray.PushBack(temp, OutputAllocator);
+    else if(OUTPUT_REG_STRING == type){
+        QueueOutputMap(cycle, REGS_STRING, OutputRegs());
     }
-    else if(type == OUTPUT_CSR_STRING){
-        std::map<std::string, std::string> outCSRs = OutputCSRs();
-        rapidjson::Document::AllocatorType &OutputAllocator = DOutputJSONDocument.GetAllocator();
-        rapidjson::Value outCSRJsonVal = FormatOutputMap(outCSRs, OutputAllocator);
-        rapidjson::Value temp(rapidjson::kObjectType);
-        temp.AddMember(rapidjson::StringRef(CYCLE_STRING), cycle, OutputAllocator);
-        temp.AddMember(rapidjson::StringRef(CSRS_STRING), outCSRJsonVal, OutputAllocator);
-        DOutputJSONObjectArray.PushBack(temp, OutputAllocator);
+    else if(OUTPUT_CSR_STRING == type){
+        QueueOutputMap(cycle, CSRS_STRING, OutputCSRs());
     }
-    else if(type == OUTPUT_MEM_STRING){
-        std::map<std::string, std::string> outMem = OutputMem(data);
-        rapidjson::Document::AllocatorType &OutputAllocator = DOutputJSONDocument.GetAllocator();
-        rapidjson::Value outMemJsonVal = FormatOutputMap(outMem, OutputAllocator);
-        rapidjson::Value temp(rapidjson::kObjectType);
-        temp.AddMember(rapidjson::StringRef(CYCLE_STRING), cycle, OutputAllocator);
-        temp.AddMember(rapidjson::StringRef(MEM_STRING), outMemJsonVal, OutputAllocator);
-        DOutputJSONObjectArray.PushBack(temp, OutputAllocator);
+    else if(OUTPUT_MEM_STRING == type){
+        QueueOutputMap(cycle, MEM_STRING, OutputMem(data));
     }
     DoCycleSteps(cycle, nextCycle);
 }
@@ -405,6 +440,19 @@ std::map<std::string, std::string> CAutoRunner::OutputMem(const std::string &dat
     return {{StartAdd, OutputStream.str()}};
 }
 
+void CAutoRunner::QueueOutputMap(uint64_t cycle, const std::string &key, const std::map<std::string, std::string> &outmap){
+    auto OutNode = std::make_shared< CJSONElement >();
+    OutNode->Type(CJSONElement::EType::Object);
+    OutNode->AssignMember(CYCLE_STRING,cycle);
+    auto TempObject = std::make_shared< CJSONElement >();
+    TempObject->Type(CJSONElement::EType::Object);
+    for(auto &KeyValue : outmap){
+        TempObject->AssignMember(KeyValue.first,KeyValue.second);
+    }
+    OutNode->AssignMember(key,TempObject);
+    DOutputArray->PushBack(OutNode);
+}
+
 bool CAutoRunner::DoStep(){
     DRISCVConsole->Step();
     return true;
@@ -430,8 +478,8 @@ bool CAutoRunner::DoPowerOff(){
     return true;
 }
 
-bool CAutoRunner::DoCycleSteps(uint32_t cycle, uint32_t nextCycle){
-    for (uint32_t i=0; i < (nextCycle - cycle); i++){
+bool CAutoRunner::DoCycleSteps(uint64_t cycle, uint64_t nextCycle){
+    for(uint64_t Index = 0; Index < (nextCycle - cycle); Index++){
         DoStep();
     }
     return true;
@@ -446,20 +494,6 @@ uint32_t CAutoRunner::GetAddressHex(const std::string &str_addr){
     // output it as a signed type
     uint32_t addr = static_cast<int>(x);
     return addr;
-}
-
-rapidjson::Value CAutoRunner::FormatOutputMap(std::map<std::string, std::string> map, rapidjson::Document::AllocatorType &allocator){
-    rapidjson::Value root(rapidjson::kObjectType);
-    rapidjson::Value key(rapidjson::kStringType);  
-    rapidjson::Value value(rapidjson::kStringType); 
- 
-	for(std::map<std::string, std::string>::const_iterator it = map.begin(); it != map.end(); ++it){
-		key.SetString(it->first.c_str(), allocator);  
-   		value.SetString(it->second.c_str(), allocator);  
-    	root.AddMember(key, value, allocator);
-	}
-
-    return root;
 }
 
 std::string CAutoRunner::FormatHex32Bit(uint32_t val){
