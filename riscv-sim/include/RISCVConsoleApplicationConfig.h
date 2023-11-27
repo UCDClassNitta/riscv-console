@@ -11,7 +11,7 @@ class CRISCVConsoleApplicationConfiguration{
         enum class EParameter{  UpKey,DownKey,LeftKey,RightKey,Button1Key,Button2Key,Button3Key,Button4Key,
                                 ZoomInKey,ZoomOutKey,SnapshotKey,
                                 WidgetSpacing,InstructionLines,MemoryLines,
-                                ScreenTimer,TimerUS,CPUFrequency,VideoModel
+                                ScreenTimer,TimerUS,CPUFrequency,VideoModel,PointerDepth
                             };
     protected:
         std::unordered_map< std::string, EParameter > DParameterNames;

@@ -185,6 +185,7 @@ class CRISCVConsoleApplication : public std::enable_shared_from_this<CRISCVConso
         uint32_t GetTimerUS();
         uint32_t GetCPUFrequency();
         uint32_t GetVideoControllerModel();
+        uint32_t GetMaxPointerDepth();
 
         std::string CreateRegisterTooltip(size_t index);
         std::string FindLabelFromAddress(uint32_t addr);

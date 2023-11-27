@@ -5,6 +5,17 @@
 #include <algorithm>
 #include <set>
 
+//#define TRACE_PROG
+#ifdef TRACE_PROG
+#define TRACE()                 printf("In %s @ %d\n",__FILE__,__LINE__)
+#define TRACE_WITH_STR(str)     printf("In %s @ %d '%s'\n",__FILE__,__LINE__,str)
+#define TRACE_WITH_HEX(hex)     printf("In %s @ %d '%08x'\n",__FILE__,__LINE__,hex)
+
+#else
+#define TRACE()     
+#define TRACE_WITH_STR(str)
+#define TRACE_WITH_HEX(hex)
+#endif
 void CDwarfStructures::SValue::SetDataFromString(const std::string &str){
     DData.clear();
     for(auto Ch : str){
@@ -262,19 +273,23 @@ bool CDwarfStructures::SDie::IsDataType(DW_TAG tag){
 bool CDwarfStructures::SDie::ProcessDataType(){    
     if(auto CompilationUnit = DCompilationUnit.lock()){
         //printf("In %s @ %d for %08x (%08x)\n",__FILE__,__LINE__,DAddress, DAddress + CompilationUnit->DOffset);
-        if(CompilationUnit->GetDataTypeByAddress(DAddress)){
+        if(CompilationUnit->GetDataTypeByAddress(DAddress,false)){
+            TRACE_WITH_HEX(DAddress);
+            TRACE_WITH_HEX(DAddress + CompilationUnit->DOffset);
             return true;
         }
         auto NewDataType = std::make_shared< SDataType >();
         std::shared_ptr<SDataType> ReferencedType;
-
+        TRACE_WITH_HEX(DAddress);
+        TRACE_WITH_HEX(DAddress + CompilationUnit->DOffset);
         if(HasAttribute(DW_AT::name)){
             NewDataType->DName = GetAttribute(DW_AT::name).GetString();
+            TRACE_WITH_STR(NewDataType->DName.c_str());
         }
         // Moved up to break potential reference cycles
         CompilationUnit->DDataTypesByAddress[DAddress] = NewDataType;
         // Get the referenced type, used for typedefs and adding qualifiers volatile, const, *, etc.
-        if(HasAttribute(DW_AT::type)) {
+        if(HasAttribute(DW_AT::type)){
             auto RefTypeAddr = GetAttribute(DW_AT::type).GetUINT64();
             auto RefSearch = CompilationUnit->GetDIEByAddress(RefTypeAddr);
             if(RefSearch->ProcessDataType()){
@@ -317,6 +332,9 @@ bool CDwarfStructures::SDie::ProcessDataType(){
             }
             Child->ProcessDataType();
             ReferencedType = CompilationUnit->GetDataTypeByAddress(Child->DAddress);
+            TRACE_WITH_STR(ReferencedType->DName.c_str());
+            TRACE_WITH_HEX(Child->DAddress);
+            TRACE_WITH_HEX(Child->DAddress + CompilationUnit->DOffset);
             NewDataType->DChildren.push_back(ReferencedType);
         }
         if((DW_TAG::typedef_ == DTag)||(DW_TAG::member == DTag)){
@@ -326,7 +344,33 @@ bool CDwarfStructures::SDie::ProcessDataType(){
         switch(DTag){
             case DW_TAG::pointer_type:      NewDataType->DQualifiers.insert(SDataType::EQualifiers::Pointer);
                                             // void * is handled as a pointer without a type.
-                                            NewDataType->DName = (NewDataType->DReferencedType ? NewDataType->DReferencedType->DName : std::string("void")) + " *";
+                                            if(NewDataType->DReferencedType){
+                                                if(NewDataType->DReferencedType->IsSubroutine()){
+                                                    auto ReturnType = NewDataType->DReferencedType->DReferencedType ? NewDataType->DReferencedType->DReferencedType->DName : std::string("void");
+                                                    NewDataType->DName = ReturnType + std::string("(*)");
+                                                    if(NewDataType->DReferencedType->DChildren.empty()){
+                                                        NewDataType->DName += std::string("(void)");
+                                                    }
+                                                    else{
+                                                        NewDataType->DName += std::string("(");
+                                                        for(size_t Index = 0; Index < NewDataType->DReferencedType->DChildren.size(); Index++){
+                                                            if(Index){
+                                                                NewDataType->DName += std::string(", ");
+                                                            }
+                                                            NewDataType->DName += NewDataType->DReferencedType->DChildren[Index]->DReferencedType ? NewDataType->DReferencedType->DChildren[Index]->DReferencedType->DName : std::string("void");
+                                                        }
+                                                        NewDataType->DName += std::string(")");
+                                                    }
+                                                }
+                                                else{
+                                                    NewDataType->DName = NewDataType->DReferencedType->DName + std::string(" *");
+                                                }
+                                            }
+                                            else{
+                                                NewDataType->DName = std::string("void *");
+                                            }
+                                            
+                                            TRACE_WITH_STR(NewDataType->DName.c_str());
                                             break;
             case DW_TAG::volatile_type:     NewDataType->DQualifiers.insert(SDataType::EQualifiers::Volatile);
                                             if(NewDataType->DReferencedType->DQualifiers.find(SDataType::EQualifiers::Pointer) != NewDataType->DReferencedType->DQualifiers.end()){
@@ -366,6 +410,7 @@ bool CDwarfStructures::SDie::ProcessDataType(){
                                                 CompilationUnit->DDefinedUnionsByName[NewDataType->DName] = NewDataType;
                                             }
                                             break;
+            case DW_TAG::subroutine_type:   NewDataType->DQualifiers.insert(SDataType::EQualifiers::Subroutine);
             default:                        break;
         }
         if(HasAttribute(DW_AT::declaration)){
@@ -378,11 +423,20 @@ bool CDwarfStructures::SDie::ProcessDataType(){
 
 bool CDwarfStructures::SDie::ProcessVariable(){
     if(auto CompilationUnit = DCompilationUnit.lock()){
-        auto NewVariable = std::make_shared< SVariable >();
+        uint32_t VarDieAddress = HasAttribute(DW_AT::specification) ? GetAttribute(DW_AT::specification).GetUINT64() : DAddress;
+        auto Search = CompilationUnit->DVariablesByAddress.find(VarDieAddress);
+        auto NewVariable = CompilationUnit->DVariablesByAddress.end() != Search ? Search->second : std::make_shared< SVariable >();
         auto DieParent = DParent.lock();
-        NewVariable->DLocation = GetAttribute(DW_AT::location).GetLocation(CompilationUnit->DAddressSize,CompilationUnit->DLittleEndian);
-        NewVariable->DName = GetAttribute(DW_AT::name).GetString();
-        NewVariable->DType = CompilationUnit->GetDataTypeByAddress(uint32_t(GetAttribute(DW_AT::type).GetUINT64()));
+
+        if(HasAttribute(DW_AT::location)){
+            NewVariable->DLocation = GetAttribute(DW_AT::location).GetLocation(CompilationUnit->DAddressSize,CompilationUnit->DLittleEndian);
+        }
+        if(HasAttribute(DW_AT::name)){
+            NewVariable->DName = GetAttribute(DW_AT::name).GetString();
+        }
+        if(HasAttribute(DW_AT::type)){
+            NewVariable->DType = CompilationUnit->GetDataTypeByAddress(uint32_t(GetAttribute(DW_AT::type).GetUINT64()));
+        }
         if(DieParent){
             NewVariable->DValidRange.DLowPC = DieParent->HasAttribute(DW_AT::low_pc) ? DieParent->GetAttribute(DW_AT::low_pc).GetUINT64() : 0;
             NewVariable->DValidRange.DHighPC = DieParent->HasAttribute(DW_AT::high_pc) ? DieParent->GetAttribute(DW_AT::high_pc).GetUINT64() - 1 : -1;
@@ -392,10 +446,11 @@ bool CDwarfStructures::SDie::ProcessVariable(){
             NewVariable->DValidRange.DLowPC = 0;
             NewVariable->DValidRange.DHighPC = -1;
         }
-        CompilationUnit->DVariablesByAddress[DAddress] = NewVariable;
+        CompilationUnit->DVariablesByAddress[VarDieAddress] = NewVariable;
         if(HasAttribute(DW_AT::external)){
             CompilationUnit->DExternVariables.push_back(NewVariable);
         }
+
     }
     return true;
 }
@@ -437,6 +492,10 @@ bool CDwarfStructures::SDataType::IsEnum() const{
 
 bool CDwarfStructures::SDataType::IsTypedef() const{
     return DQualifiers.end() != DQualifiers.find(EQualifiers::Typedef);
+}
+
+bool CDwarfStructures::SDataType::IsSubroutine() const{
+    return DQualifiers.end() != DQualifiers.find(EQualifiers::Subroutine);
 }
 
 bool CDwarfStructures::SProgrammaticScope::AddVariableToScope(std::shared_ptr< SVariable > variable){
@@ -486,13 +545,10 @@ bool CDwarfStructures::SProgrammaticScope::GetScopesFromPC(uint64_t pc, std::vec
         // Get correct scope, and then add all other scope in global
         //printf("PC = %08llx:\n",pc);
         auto Search = DSubScopes.lower_bound(pc);
-        if(Search == DSubScopes.end()){
-            return false;
-        }
         //printf("  Found %08llx -> %08llx\n", Search->second->DPCRange.DLowPC, Search->second->DPCRange.DHighPC);
-        if(Search->second->DPCRange.DLowPC <= pc){
+        if((DSubScopes.end() != Search)&&(Search->second->DPCRange.DLowPC <= pc)){
             Search->second->GetScopesFromPC(pc,scopes);
-           scopes.push_back(Search->second);
+            scopes.push_back(Search->second);
         }
         else{
             Search = DSubScopes.end();
@@ -835,6 +891,7 @@ bool CDwarfStructures::SProgram::ComputeLineNumberStep(CDwarfStructures::SLineNu
 }
 
 bool CDwarfStructures::SProgram::ConsolidateLineNumbers(){
+    TRACE();
     std::unordered_map< std::string, uint32_t > FileIndices;
 
     for(auto CompilationUnit : DCompilaitonUnits){
@@ -857,6 +914,7 @@ bool CDwarfStructures::SProgram::ConsolidateLineNumbers(){
             DLineNumberData.DLineNumberEntries.push_back({FileIndex,LineNumberEntry.DLineNumber,LineNumberEntry.DColumn,LineNumberEntry.DAddress});
         }
     }
+    TRACE();
     std::sort(DLineNumberData.DLineNumberEntries.begin(),DLineNumberData.DLineNumberEntries.end(),[](const CDwarfStructures::SLineNumberEntry &a, const CDwarfStructures::SLineNumberEntry &b) -> bool{
         if(a.DAddress < b.DAddress){
             return true;
@@ -878,10 +936,12 @@ bool CDwarfStructures::SProgram::ConsolidateLineNumbers(){
         }
         return a.DColumn < b.DColumn;
     });
+    TRACE();
     return true;
 }
 
 bool CDwarfStructures::SProgram::ConsolidateVariables(const std::unordered_map<std::string, uint64_t> &globalsymbols){
+    TRACE();
     std::unordered_map< std::string, std::shared_ptr< SDataType > > DefinedStructsByName;
     std::unordered_map< std::string, std::shared_ptr< SDataType > > DefinedUnionsByName;
 
@@ -921,6 +981,7 @@ bool CDwarfStructures::SProgram::ConsolidateVariables(const std::unordered_map<s
             }
         }
     }
+    TRACE();
     DGlobalScope = std::make_shared< SProgrammaticScope >();
     DGlobalScope->DPCRange.DLowPC = 0;
     DGlobalScope->DPCRange.DHighPC = -1;
@@ -989,6 +1050,7 @@ bool CDwarfStructures::SProgram::ConsolidateVariables(const std::unordered_map<s
         }
     }
     //DGlobalScope->Print(0,true);
+    TRACE();
     return true;
 }
 

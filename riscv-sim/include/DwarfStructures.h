@@ -109,7 +109,7 @@ class CDwarfStructures{
         };
 
         struct SDataType{
-            enum class EQualifiers {Volatile, Const, Pointer, Array, Struct, Union, Enum, Typedef};
+            enum class EQualifiers {Volatile, Const, Pointer, Array, Struct, Union, Enum, Typedef, Subroutine};
             std::string DName;
             std::string DAlias;
             size_t DByteSize;
@@ -128,6 +128,7 @@ class CDwarfStructures{
             bool IsUnion() const;
             bool IsEnum() const;
             bool IsTypedef() const;
+            bool IsSubroutine() const;
         };
 
         struct SPCRange{

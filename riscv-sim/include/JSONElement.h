@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector> 
+#include <memory>
 #include <map>
 
 class CJSONElement{

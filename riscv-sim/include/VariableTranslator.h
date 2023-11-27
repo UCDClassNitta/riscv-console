@@ -56,6 +56,7 @@ class CVariableTranslator{
         bool SetVariableEnumValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth);
         bool SetVariableArrayValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth);
         bool SetVariableStructValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth);
+        bool SetVariableUnionValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth);
         bool SetVariablePointerValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth);
         void TranslateVariable(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SVariable > variable);
 

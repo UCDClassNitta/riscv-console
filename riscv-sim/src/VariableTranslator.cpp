@@ -4,6 +4,18 @@
 #include <limits>
 #include <cctype>
 
+//#define TRACE_PROG
+#ifdef TRACE_PROG
+#define TRACE()                 printf("In %s @ %d\n",__FILE__,__LINE__)
+#define TRACE_WITH_STR(str)     printf("In %s @ %d '%s'\n",__FILE__,__LINE__,str)
+#define TRACE_WITH_HEX(hex)     printf("In %s @ %d '%08x'\n",__FILE__,__LINE__,hex)
+
+#else
+#define TRACE()     
+#define TRACE_WITH_STR(str)
+#define TRACE_WITH_HEX(hex)
+#endif
+
 const std::string CVariableTranslator::DCompilationUnitTypeString = "__COMPILATION_UNIT__";
 const std::string CVariableTranslator::DFunctionTypeString = "__FUNCTION__";
 const std::string CVariableTranslator::DBlockTypeString = "__BLOCK__";
@@ -161,10 +173,14 @@ bool CVariableTranslator::GetVariableData(const CDwarfStructures::SObjectLocatio
     switch(location.DType){
         case DW_OP::addr:           
         case DW_OP::deref:      // system dependent
-                                MemoryBase = DMemory->LoadData(location.DAddress,size);
-                                if(MemoryBase){
-                                    bytes.assign(MemoryBase, MemoryBase + size);
-                                    return true;
+                                try{
+                                    MemoryBase = DMemory->LoadData(location.DAddress,size);
+                                    if(MemoryBase){
+                                        bytes.assign(MemoryBase, MemoryBase + size);
+                                        return true;
+                                    }
+                                }
+                                catch(std::out_of_range &Except){
                                 }
                                 return false;
                                 break;
@@ -223,10 +239,15 @@ bool CVariableTranslator::GetVariableData(const CDwarfStructures::SObjectLocatio
                                     // frame pointer is register 8
                                     uint32_t RegisterNumber = DW_OP::fbreg == location.DType ? 8 : uint32_t(location.DType) - uint32_t(DW_OP::breg0);
                                     uint32_t Address = DCPU->Register(RegisterNumber) + location.DOffset;
-                                    MemoryBase = DMemory->LoadData(Address,size);
-                                    if(MemoryBase){
-                                        bytes.assign(MemoryBase, MemoryBase + size);
-                                        return true;
+                                    try{
+                                        MemoryBase = DMemory->LoadData(Address,size);
+                                        if(MemoryBase){
+                                            bytes.assign(MemoryBase, MemoryBase + size);
+                                            return true;
+                                        }
+                                    }
+                                    catch(std::out_of_range &Except){
+                                        
                                     }
                                     return false;
                                 }
@@ -239,29 +260,42 @@ bool CVariableTranslator::GetVariableData(const CDwarfStructures::SObjectLocatio
 }
 
 bool CVariableTranslator::SetVariableValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth){
+    TRACE();
     if(datatype->IsConst() || datatype->IsVolatile()){
         // Just skip the qualifiers
+        TRACE();
         return SetVariableValue(state, datatype->DReferencedType,bytes,pointerdepth);
     }
     else if(datatype->IsPointer()){
+        TRACE();
         return SetVariablePointerValue(state,datatype,bytes,pointerdepth);
     }
     else if(datatype->IsTypedef()){
+        TRACE();
         return SetVariableValue(state,datatype->DReferencedType,bytes,pointerdepth);
     }
     else if(datatype->IsStruct()){
+        TRACE();
         return SetVariableStructValue(state,datatype,bytes,pointerdepth);
     }
     else if(datatype->IsUnion()){
-        return true;
+        TRACE();
+        return SetVariableUnionValue(state,datatype,bytes,pointerdepth);
     }
     else if(datatype->IsEnum()){
+        TRACE();
         return SetVariableEnumValue(state,datatype,bytes,pointerdepth);
     }
     else if(datatype->IsArray()){
+        TRACE();
         return SetVariableArrayValue(state,datatype,bytes,pointerdepth);
     }
+    else if(datatype->IsSubroutine()){
+        TRACE();
+        return true;
+    }
     else{
+        TRACE();
         return SetVariableBaseValue(state,datatype,bytes,pointerdepth);
     }
 }
@@ -284,7 +318,7 @@ bool CVariableTranslator::SetVariableBaseValue(std::shared_ptr<CProgramState> st
                                         state->DValue.DDefaultConversion = DDecimalString;
 
                                         std::stringstream HexStream;
-                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 7)>>3)<<std::setfill('0')<<Value;
+                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 3)>>2)<<std::setfill('0')<<Value;
                                         state->DValue.DAlternatives.push_back(HexStream.str());
                                         state->DValue.DAlternativeConversions.push_back(DHexadecimalString);
                                         return true;
@@ -297,7 +331,7 @@ bool CVariableTranslator::SetVariableBaseValue(std::shared_ptr<CProgramState> st
                                         state->DValue.DAlternatives.push_back(std::to_string(Value));
                                         state->DValue.DAlternativeConversions.push_back(DDecimalString);
                                         std::stringstream HexStream;
-                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 7)>>3)<<std::setfill('0')<<Value;
+                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 3)>>2)<<std::setfill('0')<<Value;
                                         state->DValue.DAlternatives.push_back(HexStream.str());
                                         state->DValue.DAlternativeConversions.push_back(DHexadecimalString);
                                         return true;
@@ -308,7 +342,7 @@ bool CVariableTranslator::SetVariableBaseValue(std::shared_ptr<CProgramState> st
                                         state->DValue.DDefaultConversion = DDecimalString;
 
                                         std::stringstream HexStream;
-                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 7)>>3)<<std::setfill('0')<<Value;
+                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 3)>>2)<<std::setfill('0')<<Value;
                                         state->DValue.DAlternatives.push_back(HexStream.str());
                                         state->DValue.DAlternativeConversions.push_back(DHexadecimalString);
                                         return true;
@@ -321,7 +355,7 @@ bool CVariableTranslator::SetVariableBaseValue(std::shared_ptr<CProgramState> st
                                         state->DValue.DAlternatives.push_back(std::to_string(Value));
                                         state->DValue.DAlternativeConversions.push_back(DDecimalString);
                                         std::stringstream HexStream;
-                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 7)>>3)<<std::setfill('0')<<Value;
+                                        HexStream<<std::hex<<std::setw((datatype->DBitSize + 3)>>2)<<std::setfill('0')<<Value;
                                         state->DValue.DAlternatives.push_back(HexStream.str());
                                         state->DValue.DAlternativeConversions.push_back(DHexadecimalString);
                                         return true;
@@ -448,12 +482,17 @@ bool CVariableTranslator::SetVariableArrayValue(std::shared_ptr<CProgramState> s
 }
 
 bool CVariableTranslator::SetVariableStructValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth){
+    TRACE();
     size_t Offset = 0;
     std::vector< uint8_t > CurrentData;
+    TRACE_WITH_STR(datatype->DName.c_str());
     for(auto Child : datatype->DChildren){
         auto NewVariableState = std::make_shared<CProgramState>();
+        TRACE();
         NewVariableState->DName = Child->DName;
+        TRACE_WITH_STR(Child->DName.c_str());
         NewVariableState->DType = Child->DReferencedType->DName;
+        TRACE();
         state->DChildren.push_back(NewVariableState);
         if(!Child->DBitOffset){
             CurrentData.assign(bytes.begin() + Offset, bytes.begin() + Offset + Child->DByteSize);
@@ -466,6 +505,25 @@ bool CVariableTranslator::SetVariableStructValue(std::shared_ptr<CProgramState> 
             SetVariableValue(NewVariableState, Child, CurrentData, pointerdepth);
         }
     }
+    TRACE();
+    return true;
+}
+
+bool CVariableTranslator::SetVariableUnionValue(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SDataType > datatype, std::vector< uint8_t > &bytes, size_t pointerdepth){
+    TRACE();
+    TRACE_WITH_STR(datatype->DName.c_str());
+    for(auto Child : datatype->DChildren){
+        auto NewVariableState = std::make_shared<CProgramState>();
+        TRACE();
+        NewVariableState->DName = Child->DName;
+        TRACE_WITH_STR(Child->DName.c_str());
+        NewVariableState->DType = Child->DReferencedType->DName;
+        TRACE();
+        state->DChildren.push_back(NewVariableState);
+        std::vector<uint8_t> CurrentData(bytes.begin(), bytes.begin() + Child->DByteSize);
+        SetVariableValue(NewVariableState, Child, CurrentData, pointerdepth);
+    }
+    TRACE();
     return true;
 }
 
@@ -476,7 +534,7 @@ bool CVariableTranslator::SetVariablePointerValue(std::shared_ptr<CProgramState>
     HexStream<<std::hex<<std::setw(8)<<std::setfill('0')<<Address;
     state->DValue.DDefault = HexStream.str();
     state->DValue.DDefaultConversion = DHexadecimalString;
-    if((MaxPointerDepth() > pointerdepth)&&ReferencedType){
+    if((MaxPointerDepth() > pointerdepth)&&ReferencedType&&!ReferencedType->IsSubroutine()){
         CDwarfStructures::SObjectLocation VariableLocation;
         std::vector< uint8_t > DataAtLocation;
         VariableLocation.DAddress = Address;
@@ -494,16 +552,23 @@ bool CVariableTranslator::SetVariablePointerValue(std::shared_ptr<CProgramState>
 }
 
 void CVariableTranslator::TranslateVariable(std::shared_ptr<CProgramState> state, std::shared_ptr< CDwarfStructures::SVariable > variable){
+    TRACE();
     auto NewVariableState = std::make_shared<CProgramState>();
 
     NewVariableState->DName = variable->DName;
+    TRACE_WITH_STR(variable->DName.c_str());
+    TRACE_WITH_STR(std::to_string(uint32_t(variable->DLocation.DType)).c_str());
+    TRACE_WITH_STR(std::to_string(variable->DLocation.DAddress).c_str());
+    TRACE_WITH_STR(std::to_string(variable->DLocation.DOffset).c_str());
     NewVariableState->DType = variable->DType->DName;
+    TRACE_WITH_STR(NewVariableState->DType.c_str());
     state->DChildren.push_back(NewVariableState);
-    
+    TRACE();
     std::vector< uint8_t > Data;
     if(variable->DType->DByteSize && GetVariableData(variable->DLocation, variable->DType->DByteSize, Data)){
         SetVariableValue(NewVariableState, variable->DType, Data);
     }
+    TRACE();
 }
 
 void CVariableTranslator::PrintState(std::shared_ptr<CProgramState> state, size_t depth){
@@ -518,6 +583,7 @@ void CVariableTranslator::PrintState(std::shared_ptr<CProgramState> state, size_
 }
 
 void CVariableTranslator::TranslateVariables(std::vector< std::shared_ptr<CProgramState> > &state, const std::vector< std::shared_ptr< CDwarfStructures::SProgrammaticScope > > &scopes){
+    TRACE();
     size_t CurrentModuleIndex = scopes.size();
     state.clear();
     // Find the scope index goes from inner to outer followed by global of others
@@ -533,6 +599,7 @@ void CVariableTranslator::TranslateVariables(std::vector< std::shared_ptr<CProgr
             }
         }
     }
+    TRACE();
     if(CurrentModuleIndex && (CurrentModuleIndex  < scopes.size())){
         std::shared_ptr<CProgramState> CurrentScopeState;
         for(size_t Index = 0; Index <= CurrentModuleIndex; Index++){
@@ -562,9 +629,13 @@ void CVariableTranslator::TranslateVariables(std::vector< std::shared_ptr<CProgr
             }
         }
     }
+    TRACE();
     // Do other module's global scope
     for(size_t Index = CurrentModuleIndex ? CurrentModuleIndex + 1 : 0; Index < scopes.size(); Index++){
         auto Scope = scopes[Index];
+        if(Scope->DName.empty()&&(Scope->DVariables.empty())){
+            continue;
+        }
         auto NewScopeState = std::make_shared<CProgramState>();
         NewScopeState->DName = Scope->DName;
         NewScopeState->DType = DCompilationUnitTypeString;
@@ -574,6 +645,7 @@ void CVariableTranslator::TranslateVariables(std::vector< std::shared_ptr<CProgr
             TranslateVariable(NewScopeState,Variable);
         }
     }
+    TRACE();
     /*
     printf("In %s @ %d\n",__FILE__,__LINE__);
     printf("----------- SCOPES BEGIN -----------\n");
