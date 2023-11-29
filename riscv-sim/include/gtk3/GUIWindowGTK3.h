@@ -9,6 +9,8 @@ class CGUIWindowGTK3 : public virtual CGUIWindow, public CGUIContainerGTK3{
         CGUIWindowGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUIWindowGTK3();
         
+        void GetPosition(int &x, int &y) override;
+        void Move(int x, int y) override;
         void SetMinSize(int width, int height) override;
         void SetMaxSize(int width, int height) override;
         void SetMinSize(std::shared_ptr<CGUIWidget> widget, int width, int height) override;

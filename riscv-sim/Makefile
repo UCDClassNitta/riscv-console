@@ -65,6 +65,7 @@ GTK3_OBJS =             $(OBJ_DIR)/GUIApplicationGTK3.o             \
                         $(OBJ_DIR)/GUIMenuGTK3.o                    \
                         $(OBJ_DIR)/GUIMenuItemGTK3.o                \
                         $(OBJ_DIR)/GUIMenuShellGTK3.o               \
+                        $(OBJ_DIR)/GUIOriginAnchorGTK3.o            \
                         $(OBJ_DIR)/GUIScrollBarGTK3.o               \
                         $(OBJ_DIR)/GUIScrollWindowGTK3.o            \
                         $(OBJ_DIR)/GUITextBufferGTK3.o              \

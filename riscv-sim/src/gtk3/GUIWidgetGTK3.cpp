@@ -196,7 +196,6 @@ gboolean CGUIWidgetGTK3::ConfigureEventCallback(GtkWidget *widget, GdkEventConfi
         TempEvent.DY = event->y;
         TempEvent.DWidth = event->width;
         TempEvent.DHeight = event->height;
-        
         return Widget->DConfigureCallback(Widget->shared_from_this(), TempEvent, Widget->DConfigureCalldata);
     }
     return FALSE;
@@ -270,7 +269,7 @@ void CGUIWidgetGTK3::Show(){
 }
 
 void CGUIWidgetGTK3::ShowAll(){
-    gtk_widget_show_all(DWidget);
+    gtk_widget_show_all(DWidget);    
 }
 
 

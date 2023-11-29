@@ -161,6 +161,16 @@ bool CRISCVConsoleApplication::InstructionBoxScrollEventCallback(std::shared_ptr
     return App->InstructionBoxScrollEvent(widget);
 }
 
+bool CRISCVConsoleApplication::DebugVariableClickEventCallback(std::shared_ptr<CGUITreeNodeView> widget, SGUIButtonEvent &event, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->DebugVariableClickEvent(widget, event);
+}
+
+bool CRISCVConsoleApplication::DebugVariableDetachClickEventCallback(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event, TGUICalldata data){
+    CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
+    return App->DebugVariableDetachClickEvent(widget,event);
+}
+
 void CRISCVConsoleApplication::BreakpointEventCallback(CRISCVConsoleBreakpointCalldata data){
     CRISCVConsoleApplication *App = static_cast<CRISCVConsoleApplication *>(data);
     App->BreakpointEvent();
@@ -206,6 +216,7 @@ bool CRISCVConsoleApplication::MainWindowDeleteEvent(std::shared_ptr<CGUIWidget>
 
 void CRISCVConsoleApplication::MainWindowDestroy(std::shared_ptr<CGUIWidget> widget){
     DMainWindow = nullptr;
+    DDebugVariableWindow = nullptr;
 }
 
 bool CRISCVConsoleApplication::MainWindowKeyPressEvent(std::shared_ptr<CGUIWidget> widget, SGUIKeyEvent &event){
@@ -593,6 +604,40 @@ bool CRISCVConsoleApplication::InstructionBoxScrollEvent(std::shared_ptr<CGUIScr
     return true;
 }
 
+bool CRISCVConsoleApplication::DebugVariableClickEvent(std::shared_ptr<CGUITreeNodeView> widget, SGUIButtonEvent &event){
+    if((event.DType == SGUIButtonEventType::ButtonPress)&&((3 == event.DButton)||((1 == event.DButton)&&(event.DModifier.ModifierIsSet(SGUIModifierType::EType::Control))))){
+        DDebugVariablePopupMenu->PopupAtPointer();
+    }
+    
+    return true;
+}
+
+bool CRISCVConsoleApplication::CRISCVConsoleApplication::DebugVariableDetachClickEvent(std::shared_ptr<CGUIWidget> widget, SGUIButtonEvent &event){
+    if(DDebugVariableDetachPopupMenuItem->GetLabel()->GetText() == "Detach"){
+        auto TreeViewAlloctedWidth = DDebugVariableTreeView->ContainingWidget()->AllocatedWidth();
+        DConsoleDebugBox->Remove(DHighLevelDebugBox);
+        auto MainWindowWidth = DMainWindow->AllocatedWidth();
+        auto MainWindowHeight = DMainWindow->AllocatedHeight();
+        DMainWindow->Resize(MainWindowWidth - TreeViewAlloctedWidth, MainWindowHeight);
+        DDebugVariableWindow->Add(DHighLevelDebugBox);
+        DDebugVariableWindow->ShowAll();
+        int X, Y;
+        DMainWindow->GetPosition(X,Y);
+        DDebugVariableWindow->Move(X+MainWindowWidth - TreeViewAlloctedWidth,Y);
+        DDebugVariablePopupMenu->Hide();
+        DDebugVariableDetachPopupMenuItem->GetLabel()->SetText("Reattach");
+    }
+    else{
+        DDebugVariableWindow->Remove(DHighLevelDebugBox);
+        DDebugVariableWindow->Hide();
+        DConsoleDebugBox->PackStart(DHighLevelDebugBox,true,true,GetWidgetSpacing());
+        DDebugVariableDetachPopupMenuItem->GetLabel()->SetText("Detach");
+    }
+
+    
+    return true;
+}
+
 void CRISCVConsoleApplication::BreakpointEvent(){
     DFollowingInstruction = true;
     DDebugRunButton->SetActive(false);
@@ -820,7 +865,14 @@ void CRISCVConsoleApplication::CreateDebugWidgets(){
     DDebugVariableTreeViewDecorator = std::make_shared< CVariableTreeViewDecorator >(DDebugVariableTreeView);
     DHighLevelDebugBox->PackStart(VarLabel,false,false,GetWidgetSpacing());
     DHighLevelDebugBox->PackStart(DDebugVariableTreeView->ContainingWidget(),true,true,GetWidgetSpacing());
-    
+    DDebugVariableTreeView->SetButtonPressEventCallback(this,DebugVariableClickEventCallback);
+    DDebugVariablePopupMenu = DGUIFactory->NewMenu();
+    DDebugVariableDetachPopupMenuItem = DGUIFactory->NewMenuItem("Detach");
+    DDebugVariableDetachPopupMenuItem->SetButtonPressEventCallback(this, DebugVariableDetachClickEventCallback);
+    DDebugVariablePopupMenu->Append(DDebugVariableDetachPopupMenuItem);
+    DDebugVariableDetachPopupMenuItem->Show();
+    DDebugVariableWindow = DApplication->NewWindow();
+    DDebugVariableWindow->SetBorderWidth(GetWidgetSpacing());
 
     DConsoleDebugBox->PackStart(DConsoleBox,false,false,GetWidgetSpacing());
     DConsoleDebugBox->PackStart(DLowLevelDebugBox,false,false,GetWidgetSpacing());

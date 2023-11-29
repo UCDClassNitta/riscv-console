@@ -21,7 +21,6 @@ void CGUIContainerGTK3::Add(std::shared_ptr<CGUIWidget> widget){
 
 void CGUIContainerGTK3::Remove(std::shared_ptr<CGUIWidget> widget){
     std::shared_ptr<CGUIWidgetGTK3> WidgetToAdd = std::dynamic_pointer_cast<CGUIWidgetGTK3>(widget);
-    
     gtk_container_remove(GTK_CONTAINER(DWidget), WidgetToAdd->Widget());    
     DChildren.erase(widget);
 }

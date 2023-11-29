@@ -6,6 +6,8 @@
 #include <gtk/gtk.h>
 
 class CGUIMenuItemGTK3 : public virtual CGUIMenuItem, public CGUIContainerGTK3{
+    protected:
+        std::shared_ptr< CGUILabelGTK3 > DLabel;
     public:
         CGUIMenuItemGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUIMenuItemGTK3();

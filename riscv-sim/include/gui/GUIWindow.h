@@ -7,6 +7,8 @@ class CGUIWindow : public virtual CGUIContainer{
     public:
         virtual ~CGUIWindow() = default;
         
+        virtual void GetPosition(int &x, int &y) = 0;
+        virtual void Move(int x, int y) = 0;
         virtual void SetMinSize(int width, int height) = 0;
         virtual void SetMaxSize(int width, int height) = 0;
         virtual void SetMinSize(std::shared_ptr<CGUIWidget> widget, int width, int height) = 0;

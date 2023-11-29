@@ -1,7 +1,8 @@
 #include "GUIMenuItemGTK3.h"
 
 CGUIMenuItemGTK3::CGUIMenuItemGTK3(GtkWidget *widget, bool reference) : CGUIContainerGTK3(widget, reference){
-    
+    GList *List = gtk_container_get_children(GTK_CONTAINER(DWidget));
+    DLabel = std::make_shared<CGUILabelGTK3>(GTK_WIDGET(List->data), true);
 }
 
 CGUIMenuItemGTK3::~CGUIMenuItemGTK3(){
@@ -9,9 +10,7 @@ CGUIMenuItemGTK3::~CGUIMenuItemGTK3(){
 }
 
 std::shared_ptr<CGUILabel> CGUIMenuItemGTK3::GetLabel(){
-    GList *List = gtk_container_get_children(GTK_CONTAINER(DWidget));
-    
-    return std::make_shared<CGUILabelGTK3>(GTK_WIDGET(List->data), true);
+    return DLabel;
 }
 
 void CGUIMenuItemGTK3::SetSubMenu(std::shared_ptr<CGUIWidget> widget){

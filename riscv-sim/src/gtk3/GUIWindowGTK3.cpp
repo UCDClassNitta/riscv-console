@@ -9,6 +9,17 @@ CGUIWindowGTK3::~CGUIWindowGTK3(){
     
 }
 
+void CGUIWindowGTK3::GetPosition(int &x, int &y){
+    gint RootX, RootY;
+    gtk_window_get_position(GTK_WINDOW(DWidget),&RootX,&RootY);
+    x = RootX;
+    y = RootY;
+}
+
+void CGUIWindowGTK3::Move(int x, int y){
+    gtk_window_move(GTK_WINDOW(DWidget),x,y);
+}
+
 void CGUIWindowGTK3::SetMinSize(int width, int height){
     GdkGeometry Geometry;
     Geometry.min_width = width;

@@ -9,7 +9,9 @@ class CGUIMenuGTK3 : public virtual CGUIMenu, public CGUIMenuShellGTK3{
     public:
         CGUIMenuGTK3(GtkWidget *widget, bool reference = false);
         virtual ~CGUIMenuGTK3();
-        
+
+        void PopupAtWidget(std::shared_ptr< CGUIWidget > widget, EGUIOriginAnchor widgetanchor, EGUIOriginAnchor menuanchor);
+        void PopupAtPointer();
 };
 
 #endif
